@@ -1,0 +1,49 @@
+{
+  "name": "maplibre-gl-handwriting",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Freehand drawing on a MapLibre GL JS map, tessellated with lyon in WebAssembly",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/types/src/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/types/src/core/index.d.ts",
+      "import": "./dist/core.js"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "files": [
+    "dist",
+    "THIRD_PARTY_LICENSES"
+  ],
+  "scripts": {
+    "dev": "npm run build:wasm && vite",
+    "build": "npm run build:wasm && vite build && tsc -p tsconfig.build.json && node tests/tools/copy-wasm-types.mjs",
+    "build:wasm": "CARGO_TARGET_DIR=\"$PWD/tessellator/target\" wasm-pack build tessellator --target web --release",
+    "prepack": "npm run build",
+    "check": "npm run build:wasm && tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+    "test": "vitest run",
+    "bench": "vitest run --config vitest.bench.config.ts",
+    "lint:boundaries": "node tests/tools/check-boundaries.mjs",
+    "snapshots": "node tests/tools/snapshots.mjs",
+    "pack:check": "node tests/tools/pack.mjs",
+    "e2e": "node tests/tools/e2e-example.mjs && node tests/tools/e2e-dev.mjs"
+  },
+  "peerDependencies": {
+    "maplibre-gl": "^6.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "maplibre-gl": "^6.16.0",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}

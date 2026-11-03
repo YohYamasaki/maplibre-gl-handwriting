@@ -1,0 +1,14 @@
+{
+  // The package's declarations (npm run build): tsc's output as is (decision 0097), next to the bundle in dist
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": ".",
+    "outDir": "dist/types",
+    "types": ["vite/client"]
+  },
+  "include": ["src/index.ts", "src/core/index.ts", "src/globals.d.ts"],
+  "exclude": ["tessellator/pkg/*.js", "dist"]
+}

@@ -1,0 +1,377 @@
+/*
+ * HandwritingToolbar. Colors can be changed with these custom properties on any ancestor (e.g. :root):
+ *   --handwriting-toolbar-background, --handwriting-toolbar-color, --handwriting-toolbar-active,
+ *   --handwriting-toolbar-accent, --handwriting-toolbar-border
+ * and their dark-mode versions with a -dark suffix (used under prefers-color-scheme: dark). The tooltips take
+ *   --handwriting-tooltip-background, --handwriting-tooltip-color and their -dark versions
+ */
+.handwriting-toolbar,
+.handwriting-popover {
+  --_background: var(--handwriting-toolbar-background, #ffffff);
+  --_color: var(--handwriting-toolbar-color, #1f1f1f);
+  --_active: var(--handwriting-toolbar-active, #e3ebf8);
+  --_accent: var(--handwriting-toolbar-accent, #1a73e8);
+  --_border: var(--handwriting-toolbar-border, rgba(0, 0, 0, 0.14));
+  --_shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  color: var(--_color);
+  background: var(--_background);
+  border: 1px solid var(--_border);
+  box-shadow: var(--_shadow);
+  font: 12px/1.3 system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .handwriting-toolbar,
+  .handwriting-popover {
+    --_background: var(--handwriting-toolbar-background-dark, #2a2b2e);
+    --_color: var(--handwriting-toolbar-color-dark, #ececec);
+    --_active: var(--handwriting-toolbar-active-dark, #3c4a63);
+    --_accent: var(--handwriting-toolbar-accent-dark, #8ab4f8);
+    --_border: var(--handwriting-toolbar-border-dark, rgba(255, 255, 255, 0.16));
+    --_shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+  }
+}
+
+.handwriting-toolbar *,
+.handwriting-popover * {
+  box-sizing: border-box;
+}
+
+.handwriting-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 22px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/*
+ * Only the tools scroll when the bar is longer than the map; the grip and the collapse button stay visible.
+ * The padding and the negative margin keep the selected button's outline inside the scrolled box.
+ */
+.handwriting-toolbar-tools {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 3px;
+  margin: -3px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+.handwriting-toolbar-tools::-webkit-scrollbar {
+  display: none;
+}
+
+.handwriting-toolbar[data-orientation='vertical'],
+.handwriting-toolbar[data-orientation='vertical'] .handwriting-toolbar-tools {
+  flex-direction: column;
+}
+
+.handwriting-toolbar[data-orientation='vertical'] .handwriting-toolbar-tools {
+  min-height: 0;
+  margin: 0 -3px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+
+.handwriting-toolbar-dragging {
+  opacity: 0.85;
+  transition: none;
+}
+
+.handwriting-toolbar button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 18px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.handwriting-toolbar button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--_active) 60%, transparent);
+}
+
+.handwriting-toolbar button:focus-visible,
+.handwriting-popover button:focus-visible,
+.handwriting-popover input:focus-visible {
+  outline: 2px solid var(--_accent);
+  outline-offset: 1px;
+}
+
+.handwriting-toolbar button[aria-pressed='true'] {
+  color: var(--_accent);
+  background: var(--_active);
+}
+
+.handwriting-toolbar button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.handwriting-toolbar .handwriting-toolbar-grip,
+.handwriting-toolbar .handwriting-toolbar-collapse {
+  width: 24px;
+  color: color-mix(in srgb, var(--_color) 55%, transparent);
+}
+
+.handwriting-toolbar[data-orientation='vertical'] .handwriting-toolbar-grip,
+.handwriting-toolbar[data-orientation='vertical'] .handwriting-toolbar-collapse {
+  width: 36px;
+  height: 24px;
+}
+
+.handwriting-toolbar[data-orientation='vertical'] .handwriting-toolbar-grip .handwriting-icon,
+.handwriting-toolbar[data-orientation='vertical'] .handwriting-toolbar-collapse .handwriting-icon {
+  rotate: 90deg;
+}
+
+.handwriting-toolbar-grip {
+  cursor: grab;
+}
+
+.handwriting-toolbar-dragging .handwriting-toolbar-grip {
+  cursor: grabbing;
+}
+
+.handwriting-toolbar-separator {
+  flex: none;
+  width: 1px;
+  height: 22px;
+  margin: 0 3px;
+  background: var(--_border);
+}
+
+.handwriting-toolbar[data-orientation='vertical'] .handwriting-toolbar-separator {
+  width: 22px;
+  height: 1px;
+  margin: 3px 0;
+}
+
+/* Collapsed: only the selected tool stays (not the pen-only toggle, though it may be pressed) */
+.handwriting-toolbar[data-collapsed='true'] .handwriting-toolbar-tools > :not([data-tool][aria-pressed='true']) {
+  display: none;
+}
+
+/* The tip of a pen icon shows the pen's color */
+.handwriting-icon .tip {
+  fill: var(--handwriting-pen-color, currentColor);
+  stroke: none;
+}
+
+.handwriting-popover {
+  width: 248px;
+  max-width: calc(100% - 16px);
+  padding: 10px 12px 12px;
+  border-radius: 14px;
+}
+
+.handwriting-popover[hidden] {
+  display: none;
+}
+
+.handwriting-popover-content {
+  display: grid;
+  gap: 8px;
+}
+
+.handwriting-popover-preview {
+  width: 100%;
+  height: 56px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--_color) 6%, transparent);
+}
+
+.handwriting-popover-eraser {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--_color) 6%, transparent);
+}
+
+/* A choice of two or more, one button each (the eraser's mode) */
+.handwriting-segments {
+  display: flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--_color) 6%, transparent);
+}
+
+.handwriting-segment {
+  flex: 1;
+  margin: 0;
+  padding: 6px 8px;
+  color: inherit;
+  font: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.handwriting-segment[aria-pressed='true'] {
+  color: var(--_accent);
+  background: var(--_background);
+  box-shadow: 0 0 0 1px var(--_border);
+}
+
+.handwriting-eraser-circle {
+  display: block;
+  border: 1.5px solid var(--_color);
+  border-radius: 50%;
+}
+
+.handwriting-popover-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 40px;
+  align-items: center;
+  gap: 6px;
+}
+
+.handwriting-popover-slider {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--_accent);
+}
+
+.handwriting-popover-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.handwriting-palette {
+  display: flex;
+  justify-content: space-between;
+}
+
+.handwriting-swatch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  background: var(--handwriting-swatch, transparent);
+  border: 1px solid var(--_border);
+  border-radius: 50%;
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.handwriting-swatch[aria-pressed='true'],
+.handwriting-swatch-selected {
+  outline: 2px solid var(--_accent);
+  outline-offset: 2px;
+}
+
+.handwriting-swatch-other .handwriting-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* The native color input covers the "other" swatch, so it opens the system picker */
+.handwriting-picker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* A checkbox in a popover, with its label and a hint under it (the pen's pressure) */
+.handwriting-popover-toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.handwriting-popover-checkbox {
+  margin: 1px 0 0;
+  accent-color: var(--_accent);
+}
+
+.handwriting-popover-toggle-text {
+  display: grid;
+  gap: 2px;
+}
+
+.handwriting-popover-hint {
+  color: color-mix(in srgb, var(--_color) 65%, transparent);
+}
+
+/* The tooltips of the toolbar's buttons (decision 0083): dark on a light map, light on a dark one */
+.handwriting-tooltip {
+  position: absolute;
+  z-index: 4;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 240px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--handwriting-tooltip-color, #ffffff);
+  background: var(--handwriting-tooltip-background, rgba(32, 33, 36, 0.94));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  font: 12px/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  pointer-events: none;
+}
+
+.handwriting-tooltip[hidden] {
+  display: none;
+}
+
+.handwriting-tooltip-name {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.handwriting-tooltip-description {
+  opacity: 0.85;
+}
+
+.handwriting-tooltip-keys {
+  font: 11px/1 ui-monospace, 'SF Mono', Menlo, monospace;
+  opacity: 0.8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .handwriting-tooltip {
+    color: var(--handwriting-tooltip-color-dark, #1f1f1f);
+    background: var(--handwriting-tooltip-background-dark, rgba(240, 240, 240, 0.96));
+  }
+}

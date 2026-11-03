@@ -1,0 +1,5 @@
+type BuildJob = { key: string; version: number; tile: TileID; zoom: number; strokes: StrokeData[]; }
+type BuildResult = { key: string; version: number; zoom: number; opaque: MeshData; translucent: MeshData; }
+type TessellationInit = { wasmUrl: string; }
+type MeshData = { tile: TileID; geometry: Float32Array<ArrayBuffer>; colors: Uint32Array<ArrayBuffer>; widths: Float32Array<ArrayBuffer>; zooms: Float32Array<ArrayBuffer>; orders: Uint32Array<ArrayBuffer>; indices: Uint32Array<ArrayBuffer>; vertexCount: number; indexCount: number; ranges: StrokeRange[]; }
+type StrokeRange = { id: string; firstVertex: number; vertexCount: number; firstIndex: number; indexCount: number; order: number; }

@@ -1,0 +1,19 @@
+node_modules
+dist
+*.tgz
+*.log
+.DS_Store
+
+# Rust / WebAssembly build output
+tessellator/target
+tessellator/pkg
+
+# The examples' own installs and builds
+examples/*/node_modules
+examples/*/dist
+examples/*/package-lock.json
+
+# Kept out of the repository (decision 0094): the decision records, the Claude Code settings and instructions
+docs/adr/
+.claude/
+CLAUDE.md

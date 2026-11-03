@@ -1,0 +1,19 @@
+{
+  "approved": true,
+  "limits": {
+    "perFrameMax.drawCalls": 978,
+    "perFrameMax.bucketsScanned": 161,
+    "perFrameMax.mainThreadVertices": 20209,
+    "perFrameMax.buildPoints": 218721,
+    "total.mainThreadVertices": 110241,
+    "total.builds": 736,
+    "total.buildPoints": 1269794,
+    "total.planRebuilds": 63,
+    "retainedAtEnd.strokes": 3247,
+    "retainedAtEnd.buckets": 161,
+    "retainedAtEnd.meshes": 228,
+    "retainedAtEnd.meshVertices": 719151,
+    "retainedAtEnd.meshBytesAllocated": 41929114,
+    "retainedAtEnd.meshBytesUsed": 31565130
+  }
+}
