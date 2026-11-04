@@ -46,12 +46,22 @@ for (const bundler of BUNDLERS) {
 writeFileSync(join(site, 'index.html'), BUNDLERS.map((b) => `<a href="${b}/">${b}</a>`).join('\n'))
 
 const port = await freePort()
-const browser = await startRun('e2e-bundlers', { command: 'node', args: [join(root, 'tests/tools/serve.mjs'), site, String(port)], cwd: work, port })
+const browser = await startRun('e2e-bundlers', {
+  command: 'node',
+  args: [join(root, 'tests/tools/serve.mjs'), site, String(port)],
+  cwd: work,
+  port,
+})
 
 console.log('e2e-bundlers')
 for (const bundler of BUNDLERS) {
   await checkExample(browser, { name: bundler, origin: `http://localhost:${port}`, path: `/${bundler}/` })
 }
-await checkExample(browser, { name: 'esbuild (not a secure context)', origin: `http://${INSECURE_HOST}:${port}`, path: '/esbuild/', insecure: true })
+await checkExample(browser, {
+  name: 'esbuild (not a secure context)',
+  origin: `http://${INSECURE_HOST}:${port}`,
+  path: '/esbuild/',
+  insecure: true,
+})
 
 await browser.done()

@@ -93,7 +93,9 @@ describe('PenSettings', () => {
 describe('strokeColor', () => {
   it('gives #rrggbb for an opaque pen and #rrggbbaa otherwise', () => {
     for (const opacity of [0.13, 0.2, 0.5, 0.99]) {
-      expect(strokeColor({ color: '#336699', opacity, width: 4, pressure: false }), `opacity ${opacity}`).toMatch(/^#336699[0-9a-f]{2}$/)
+      expect(strokeColor({ color: '#336699', opacity, width: 4, pressure: false }), `opacity ${opacity}`).toMatch(
+        /^#336699[0-9a-f]{2}$/,
+      )
     }
     expect(strokeColor({ color: '#336699', opacity: 1, width: 4, pressure: false })).toBe('#336699')
   })

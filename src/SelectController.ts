@@ -118,7 +118,15 @@ export function dragTransform(grip: FrameGrip, corners: Point[], start: Point, p
 /** The drag in progress: a lasso, or a grip of the frame */
 type Gesture =
   | { kind: 'lasso'; pointerId: number; client: [number, number][]; path: Point[] }
-  | { kind: 'frame'; pointerId: number; grip: FrameGrip; corners: Point[]; start: Point; client: [number, number]; moved: boolean }
+  | {
+      kind: 'frame'
+      pointerId: number
+      grip: FrameGrip
+      corners: Point[]
+      start: Point
+      client: [number, number]
+      moved: boolean
+    }
 
 /**
  * The lasso tool: a lasso selects the strokes with an order and at least half of their points inside
@@ -201,7 +209,12 @@ export class SelectController {
       }
       return
     }
-    this.gesture = { kind: 'lasso', pointerId: e.pointerId, client: [client], path: [this.project(e.clientX, e.clientY)] }
+    this.gesture = {
+      kind: 'lasso',
+      pointerId: e.pointerId,
+      client: [client],
+      path: [this.project(e.clientX, e.clientY)],
+    }
   }
 
   private onPointerMove = (e: PointerEvent): void => {
@@ -221,9 +234,12 @@ export class SelectController {
       if (!isTap(gesture.client)) this.options.onLasso(gesture.client)
       return
     }
-    if (!gesture.moved && Math.hypot(e.clientX - gesture.client[0], e.clientY - gesture.client[1]) < TAP_DISTANCE) return
+    if (!gesture.moved && Math.hypot(e.clientX - gesture.client[0], e.clientY - gesture.client[1]) < TAP_DISTANCE)
+      return
     gesture.moved = true
-    this.selection.setDrag(dragTransform(gesture.grip, gesture.corners, gesture.start, this.project(e.clientX, e.clientY)))
+    this.selection.setDrag(
+      dragTransform(gesture.grip, gesture.corners, gesture.start, this.project(e.clientX, e.clientY)),
+    )
   }
 
   private onPointerUp = (e: PointerEvent): void => {
@@ -287,7 +303,13 @@ export class SelectController {
   private tap(p: Point): void {
     const reach = TAP_RADIUS * this.options.pixelSize()
     const halfWidth = (stroke: StrokeData): number => (stroke.width * mercatorPerPixelAt(stroke.zoom)) / 2
-    const id = topmostStrokeAt(this.index, this.store, p, (s) => halfWidth(s) + reach, this.index.maxWidthMercator / 2 + reach)
+    const id = topmostStrokeAt(
+      this.index,
+      this.store,
+      p,
+      (s) => halfWidth(s) + reach,
+      this.index.maxWidthMercator / 2 + reach,
+    )
     this.selection.set(id === null ? [] : [id])
   }
 

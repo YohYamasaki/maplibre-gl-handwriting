@@ -80,7 +80,14 @@ export class Selection {
     if (this.selected.size === 0 || !this.box) return null
     const { minX, minY, maxX, maxY } = this.box
     const m = compose(this.dragMatrix, this.placed)
-    return ([[minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY]] as Point[]).map((p) => applyToPoint(m, p))
+    return (
+      [
+        [minX, minY],
+        [maxX, minY],
+        [maxX, maxY],
+        [minX, maxY],
+      ] as Point[]
+    ).map((p) => applyToPoint(m, p))
   }
 
   clear(): void {
@@ -148,7 +155,8 @@ export class Selection {
     const measure = this.placed === IDENTITY ? changed : this.selected
     for (const id of measure) {
       const stroke = this.store.get(id)
-      if (stroke) this.bounds.set(id, grow(boundsOf(stroke.points), (stroke.width * mercatorPerPixelAt(stroke.zoom)) / 2))
+      if (stroke)
+        this.bounds.set(id, grow(boundsOf(stroke.points), (stroke.width * mercatorPerPixelAt(stroke.zoom)) / 2))
       else this.bounds.delete(id)
     }
     this.placed = IDENTITY

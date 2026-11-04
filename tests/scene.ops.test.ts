@@ -41,13 +41,21 @@ function run(seed: number, mode: StrokeOrderMode): void {
   const view = (): Bounds => {
     const px = mercatorPerPixelAt(zoom)
     const [x, y] = center
-    return { minX: x - (SCREEN.width / 2) * px, maxX: x + (SCREEN.width / 2) * px, minY: y - (SCREEN.height / 2) * px, maxY: y + (SCREEN.height / 2) * px }
+    return {
+      minX: x - (SCREEN.width / 2) * px,
+      maxX: x + (SCREEN.width / 2) * px,
+      minY: y - (SCREEN.height / 2) * px,
+      maxY: y + (SCREEN.height / 2) * px,
+    }
   }
   /** A point on screen, `spread` screens around the center */
   const pointNear = ([x, y]: Point, spread: number): Point => {
     const px = mercatorPerPixelAt(zoom)
     const clamp = (v: number) => Math.min(1, Math.max(0, v))
-    return [clamp(x + (rand() - 0.5) * SCREEN.width * px * spread), clamp(y + (rand() - 0.5) * SCREEN.height * px * spread)]
+    return [
+      clamp(x + (rand() - 0.5) * SCREEN.width * px * spread),
+      clamp(y + (rand() - 0.5) * SCREEN.height * px * spread),
+    ]
   }
   // Opaque or translucent: the two are drawn apart
   const color = (): string => (rand() < 0.4 ? '#33669980' : '#336699')
@@ -57,86 +65,147 @@ function run(seed: number, mode: StrokeOrderMode): void {
     const points: Point[] = [first]
     const n = Math.floor(rand() * 6)
     for (let i = 0; i < n; i++) points.push(pointNear(points.at(-1)!, 0.05 * 2 ** (zoom - drawnAt)))
-    return { id: `saved:${nextId++}`, author: 'other', color: color(), width: 2 + rand() * 20, zoom: drawnAt, points, order: nextOrder++ }
+    return {
+      id: `saved:${nextId++}`,
+      author: 'other',
+      color: color(),
+      width: 2 + rand() * 20,
+      zoom: drawnAt,
+      points,
+      order: nextOrder++,
+    }
   }
 
   const steps: [weight: number, name: string, run: () => void][] = [
-    [6, 'begin', () => {
-      const id = `s:${nextId++}`
-      store.apply({ type: 'begin', id, author: 'me', color: color(), width: 8, zoom }, rand() < 0.5 ? 'local' : 'remote')
-      store.apply({ type: 'points', id, pts: [pointNear(center, 1)] }, 'local')
-      drawing.add(id)
-    }],
-    [12, 'points', () => {
-      const id = pick([...drawing])
-      if (!id) return
-      const last = store.get(id)!.points.at(-1)!
-      const pts = Array.from({ length: 1 + Math.floor(rand() * 40) }, () => pointNear(last, 0.1))
-      store.apply({ type: 'points', id, pts }, 'local')
-    }],
-    [5, 'end', () => {
-      const id = pick([...drawing])
-      if (!id) return
-      store.apply({ type: 'end', id }, 'local')
-      drawing.delete(id)
-      if (mode === 'custom') unsaved.push(id)
-      else expect(store.get(id)?.order).toBeDefined()
-    }],
-    [5, 'order', () => {
-      // The server's order need not match the order the ends arrived in
-      const at = Math.floor(rand() * unsaved.length)
-      const [id] = unsaved.splice(at, 1)
-      if (id) store.apply({ type: 'order', id, order: nextOrder++ }, 'remote')
-    }],
-    [4, 'remove', () => {
-      const stroke = pick([...store.values()])
-      if (!stroke) return
-      store.apply({ type: 'remove', id: stroke.id }, 'local')
-      if (drawing.delete(stroke.id)) return
-      if (stroke.order !== undefined) erased.push(structuredClone(stroke))
-    }],
-    [3, 'split', () => {
-      // The partial eraser: a saved stroke, possibly just drawn here, is cut into one or two pieces
-      const stroke = pick([...store.values()].filter((s) => s.order !== undefined && s.points.length >= 2))
-      if (!stroke) return
-      const last = stroke.points.length - 1
-      const cut = rand() * last
-      const pieces = [{ id: `piece:${nextId++}`, from: 0, to: cut }, { id: `piece:${nextId++}`, from: cut + rand() * (last - cut), to: last }]
-        .filter((piece) => piece.to > piece.from)
-      if (pieces.length === 0) return
-      const original = structuredClone(stroke)
-      if (!store.apply({ type: 'split', id: stroke.id, pieces }, rand() < 0.5 ? 'local' : 'remote')) return
-      // A default store's reset gives strokes still being drawn an order, so they can be cut too
-      if (!drawing.delete(stroke.id)) erased.push(original)
-    }],
-    [2, 'restore', () => {
-      const stroke = erased.pop()
-      if (stroke) store.apply({ type: 'restore', stroke }, 'remote')
-    }],
-    [3, 'load', () => {
-      const strokes = Array.from({ length: 1 + Math.floor(rand() * 6) }, savedStroke)
-      // Tiles overlap, so loads repeat strokes the store already has
-      const known = pick([...store.values()].filter((stroke) => stroke.order !== undefined))
-      if (known) strokes.push(structuredClone(known))
-      store.apply({ type: 'load', strokes }, 'remote')
-    }],
-    [1, 'reset', () => {
-      // A reconnect: the snapshot holds the strokes still being drawn. A default store gives them orders at once
-      const drafts = [...drawing].map((id) => structuredClone(store.get(id)!))
-      store.apply({ type: 'reset', strokes: drafts }, 'remote')
-      unsaved.length = 0
-    }],
-    [4, 'move', () => {
-      zoom = Math.min(20, Math.max(2, zoom + (rand() - 0.5) * 8))
-      center = pointNear(center, 3)
-    }],
-    [6, 'deliver', () => {
-      if (builds.pending.length > 0) scene.onBuilt(builds.deliver(Math.floor(rand() * builds.pending.length)))
-    }],
-    [8, 'frame', () => {
-      const draws = scene.frame(view(), zoom)
-      expectValidDraws(store, scene, draws, view(), zoom)
-    }],
+    [
+      6,
+      'begin',
+      () => {
+        const id = `s:${nextId++}`
+        store.apply(
+          { type: 'begin', id, author: 'me', color: color(), width: 8, zoom },
+          rand() < 0.5 ? 'local' : 'remote',
+        )
+        store.apply({ type: 'points', id, pts: [pointNear(center, 1)] }, 'local')
+        drawing.add(id)
+      },
+    ],
+    [
+      12,
+      'points',
+      () => {
+        const id = pick([...drawing])
+        if (!id) return
+        const last = store.get(id)!.points.at(-1)!
+        const pts = Array.from({ length: 1 + Math.floor(rand() * 40) }, () => pointNear(last, 0.1))
+        store.apply({ type: 'points', id, pts }, 'local')
+      },
+    ],
+    [
+      5,
+      'end',
+      () => {
+        const id = pick([...drawing])
+        if (!id) return
+        store.apply({ type: 'end', id }, 'local')
+        drawing.delete(id)
+        if (mode === 'custom') unsaved.push(id)
+        else expect(store.get(id)?.order).toBeDefined()
+      },
+    ],
+    [
+      5,
+      'order',
+      () => {
+        // The server's order need not match the order the ends arrived in
+        const at = Math.floor(rand() * unsaved.length)
+        const [id] = unsaved.splice(at, 1)
+        if (id) store.apply({ type: 'order', id, order: nextOrder++ }, 'remote')
+      },
+    ],
+    [
+      4,
+      'remove',
+      () => {
+        const stroke = pick([...store.values()])
+        if (!stroke) return
+        store.apply({ type: 'remove', id: stroke.id }, 'local')
+        if (drawing.delete(stroke.id)) return
+        if (stroke.order !== undefined) erased.push(structuredClone(stroke))
+      },
+    ],
+    [
+      3,
+      'split',
+      () => {
+        // The partial eraser: a saved stroke, possibly just drawn here, is cut into one or two pieces
+        const stroke = pick([...store.values()].filter((s) => s.order !== undefined && s.points.length >= 2))
+        if (!stroke) return
+        const last = stroke.points.length - 1
+        const cut = rand() * last
+        const pieces = [
+          { id: `piece:${nextId++}`, from: 0, to: cut },
+          { id: `piece:${nextId++}`, from: cut + rand() * (last - cut), to: last },
+        ].filter((piece) => piece.to > piece.from)
+        if (pieces.length === 0) return
+        const original = structuredClone(stroke)
+        if (!store.apply({ type: 'split', id: stroke.id, pieces }, rand() < 0.5 ? 'local' : 'remote')) return
+        // A default store's reset gives strokes still being drawn an order, so they can be cut too
+        if (!drawing.delete(stroke.id)) erased.push(original)
+      },
+    ],
+    [
+      2,
+      'restore',
+      () => {
+        const stroke = erased.pop()
+        if (stroke) store.apply({ type: 'restore', stroke }, 'remote')
+      },
+    ],
+    [
+      3,
+      'load',
+      () => {
+        const strokes = Array.from({ length: 1 + Math.floor(rand() * 6) }, savedStroke)
+        // Tiles overlap, so loads repeat strokes the store already has
+        const known = pick([...store.values()].filter((stroke) => stroke.order !== undefined))
+        if (known) strokes.push(structuredClone(known))
+        store.apply({ type: 'load', strokes }, 'remote')
+      },
+    ],
+    [
+      1,
+      'reset',
+      () => {
+        // A reconnect: the snapshot holds the strokes still being drawn. A default store gives them orders at once
+        const drafts = [...drawing].map((id) => structuredClone(store.get(id)!))
+        store.apply({ type: 'reset', strokes: drafts }, 'remote')
+        unsaved.length = 0
+      },
+    ],
+    [
+      4,
+      'move',
+      () => {
+        zoom = Math.min(20, Math.max(2, zoom + (rand() - 0.5) * 8))
+        center = pointNear(center, 3)
+      },
+    ],
+    [
+      6,
+      'deliver',
+      () => {
+        if (builds.pending.length > 0) scene.onBuilt(builds.deliver(Math.floor(rand() * builds.pending.length)))
+      },
+    ],
+    [
+      8,
+      'frame',
+      () => {
+        const draws = scene.frame(view(), zoom)
+        expectValidDraws(store, scene, draws, view(), zoom)
+      },
+    ],
   ]
   const total = steps.reduce((sum, [weight]) => sum + weight, 0)
 
@@ -200,7 +269,12 @@ describe('StrokeScene with widths that scale with the map', () => {
     }
     store.apply({ type: 'load', strokes: [stroke] }, 'remote')
     const view = { minX: 0.499995, maxX: 0.500005, minY: 0.500995, maxY: 0.501005 }
-    expect(intersects(grow(view, 0, 0), grow({ minX: 0.49, maxX: 0.51, minY: 0.5, maxY: 0.5 }, (8 * mercatorPerPixelAt(2)) / 2))).toBe(true)
+    expect(
+      intersects(
+        grow(view, 0, 0),
+        grow({ minX: 0.49, maxX: 0.51, minY: 0.5, maxY: 0.5 }, (8 * mercatorPerPixelAt(2)) / 2),
+      ),
+    ).toBe(true)
     scene.frame(view, 18)
     expect(builds.pending).toHaveLength(1)
     expect(builds.pending[0].strokes.map((s) => s.id)).toEqual(['s:1'])
@@ -226,7 +300,10 @@ describe('StrokeScene after the widest line of a bucket is erased', () => {
       points: [[0.5, 0.5]],
       order: id,
     })
-    store.apply({ type: 'load', strokes: [line(0, 64), ...Array.from({ length: 10 }, (_, i) => line(i + 1, 1))] }, 'remote')
+    store.apply(
+      { type: 'load', strokes: [line(0, 64), ...Array.from({ length: 10 }, (_, i) => line(i + 1, 1))] },
+      'remote',
+    )
     const at = (y: number): Bounds => ({ minX: 0.499995, maxX: 0.500005, minY: y - 0.000005, maxY: y + 0.000005 })
     scene.frame(at(0.5), 18)
     scene.onBuilt(builds.deliver())
@@ -337,7 +414,9 @@ describe('StrokeScene given the same stroke twice in one load', () => {
     expect(bucket.strokes.size).toBe(1)
     expect(bucket.bounds).toEqual({ minX: 0.51, minY: 0.51, maxX: 0.51, maxY: 0.51 })
     expect(bucket.maxWidthMercator).toBeCloseTo(mercatorPerPixelAt(2))
-    const heaps = Object.values(bucket.extremes).map((extreme) => (extreme as unknown as { heap: number[] }).heap.length)
+    const heaps = Object.values(bucket.extremes).map(
+      (extreme) => (extreme as unknown as { heap: number[] }).heap.length,
+    )
     for (const length of heaps) expect(length).toBeLessThanOrEqual(2)
     expectConsistentScene(store, scene, new Set())
   })
@@ -357,7 +436,10 @@ describe('StrokeScene given new strokes twice in one load into a bucket with a m
       points: [[0.51, y]],
       order: 1,
     })
-    store.apply({ type: 'load', strokes: Array.from({ length: 100 }, (_, i) => line(`old:${i}`, 0.51 + i * 1e-7)) }, 'remote')
+    store.apply(
+      { type: 'load', strokes: Array.from({ length: 100 }, (_, i) => line(`old:${i}`, 0.51 + i * 1e-7)) },
+      'remote',
+    )
     const view = { minX: 0.509995, maxX: 0.510005, minY: 0.509995, maxY: 0.510005 }
     scene.frame(view, 18)
     scene.onBuilt(builds.deliver())

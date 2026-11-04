@@ -258,7 +258,8 @@ describe('keyboard shortcuts', () => {
     const { actions, shortcuts } = setup('lasso')
     actions.selected = true
     for (const tagName of ['INPUT', 'TEXTAREA', 'SELECT']) {
-      for (const k of ['e', '2', ' ', 'Backspace', '[', '?', 'Escape']) shortcuts.keydown(key(k, { target: { tagName } as never }))
+      for (const k of ['e', '2', ' ', 'Backspace', '[', '?', 'Escape'])
+        shortcuts.keydown(key(k, { target: { tagName } as never }))
       shortcuts.keydown(key('z', { metaKey: true, target: { tagName } as never }))
     }
     shortcuts.keydown(key('e', { target: { tagName: 'DIV', isContentEditable: true } as never }))
@@ -317,7 +318,16 @@ describe('keyboard shortcuts', () => {
     const actions = fakeActions('pen')
     const shortcuts = new KeyboardShortcuts(actions, target)
     const dispatch = (type: string, k: string): void => {
-      target.dispatchEvent(Object.assign(new Event(type, { cancelable: true }), { key: k, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, repeat: false }))
+      target.dispatchEvent(
+        Object.assign(new Event(type, { cancelable: true }), {
+          key: k,
+          ctrlKey: false,
+          metaKey: false,
+          altKey: false,
+          shiftKey: false,
+          repeat: false,
+        }),
+      )
     }
     expect(shortcuts.enabled).toBe(false)
     dispatch('keydown', 'e')
@@ -338,7 +348,10 @@ describe('keyboard shortcuts', () => {
   })
 
   it('changes the pen width and the eraser radius by 1 px, stopping at their ranges', () => {
-    const settings = new PenSettings({ pens: { pen: { width: MAX_WIDTH - 0.5 } }, eraser: { radius: MIN_ERASER_RADIUS + 0.5 } })
+    const settings = new PenSettings({
+      pens: { pen: { width: MAX_WIDTH - 0.5 } },
+      eraser: { radius: MIN_ERASER_RADIUS + 0.5 },
+    })
     changeToolSize(settings, 'pen', 1)
     expect(settings.pen('pen').width).toBe(MAX_WIDTH)
     changeToolSize(settings, 'pen', 1)

@@ -62,7 +62,12 @@ function typeText(checker, type) {
 }
 
 function signatureText(checker, signature) {
-  const node = checker.signatureToSignatureDeclaration(signature, ts.SyntaxKind.CallSignature, undefined, SIGNATURE_FLAGS)
+  const node = checker.signatureToSignatureDeclaration(
+    signature,
+    ts.SyntaxKind.CallSignature,
+    undefined,
+    SIGNATURE_FLAGS,
+  )
   if (!node) throw new Error('the checker gave no signature declaration')
   return print(sortUnions(node))
 }
@@ -94,7 +99,9 @@ function describeClass(checker, name, symbol, declaration) {
   const lines = [`class ${name}`]
   const isPublic = (member) =>
     !member.declarations?.some(
-      (d) => ts.getCombinedModifierFlags(d) & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected) || (d.name && ts.isPrivateIdentifier(d.name)),
+      (d) =>
+        ts.getCombinedModifierFlags(d) & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected) ||
+        (d.name && ts.isPrivateIdentifier(d.name)),
     )
   const staticType = checker.getTypeOfSymbol(symbol)
   for (const signature of staticType.getConstructSignatures()) {
@@ -112,7 +119,11 @@ function describeClass(checker, name, symbol, declaration) {
   return lines
 }
 
-const config = ts.getParsedCommandLineOfConfigFile(join(root, 'tsconfig.json'), {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} })
+const config = ts.getParsedCommandLineOfConfigFile(
+  join(root, 'tsconfig.json'),
+  {},
+  { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} },
+)
 const program = ts.createProgram({
   rootNames: [
     ...['src/index.ts', 'src/core/index.ts', 'src/TessellationWorker.ts', 'src/globals.d.ts'].map((f) => join(root, f)),
@@ -127,10 +138,17 @@ if (checkFirstPath) {
 }
 
 const snapshots = {
-  'public-api.txt': describeExports(program, 'src/index.ts') + '\n// maplibre-gl-handwriting/core\n' + describeExports(program, 'src/core/index.ts'),
+  'public-api.txt':
+    describeExports(program, 'src/index.ts') +
+    '\n// maplibre-gl-handwriting/core\n' +
+    describeExports(program, 'src/core/index.ts'),
   'worker-messages.txt':
-    describeExports(program, 'src/TessellationWorker.ts', ['BuildJob', 'BuildResult', 'TessellationInit', 'TessellationLoad']) +
-    describeExports(program, 'src/MeshBuffer.ts', ['MeshData', 'StrokeRange']),
+    describeExports(program, 'src/TessellationWorker.ts', [
+      'BuildJob',
+      'BuildResult',
+      'TessellationInit',
+      'TessellationLoad',
+    ]) + describeExports(program, 'src/MeshBuffer.ts', ['MeshData', 'StrokeRange']),
 }
 
 if (printOnly) {
@@ -157,7 +175,9 @@ if (changed.length > 0) {
     for (const line of previous.split('\n')) if (!after.has(line)) console.error(`  - ${line}`)
     for (const line of content.split('\n')) if (!before.has(line)) console.error(`  + ${line}`)
   }
-  console.error('\nA change of the public API is a minor release (CHANGELOG.md). Once intended: npm run snapshots -- --accept')
+  console.error(
+    '\nA change of the public API is a minor release (CHANGELOG.md). Once intended: npm run snapshots -- --accept',
+  )
   process.exit(1)
 }
 console.log(accept ? 'Snapshots: accepted' : 'Snapshots: unchanged')

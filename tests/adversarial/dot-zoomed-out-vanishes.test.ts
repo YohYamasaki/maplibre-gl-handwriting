@@ -20,7 +20,10 @@ it('a dot drawn at z15 shows at z12.9 after the view passed z10', async () => {
   const builds = new DeferredBuilds()
   const scene = new StrokeScene(store, tessellator, builds, 15)
   store.apply(
-    { type: 'load', strokes: [{ id: 'me:1', author: 'me', color: '#336699', width: 6, zoom: 15, points: [[0.5, 0.5]], order: 1 }] },
+    {
+      type: 'load',
+      strokes: [{ id: 'me:1', author: 'me', color: '#336699', width: 6, zoom: 15, points: [[0.5, 0.5]], order: 1 }],
+    },
     'remote',
   )
   let indices = 0

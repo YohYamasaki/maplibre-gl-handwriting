@@ -95,14 +95,25 @@ describe('piecePoints', () => {
 
 describe('validPieces', () => {
   it('accepts pieces in order within the stroke', () => {
-    expect(validPieces([{ from: 0, to: 2 }, { from: 3.5, to: 10 }], 11)).toBe(true)
+    expect(
+      validPieces(
+        [
+          { from: 0, to: 2 },
+          { from: 3.5, to: 10 },
+        ],
+        11,
+      ),
+    ).toBe(true)
   })
 
   it('rejects empty, empty-length, overlapping, out-of-range or non-finite pieces', () => {
     for (const bad of [
       [],
       [{ from: 2, to: 2 }],
-      [{ from: 0, to: 4 }, { from: 3, to: 6 }],
+      [
+        { from: 0, to: 4 },
+        { from: 3, to: 6 },
+      ],
       [{ from: -1, to: 2 }],
       [{ from: 0, to: 10.5 }],
       [{ from: 0, to: NaN }],
@@ -117,7 +128,17 @@ describe('StrokeStore split', () => {
   it('replaces the stroke with its pieces, which keep its style and order', () => {
     const store = new StrokeStore({ order: 'custom' })
     store.apply({ type: 'load', strokes: [saved('s')] }, 'remote')
-    const ok = store.apply({ type: 'split', id: 's', pieces: [{ id: 'p1', from: 0, to: 4 }, { id: 'p2', from: 6, to: 10 }] }, 'remote')
+    const ok = store.apply(
+      {
+        type: 'split',
+        id: 's',
+        pieces: [
+          { id: 'p1', from: 0, to: 4 },
+          { id: 'p2', from: 6, to: 10 },
+        ],
+      },
+      'remote',
+    )
     expect(ok).toBe(true)
     expect(store.get('s')).toBeUndefined()
     expect(store.get('p1')).toMatchObject({ author: 'a', width: 1, zoom: 12, order: 5, points: line.slice(0, 5) })
@@ -131,7 +152,10 @@ describe('StrokeStore split', () => {
     expect(store.apply({ type: 'split', id: 's', pieces: [{ id: 'p', from: 0, to: 11 }] }, 'remote')).toBe(false)
     expect(store.apply({ type: 'split', id: 's', pieces: [{ id: 't', from: 0, to: 1 }] }, 'remote')).toBe(false)
     expect(store.apply({ type: 'split', id: 's', pieces: [{ id: 's', from: 0, to: 1 }] }, 'remote')).toBe(false)
-    const twice = [{ id: 'p', from: 0, to: 1 }, { id: 'p', from: 2, to: 3 }]
+    const twice = [
+      { id: 'p', from: 0, to: 1 },
+      { id: 'p', from: 2, to: 3 },
+    ]
     expect(store.apply({ type: 'split', id: 's', pieces: twice }, 'remote')).toBe(false)
     expect(store.get('s')).toBeDefined()
     expect(store.get('p')).toBeUndefined()
@@ -144,7 +168,17 @@ describe('UndoHistory with partial erases', () => {
     store.apply({ type: 'load', strokes: [saved('s')] }, 'remote')
     const history = new UndoHistory(store, 10)
     // The gesture cuts s into p1 and p2, then cuts p2 into p3, then erases p1 whole
-    store.apply({ type: 'split', id: 's', pieces: [{ id: 'p1', from: 0, to: 4 }, { id: 'p2', from: 6, to: 10 }] }, 'local')
+    store.apply(
+      {
+        type: 'split',
+        id: 's',
+        pieces: [
+          { id: 'p1', from: 0, to: 4 },
+          { id: 'p2', from: 6, to: 10 },
+        ],
+      },
+      'local',
+    )
     const original = saved('s')
     const p1 = structuredClone(store.get('p1')!)
     const p2 = structuredClone(store.get('p2')!)

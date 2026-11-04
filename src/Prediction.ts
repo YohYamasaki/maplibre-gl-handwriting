@@ -21,7 +21,9 @@ export class Prediction {
   private byStroke = new Map<string, Point[]>()
   private listeners = new Set<() => void>()
   /** Only in a build with __HANDWRITING_DEBUG__; null in the package */
-  readonly debug: PredictionDebug | null = __HANDWRITING_DEBUG__ ? { on: true, counts: { kept: [0, 0], dropped: [0, 0] } } : null
+  readonly debug: PredictionDebug | null = __HANDWRITING_DEBUG__
+    ? { on: true, counts: { kept: [0, 0], dropped: [0, 0] } }
+    : null
 
   /** The predicted points after stroke `id`'s tip; a new array whenever they change */
   get(id: string): Point[] | undefined {

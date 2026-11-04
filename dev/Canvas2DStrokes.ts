@@ -143,7 +143,12 @@ export class Canvas2DStrokes {
       for (const stroke of store.values()) {
         if (stroke.points.length === 0) continue
         const entry = this.pathOf(this.caches[i], stroke)
-        if (entry.maxX < cx - radius || entry.minX > cx + radius || entry.maxY < cy - radius || entry.minY > cy + radius) {
+        if (
+          entry.maxX < cx - radius ||
+          entry.minX > cx + radius ||
+          entry.maxY < cy - radius ||
+          entry.minY > cy + radius
+        ) {
           continue
         }
         if (visible.length > 0 && orderOf(visible[visible.length - 1].stroke) > orderOf(stroke)) sorted = false

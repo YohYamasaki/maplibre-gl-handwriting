@@ -123,12 +123,14 @@ export function strokeColor(pen: Pen): string {
 }
 
 function checkColor(color: unknown, what: string): string {
-  if (typeof color !== 'string' || !HEX_COLOR.test(color)) throw new RangeError(`${what} must be #rrggbb, got ${String(color)}`)
+  if (typeof color !== 'string' || !HEX_COLOR.test(color))
+    throw new RangeError(`${what} must be #rrggbb, got ${String(color)}`)
   return color.toLowerCase()
 }
 
 function clampNumber(value: unknown, min: number, max: number, what: string): number {
-  if (typeof value !== 'number' || Number.isNaN(value)) throw new RangeError(`${what} must be a number, got ${String(value)}`)
+  if (typeof value !== 'number' || Number.isNaN(value))
+    throw new RangeError(`${what} must be a number, got ${String(value)}`)
   return Math.min(max, Math.max(min, value))
 }
 
@@ -155,9 +157,11 @@ function checkPalette(colors: unknown): string[] {
  */
 function mergeEraser(eraser: EraserSettings, change: Partial<EraserSettings>, partialEraser: boolean): EraserSettings {
   const next = { ...eraser }
-  if (change.radius !== undefined) next.radius = clampNumber(change.radius, MIN_ERASER_RADIUS, MAX_ERASER_RADIUS, 'eraser radius')
+  if (change.radius !== undefined)
+    next.radius = clampNumber(change.radius, MIN_ERASER_RADIUS, MAX_ERASER_RADIUS, 'eraser radius')
   if (change.mode !== undefined) {
-    if (!ERASER_MODES.includes(change.mode)) throw new RangeError(`eraser mode must be one of ${ERASER_MODES.join(', ')}, got ${String(change.mode)}`)
+    if (!ERASER_MODES.includes(change.mode))
+      throw new RangeError(`eraser mode must be one of ${ERASER_MODES.join(', ')}, got ${String(change.mode)}`)
     if (change.mode === 'partial' && !partialEraser) {
       throw new RangeError("eraser mode 'partial' needs experimental: { partialEraser: true }")
     }
@@ -170,7 +174,8 @@ function mergeEraser(eraser: EraserSettings, change: Partial<EraserSettings>, pa
 function mergeToolbar(toolbar: ToolbarSettings, change: Partial<ToolbarSettings>): ToolbarSettings {
   const next = { ...toolbar }
   if (change.edge !== undefined) {
-    if (!TOOLBAR_EDGES.includes(change.edge)) throw new RangeError(`toolbar edge must be one of ${TOOLBAR_EDGES.join(', ')}, got ${String(change.edge)}`)
+    if (!TOOLBAR_EDGES.includes(change.edge))
+      throw new RangeError(`toolbar edge must be one of ${TOOLBAR_EDGES.join(', ')}, got ${String(change.edge)}`)
     next.edge = change.edge
   }
   if (change.offset !== undefined) next.offset = clampNumber(change.offset, 0, 1, 'toolbar offset')
@@ -219,14 +224,22 @@ export class PenSettings {
     }
     if (defaults.palette !== undefined) settings.palette = checkPalette(defaults.palette)
     if (defaults.eraser) {
-      const eraser = !partialEraser && defaults.eraser.mode === 'partial' ? { ...defaults.eraser, mode: 'stroke' as const } : defaults.eraser
+      const eraser =
+        !partialEraser && defaults.eraser.mode === 'partial'
+          ? { ...defaults.eraser, mode: 'stroke' as const }
+          : defaults.eraser
       settings.eraser = mergeEraser(settings.eraser, eraser, partialEraser)
     }
     if (defaults.pressure?.min !== undefined) {
       settings.pressure.min = clampNumber(defaults.pressure.min, MIN_PRESSURE_MIN, 1, 'pressure min')
     }
     if (defaults.pressure?.gamma !== undefined) {
-      settings.pressure.gamma = clampNumber(defaults.pressure.gamma, MIN_PRESSURE_GAMMA, MAX_PRESSURE_GAMMA, 'pressure gamma')
+      settings.pressure.gamma = clampNumber(
+        defaults.pressure.gamma,
+        MIN_PRESSURE_GAMMA,
+        MAX_PRESSURE_GAMMA,
+        'pressure gamma',
+      )
     }
     if (defaults.toolbar) settings.toolbar = mergeToolbar(settings.toolbar, defaults.toolbar)
     if (defaults.laser?.color !== undefined) settings.laser.color = checkColor(defaults.laser.color, 'laser color')
@@ -307,7 +320,9 @@ export class PenSettings {
  */
 export function parseDefaults(value: unknown): HandwritingDefaults {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new TypeError(`the defaults must be an object, got ${value === null ? 'null' : Array.isArray(value) ? 'an array' : typeof value}`)
+    throw new TypeError(
+      `the defaults must be an object, got ${value === null ? 'null' : Array.isArray(value) ? 'an array' : typeof value}`,
+    )
   }
   const defaults = value as HandwritingDefaults
   new PenSettings(defaults, undefined, true)

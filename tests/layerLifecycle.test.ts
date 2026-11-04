@@ -88,7 +88,17 @@ describe('StrokeLayer', () => {
     expect(layer.scene).toBeNull()
 
     store.apply({ type: 'begin', id: 'a', author: '', color: '#000000', width: 4, zoom: 12 }, 'remote')
-    store.apply({ type: 'points', id: 'a', pts: [[0.5, 0.5], [0.5001, 0.5]] }, 'remote')
+    store.apply(
+      {
+        type: 'points',
+        id: 'a',
+        pts: [
+          [0.5, 0.5],
+          [0.5001, 0.5],
+        ],
+      },
+      'remote',
+    )
     store.apply({ type: 'end', id: 'a' }, 'remote')
     // Only the TessellationInit it was made with
     expect(worker.messages).toEqual([{ wasmUrl: WASM_URL.href }])

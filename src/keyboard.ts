@@ -77,7 +77,10 @@ export function modifierLabel(apple = isApplePlatform()): string {
  * The rows of the shortcut list: the keys as shown, and what they do. Only the tools in `tools` have a row, with the
  * keys they have whichever tools are left out
  */
-export function shortcutRows(apple = isApplePlatform(), tools: readonly NonNullable<Tool>[] = ALL_TOOLS): [string, string][] {
+export function shortcutRows(
+  apple = isApplePlatform(),
+  tools: readonly NonNullable<Tool>[] = ALL_TOOLS,
+): [string, string][] {
   const mod = modifierLabel(apple)
   const shift = apple ? '⇧' : 'Shift+'
   const toolRows: [NonNullable<Tool>, [string, string]][] = [
@@ -184,8 +187,7 @@ export class KeyboardShortcuts {
       // Held down, Cmd+D makes one copy, not one per auto-repeat; undo and redo repeat, as elsewhere
       else if (key === 'd' && a.hasSelection()) {
         if (!e.repeat) a.duplicateSelection()
-      }
-      else return
+      } else return
       e.preventDefault()
       return
     }
@@ -211,9 +213,10 @@ export class KeyboardShortcuts {
       return
     }
     const digit = Number(e.key)
-    const tool = e.key.length === 1 && digit >= 1 && digit <= TOOL_ORDER.length
-      ? { tool: TOOL_ORDER[digit - 1] }
-      : TOOL_KEYS.find((entry) => entry.key === key)
+    const tool =
+      e.key.length === 1 && digit >= 1 && digit <= TOOL_ORDER.length
+        ? { tool: TOOL_ORDER[digit - 1] }
+        : TOOL_KEYS.find((entry) => entry.key === key)
     if (!tool) return
     // The key of a tool the handle does not offer does nothing, and the page may take it
     if (tool.tool !== null && !a.hasTool(tool.tool)) return

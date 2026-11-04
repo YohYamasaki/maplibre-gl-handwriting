@@ -6,7 +6,11 @@ import { createHandwriting, HandwritingToolbar, StrokeStore } from 'maplibre-gl-
 setWorkerUrl(new URL('maplibre-gl-worker.mjs', document.baseURI).href)
 const map = new Map({
   container: 'map',
-  style: { version: 8, sources: {}, layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#f2f2f2' } }] },
+  style: {
+    version: 8,
+    sources: {},
+    layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#f2f2f2' } }],
+  },
   center: [141.3545, 43.0618],
   zoom: 12,
 })
@@ -15,16 +19,24 @@ const map = new Map({
 const store = new StrokeStore()
 // A saved stroke comes back with a load op, and is tessellated on the layer's worker
 const line = Array.from({ length: 11 }, (_, i) => MercatorCoordinate.fromLngLat([141.32 + 0.007 * i, 43.07]))
-store.apply({
-  type: 'load',
-  strokes: [{ id: 'loaded', author: 'example', color: '#0000ff', width: 6, zoom: 12, points: line.map(({ x, y }) => [x, y]) }],
-}, 'remote')
+store.apply(
+  {
+    type: 'load',
+    strokes: [
+      { id: 'loaded', author: 'example', color: '#0000ff', width: 6, zoom: 12, points: line.map(({ x, y }) => [x, y]) },
+    ],
+  },
+  'remote',
+)
 
 // What the browser check (tests/tools/e2e-bundlers.mjs) looks at: the map's errors, the layer's among them, and ready
 const example = { map, store, errors: [], ready: null }
 map.on('error', (e) => example.errors.push(String(e.error)))
 const handwriting = createHandwriting(map, { store })
-handwriting.ready.then(() => (example.ready = true), () => (example.ready = false))
+handwriting.ready.then(
+  () => (example.ready = true),
+  () => (example.ready = false),
+)
 handwriting.setTool('pen')
 map.addControl(new HandwritingToolbar(handwriting))
 window.example = example

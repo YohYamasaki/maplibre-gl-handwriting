@@ -8,7 +8,14 @@ import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl
 // MapLibre finds its worker next to its own module, which Vite's pre-bundling moves: give it the worker's URL
 import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { debugPredictionCounts, debugSceneOf, setDebugPrediction } from '../src/debug'
-import { createHandwriting, HandwritingLayer, HandwritingToolbar, LaserChannel, StrokeStore, type Tool } from '../src/index'
+import {
+  createHandwriting,
+  HandwritingLayer,
+  HandwritingToolbar,
+  LaserChannel,
+  StrokeStore,
+  type Tool,
+} from '../src/index'
 import { mountPanel } from './panel'
 
 setWorkerUrl(mapLibreWorkerUrl)
@@ -30,7 +37,9 @@ const map = new MapLibreMap({
     layers: [
       { id: 'background', type: 'background', paint: { 'background-color': '#f2f2f2' } },
       // ?blank leaves the tiles out, for checks that compare pixels against a plain background
-      ...(new URLSearchParams(location.search).has('blank') ? [] : [{ id: 'gsi', type: 'raster' as const, source: 'gsi' }]),
+      ...(new URLSearchParams(location.search).has('blank')
+        ? []
+        : [{ id: 'gsi', type: 'raster' as const, source: 'gsi' }]),
     ],
   },
   center: [141.3545, 43.0618],
@@ -79,6 +88,10 @@ if (overlay) {
   // Listens after the handle, which so finds no overlay on style.load and waits for it (styledata)
   map.on('style.load', () => {
     if (!debug.addOverlay || map.getLayer('overlay')) return
-    map.addLayer({ id: 'overlay', type: 'background', paint: { 'background-color': '#000000', 'background-opacity': 0 } })
+    map.addLayer({
+      id: 'overlay',
+      type: 'background',
+      paint: { 'background-color': '#000000', 'background-opacity': 0 },
+    })
   })
 }

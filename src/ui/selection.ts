@@ -23,7 +23,10 @@ export type SelectionFrameOptions = {
   onExport?: () => void
 }
 
-function svg<K extends keyof SVGElementTagNameMap>(name: K, attributes: Record<string, string>): SVGElementTagNameMap[K] {
+function svg<K extends keyof SVGElementTagNameMap>(
+  name: K,
+  attributes: Record<string, string>,
+): SVGElementTagNameMap[K] {
   const node = document.createElementNS(SVG_NS, name)
   for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value)
   return node
@@ -83,7 +86,12 @@ export class SelectionFrame {
     this.stem = svg('line', line)
     const handle = { fill: '#fff', stroke: '#1a73e8', 'stroke-width': '1.5' }
     this.handles = [0, 1, 2, 3].map(() =>
-      svg('rect', { ...handle, width: `${HANDLE_SIZE}`, height: `${HANDLE_SIZE}`, class: 'handwriting-selection-scale' }),
+      svg('rect', {
+        ...handle,
+        width: `${HANDLE_SIZE}`,
+        height: `${HANDLE_SIZE}`,
+        class: 'handwriting-selection-scale',
+      }),
     )
     this.rotate = svg('circle', { ...handle, r: `${HANDLE_SIZE / 2}`, class: 'handwriting-selection-rotate' })
     appendChildren(this.overlay, this.lasso, this.outline, this.stem, ...this.handles, this.rotate)

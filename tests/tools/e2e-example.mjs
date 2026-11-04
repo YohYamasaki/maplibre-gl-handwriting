@@ -35,7 +35,12 @@ run('npm', ['install', '--no-audit', '--no-fund', '--prefer-offline', join(work,
 run('npx', ['vite', 'build'], example)
 
 const port = await freePort()
-const browser = await startRun('e2e-example', { command: 'npx', args: ['vite', 'preview', '--port', String(port), '--strictPort'], cwd: example, port })
+const browser = await startRun('e2e-example', {
+  command: 'npx',
+  args: ['vite', 'preview', '--port', String(port), '--strictPort'],
+  cwd: example,
+  port,
+})
 
 console.log('e2e-example')
 await checkExample(browser, { name: 'Vite', origin: `http://localhost:${port}`, path: '/' })

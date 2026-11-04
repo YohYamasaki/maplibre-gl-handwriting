@@ -45,7 +45,9 @@
     "lint:boundaries": "node tests/tools/check-boundaries.mjs",
     "snapshots": "node tests/tools/snapshots.mjs",
     "pack:check": "node tests/tools/pack.mjs",
-    "e2e": "node tests/tools/e2e-example.mjs && node tests/tools/e2e-bundlers.mjs && node tests/tools/e2e-dev.mjs"
+    "e2e": "node tests/tools/e2e-example.mjs && node tests/tools/e2e-bundlers.mjs && node tests/tools/e2e-dev.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "peerDependencies": {
     "maplibre-gl": "^6.16.0"
@@ -53,6 +55,7 @@
   "devDependencies": {
     "@types/node": "^24.19.2",
     "maplibre-gl": "^6.16.0",
+    "prettier": "3.9.10",
     "typescript": "~6.0.3",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"

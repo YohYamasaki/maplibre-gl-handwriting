@@ -17,7 +17,10 @@ const KILL_GRACE_MS = 5000
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 export const line = (from, to, n = 20) =>
-  Array.from({ length: n + 1 }, (_, i) => [from[0] + ((to[0] - from[0]) * i) / n, from[1] + ((to[1] - from[1]) * i) / n])
+  Array.from({ length: n + 1 }, (_, i) => [
+    from[0] + ((to[0] - from[0]) * i) / n,
+    from[1] + ((to[1] - from[1]) * i) / n,
+  ])
 export const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
 export const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) <= 24)
 
@@ -130,7 +133,10 @@ export async function startRun(name, { command, args, cwd, port }) {
     })()
     return finishing
   }
-  const runTimer = setTimeout(() => finish(1, `${name}: timed out after ${RUN_TIMEOUT_MS / 60_000} minutes`), RUN_TIMEOUT_MS)
+  const runTimer = setTimeout(
+    () => finish(1, `${name}: timed out after ${RUN_TIMEOUT_MS / 60_000} minutes`),
+    RUN_TIMEOUT_MS,
+  )
   process.on('SIGINT', () => finish(1, `${name}: interrupted (SIGINT)`))
   process.on('SIGTERM', () => finish(1, `${name}: terminated (SIGTERM)`))
   process.on('uncaughtException', (e) => finish(1, `${name}: ${e.stack ?? e.message}`))
@@ -191,7 +197,8 @@ export async function startRun(name, { command, args, cwd, port }) {
       pending.get(msg.id).resolve(msg)
       pending.delete(msg.id)
     }
-    if (msg.method === 'Runtime.exceptionThrown') consoleErrors.push(msg.params.exceptionDetails.exception?.description ?? msg.params.exceptionDetails.text)
+    if (msg.method === 'Runtime.exceptionThrown')
+      consoleErrors.push(msg.params.exceptionDetails.exception?.description ?? msg.params.exceptionDetails.text)
     if (msg.method === 'Runtime.consoleAPICalled' && msg.params.type === 'error') {
       consoleErrors.push(msg.params.args.map((a) => a.value ?? a.description).join(' '))
     }
@@ -214,9 +221,15 @@ export async function startRun(name, { command, args, cwd, port }) {
 
   /** A tab in its own browser context */
   async function openClient() {
-    const { result: { browserContextId } } = await send('Target.createBrowserContext')
-    const { result: { targetId } } = await send('Target.createTarget', { url: 'about:blank', browserContextId })
-    const { result: { sessionId } } = await send('Target.attachToTarget', { targetId, flatten: true })
+    const {
+      result: { browserContextId },
+    } = await send('Target.createBrowserContext')
+    const {
+      result: { targetId },
+    } = await send('Target.createTarget', { url: 'about:blank', browserContextId })
+    const {
+      result: { sessionId },
+    } = await send('Target.attachToTarget', { targetId, flatten: true })
     const screenshot = async () => {
       await send('Page.bringToFront', {}, sessionId)
       await wait(300)
@@ -226,8 +239,13 @@ export async function startRun(name, { command, args, cwd, port }) {
       sessionId,
       send: (method, params = {}) => send(method, params, sessionId),
       async eval(expression) {
-        const { result } = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }, sessionId)
-        if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text)
+        const { result } = await send(
+          'Runtime.evaluate',
+          { expression, returnByValue: true, awaitPromise: true },
+          sessionId,
+        )
+        if (result.exceptionDetails)
+          throw new Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text)
         return result.result.value
       },
       /** Opens a path of the server (starting with /), or any other URL as given */
@@ -239,7 +257,11 @@ export async function startRun(name, { command, args, cwd, port }) {
       async drag(points, whileDown) {
         await send('Page.bringToFront', {}, sessionId)
         const mouse = (type, [x, y]) =>
-          send('Input.dispatchMouseEvent', { type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1 }, sessionId)
+          send(
+            'Input.dispatchMouseEvent',
+            { type, x, y, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1 },
+            sessionId,
+          )
         await mouse('mousePressed', points[0])
         for (const p of points.slice(1)) {
           await mouse('mouseMoved', p)
@@ -250,7 +272,14 @@ export async function startRun(name, { command, args, cwd, port }) {
       },
       /** Selects a tool with its toolbar button: 'map', 'pen', 'highlighter', 'eraser', 'lasso' or 'laser' */
       tool(toolName) {
-        const label = { map: 'Move map', pen: 'Pen', highlighter: 'Highlighter', eraser: 'Eraser', lasso: 'Lasso', laser: 'Laser' }[toolName]
+        const label = {
+          map: 'Move map',
+          pen: 'Pen',
+          highlighter: 'Highlighter',
+          eraser: 'Eraser',
+          lasso: 'Lasso',
+          laser: 'Laser',
+        }[toolName]
         return client.eval(`(() => {
           const b = document.querySelector('.handwriting-toolbar button[aria-label="${label}"]')
           if (b.getAttribute('aria-pressed') !== 'true') b.click()
@@ -259,8 +288,16 @@ export async function startRun(name, { command, args, cwd, port }) {
       },
       async key(key, code, keyCode, modifiers = 0) {
         const text = key.length === 1 && modifiers === 0 ? key : undefined
-        await send('Input.dispatchKeyEvent', { type: 'keyDown', key, code, windowsVirtualKeyCode: keyCode, text, modifiers }, sessionId)
-        await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: keyCode, modifiers }, sessionId)
+        await send(
+          'Input.dispatchKeyEvent',
+          { type: 'keyDown', key, code, windowsVirtualKeyCode: keyCode, text, modifiers },
+          sessionId,
+        )
+        await send(
+          'Input.dispatchKeyEvent',
+          { type: 'keyUp', key, code, windowsVirtualKeyCode: keyCode, modifiers },
+          sessionId,
+        )
       },
       /** The RGB of several screen pixels, read back from one screenshot inside the page */
       async pixels(points) {

@@ -1,7 +1,14 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 
 /** The map gestures that would move the map under a pointer that draws, erases or selects */
-export const POINTER_HANDLERS = ['dragPan', 'dragRotate', 'touchZoomRotate', 'touchPitch', 'boxZoom', 'doubleClickZoom'] as const
+export const POINTER_HANDLERS = [
+  'dragPan',
+  'dragRotate',
+  'touchZoomRotate',
+  'touchPitch',
+  'boxZoom',
+  'doubleClickZoom',
+] as const
 
 /**
  * The gestures given back to touch in pen-only input: one finger pans, two fingers pinch, rotate and pitch.

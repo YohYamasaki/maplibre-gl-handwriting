@@ -89,7 +89,9 @@ export function mountPanel(parent: HTMLElement, handle: Handwriting, map: MapLib
       meter.clear()
       timer.setPaused(canvas2d)
       if (canvas2d) {
-        canvas = new Canvas2DStrokes(map, [benchLayer().store, store], [BENCH_LAYER_ID, MAIN_LAYER_ID], (value) => meter.addCpu(value))
+        canvas = new Canvas2DStrokes(map, [benchLayer().store, store], [BENCH_LAYER_ID, MAIN_LAYER_ID], (value) =>
+          meter.addCpu(value),
+        )
       } else {
         canvas?.destroy()
         canvas = null

@@ -52,17 +52,24 @@ function genericAssetUrls(): Plugin {
       for (const file of Object.values(bundle)) {
         if (!file.fileName.endsWith('.js')) continue
         const code = file.type === 'chunk' ? file.code : String(file.source)
-        const rewritten = code.replace(VITE_ASSET_URL, (_url, _quote, path: string) =>
-          `new URL("${path.startsWith('./') || path.startsWith('../') ? path : `./${path}`}", import.meta.url)`,
+        const rewritten = code.replace(
+          VITE_ASSET_URL,
+          (_url, _quote, path: string) =>
+            `new URL("${path.startsWith('./') || path.startsWith('../') ? path : `./${path}`}", import.meta.url)`,
         )
         const all = rewritten.split('import.meta.url').length - 1
         const generic = [...rewritten.matchAll(GENERIC_ASSET_URL)]
         if (generic.length !== all) {
-          this.error(`${file.fileName}: import.meta.url is used ${all - generic.length} times outside new URL("./<path>", import.meta.url); update genericAssetUrls`)
+          this.error(
+            `${file.fileName}: import.meta.url is used ${all - generic.length} times outside new URL("./<path>", import.meta.url); update genericAssetUrls`,
+          )
         }
         for (const [, path] of generic) {
           const target = posix.normalize(posix.join(posix.dirname(file.fileName), path))
-          if (!(target in bundle)) this.error(`${file.fileName}: new URL("${path}", import.meta.url) points at ${target}, which is not in the build`)
+          if (!(target in bundle))
+            this.error(
+              `${file.fileName}: new URL("${path}", import.meta.url) points at ${target}, which is not in the build`,
+            )
         }
         if (file.type === 'chunk') file.code = rewritten
         else file.source = rewritten

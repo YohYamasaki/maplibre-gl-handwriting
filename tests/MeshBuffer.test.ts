@@ -29,7 +29,12 @@ describe('MeshBuffer', () => {
 
   it('removes a stroke from the middle and keeps the rest valid', () => {
     const mesh = new MeshBuffer({ z: 12, x: 2048, y: 2048 })
-    for (const [id, n] of [['a', 4], ['b', 2], ['c', 5]] as const) fakeWriter.appendStroke(mesh, stroke(id, n), 12)
+    for (const [id, n] of [
+      ['a', 4],
+      ['b', 2],
+      ['c', 5],
+    ] as const)
+      fakeWriter.appendStroke(mesh, stroke(id, n), 12)
     const revision = mesh.revision
     expect(mesh.removeStroke('b')).toBe(true)
     expect(mesh.removeStroke('b')).toBe(false)
@@ -57,10 +62,14 @@ describe('MeshBuffer', () => {
     const mesh = new MeshBuffer({ z: 12, x: 2048, y: 2048 })
     fakeWriter.appendStroke(mesh, stroke('a', 2, { color: '#10203080' }), 12)
     expect(mesh.colors[0]).toBe(0x80302010)
-    expect([isTranslucent('#10203080'), isTranslucent('#102030ff'), isTranslucent('#102030')]).toEqual([true, false, false])
+    expect([isTranslucent('#10203080'), isTranslucent('#102030ff'), isTranslucent('#102030')]).toEqual([
+      true,
+      false,
+      false,
+    ])
   })
 
-  it('writes each stroke\'s order to its vertices and changes only that stroke\'s', () => {
+  it("writes each stroke's order to its vertices and changes only that stroke's", () => {
     const mesh = new MeshBuffer({ z: 12, x: 2048, y: 2048 })
     for (const id of ['a', 'b', 'c']) fakeWriter.appendStroke(mesh, stroke(id, 3, id === 'a' ? { order: 5 } : {}), 12)
     expect(ordersOf(mesh, 'a')).toEqual([5])

@@ -8,7 +8,10 @@ import { BenchLayer } from '../dev/BenchLayer'
 
 /** A map with only what show() reads: the view's bounds and zoom */
 const map = {
-  getBounds: () => ({ getNorthWest: () => ({ lng: 139.7, lat: 35.7 }), getSouthEast: () => ({ lng: 139.8, lat: 35.6 }) }),
+  getBounds: () => ({
+    getNorthWest: () => ({ lng: 139.7, lat: 35.7 }),
+    getSouthEast: () => ({ lng: 139.8, lat: 35.6 }),
+  }),
   getZoom: () => 12,
 } as unknown as MapLibreMap
 
@@ -67,7 +70,7 @@ describe('BenchLayer', () => {
     expect(ops[1].type === 'load' && ops[1].strokes).toHaveLength(10)
   })
 
-  it('replaces the last show\'s strokes with the new ones, though their IDs are the same', () => {
+  it("replaces the last show's strokes with the new ones, though their IDs are the same", () => {
     const fake = fakeHandwriting()
     const bench = new BenchLayer(map, () => {}, fake.create)
     bench.show(10)

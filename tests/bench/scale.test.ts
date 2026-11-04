@@ -27,16 +27,27 @@ type Limits = { approved: boolean; limits: Record<string, number> }
 /** The harness state, as .claude/hooks/repo.mjs finds it: HARNESS_STATE_DIR, the git dir, or .claude/state */
 function stateDir(): string {
   if (process.env.HARNESS_STATE_DIR) return process.env.HARNESS_STATE_DIR
-  const gitDir = spawnSync('git', ['-C', root, 'rev-parse', '--path-format=absolute', '--git-dir'], { encoding: 'utf8' })
+  const gitDir = spawnSync('git', ['-C', root, 'rev-parse', '--path-format=absolute', '--git-dir'], {
+    encoding: 'utf8',
+  })
   return gitDir.status === 0 ? join(gitDir.stdout.trim(), 'claude-harness') : join(root, '.claude/state')
 }
 
 /** Strokes drawn at `zoom`, spread over `screens` screens (at that zoom) around the center */
-function makeStrokes(rand: () => number, count: number, zooms: [number, number], screens: number, start: number): StrokeData[] {
+function makeStrokes(
+  rand: () => number,
+  count: number,
+  zooms: [number, number],
+  screens: number,
+  start: number,
+): StrokeData[] {
   return Array.from({ length: count }, (_, i) => {
     const zoom = zooms[0] + rand() * (zooms[1] - zooms[0])
     const px = mercatorPerPixelAt(zoom)
-    let p: Point = [CENTER[0] + (rand() - 0.5) * SCREEN.width * px * screens, CENTER[1] + (rand() - 0.5) * SCREEN.height * px * screens]
+    let p: Point = [
+      CENTER[0] + (rand() - 0.5) * SCREEN.width * px * screens,
+      CENTER[1] + (rand() - 0.5) * SCREEN.height * px * screens,
+    ]
     let heading = rand() * Math.PI * 2
     const points: Point[] = [p]
     const n = 30 + Math.floor(rand() * 120)
@@ -84,7 +95,10 @@ it('scale benchmark', async () => {
     const now = scene.stats()
     perFrame.drawCalls = Math.max(perFrame.drawCalls, now.drawCalls)
     perFrame.bucketsScanned = Math.max(perFrame.bucketsScanned, now.bucketsScanned)
-    perFrame.mainThreadVertices = Math.max(perFrame.mainThreadVertices, now.mainThreadVertices - previous.mainThreadVertices)
+    perFrame.mainThreadVertices = Math.max(
+      perFrame.mainThreadVertices,
+      now.mainThreadVertices - previous.mainThreadVertices,
+    )
     perFrame.buildPoints = Math.max(perFrame.buildPoints, now.buildPoints - previous.buildPoints)
     previous = now
     frames++
@@ -118,7 +132,14 @@ it('scale benchmark', async () => {
   store.apply({ type: 'begin', id, author: 'me', color: '#cc3300', width: 8, zoom }, 'local')
   let p: Point = [...CENTER]
   for (let i = 0; i < 2000; i += 5) {
-    const pts = Array.from({ length: 5 }, (): Point => (p = [p[0] + (rand() - 0.3) * 2 * mercatorPerPixelAt(zoom), p[1] + (rand() - 0.5) * 2 * mercatorPerPixelAt(zoom)]))
+    const pts = Array.from(
+      { length: 5 },
+      (): Point =>
+        (p = [
+          p[0] + (rand() - 0.3) * 2 * mercatorPerPixelAt(zoom),
+          p[1] + (rand() - 0.5) * 2 * mercatorPerPixelAt(zoom),
+        ]),
+    )
     store.apply({ type: 'points', id, pts }, 'local')
     frame()
   }
@@ -136,7 +157,12 @@ it('scale benchmark', async () => {
     room: { strokes: strokes.length, points: strokes.reduce((sum, s) => sum + s.points.length, 0) },
     frames,
     perFrameMax: perFrame,
-    total: { mainThreadVertices: end.mainThreadVertices, builds: end.builds, buildPoints: end.buildPoints, planRebuilds: end.planRebuilds },
+    total: {
+      mainThreadVertices: end.mainThreadVertices,
+      builds: end.builds,
+      buildPoints: end.buildPoints,
+      planRebuilds: end.planRebuilds,
+    },
     retainedAtEnd: {
       strokes: end.strokes,
       buckets: end.buckets,

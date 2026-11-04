@@ -13,7 +13,14 @@ import {
 } from '../src/core/transform'
 import { mercatorPerPixelAt } from '../src/mercator'
 import { strokesInLasso, topmostStrokeAt } from '../src/lasso'
-import { cornerCursor, dragTransform, gripAt, gripCursor, rotateHandle, SelectController } from '../src/SelectController'
+import {
+  cornerCursor,
+  dragTransform,
+  gripAt,
+  gripCursor,
+  rotateHandle,
+  SelectController,
+} from '../src/SelectController'
 import { Selection } from '../src/Selection'
 import { deleteSelected, duplicateSelected, exportGeoJSON } from '../src/selectionActions'
 import { StrokeIndex } from '../src/StrokeIndex'
@@ -48,7 +55,11 @@ function closeTo(a: Point[], b: Point[], tolerance: number): void {
 describe('transform math', () => {
   it('a transform then its inverse puts the points back within 1e-12', () => {
     const m = similarityAbout([0.3, 0.6], 3.7, 1.1, [0.01, -0.02])
-    const points: Point[] = [[0.31, 0.61], [0.3001, 0.5999], [0.2999, 0.6002]]
+    const points: Point[] = [
+      [0.31, 0.61],
+      [0.3001, 0.5999],
+      [0.2999, 0.6002],
+    ]
     const back = points.map((p) => applyToPoint(inverse(m), applyToPoint(m, p)))
     closeTo(back, points, 1e-12)
     expect(compose(inverse(m), m).every((v, i) => Math.abs(v - [1, 0, 0, 1, 0, 0][i]) < 1e-12)).toBe(true)
@@ -244,7 +255,11 @@ describe('Selection frame', () => {
     const before = selection.frame()!
     const m = similarityAbout([0.5, 0.5], 1, 0.5)
     store.apply({ type: 'transform', ids: ['a'], matrix: m }, 'local')
-    closeTo(selection.frame()!, before.map((p) => applyToPoint(m, p)), 1e-15)
+    closeTo(
+      selection.frame()!,
+      before.map((p) => applyToPoint(m, p)),
+      1e-15,
+    )
   })
 })
 
@@ -258,7 +273,12 @@ describe('StrokeStore replace', () => {
     })
     const a = store.get('a')!
     const moved = { ...line('a', [0.4, 0.5], 3, 1), zoom: 11 }
-    expect(store.apply({ type: 'replace', strokes: [moved, line('b', [0.5, 0.6], 3, 2), line('c', [0, 0], 3, 3)] }, 'remote')).toBe(true)
+    expect(
+      store.apply(
+        { type: 'replace', strokes: [moved, line('b', [0.5, 0.6], 3, 2), line('c', [0, 0], 3, 3)] },
+        'remote',
+      ),
+    ).toBe(true)
     expect(seen).toEqual([['a']])
     expect(store.get('a')).toBe(a)
     expect(a.points).toEqual(moved.points)
@@ -277,7 +297,12 @@ describe('lasso and tap', () => {
     store.apply({ type: 'points', id: 'draft', pts: [[0.5 + PX, 0.5]] }, 'local')
     store.apply({ type: 'end', id: 'draft' }, 'local')
     const index = new StrokeIndex(store)
-    const box = (right: number): Point[] => [[0.5 - PX, 0.5 - PX], [0.5 + right * PX, 0.5 - PX], [0.5 + right * PX, 0.5 + PX], [0.5 - PX, 0.5 + PX]]
+    const box = (right: number): Point[] => [
+      [0.5 - PX, 0.5 - PX],
+      [0.5 + right * PX, 0.5 - PX],
+      [0.5 + right * PX, 0.5 + PX],
+      [0.5 - PX, 0.5 + PX],
+    ]
     expect(strokesInLasso(index, store, box(4.5))).toEqual(['half'])
     expect(strokesInLasso(index, store, box(3.5))).toEqual([])
   })
@@ -333,7 +358,12 @@ describe('SelectController', () => {
   /** Selects the stroke with a lasso around it; its frame is then about x 10..50, y 9..11 */
   function selectAll(pointer: (type: string, x: number, y: number) => void): void {
     pointer('pointerdown', 0, 0)
-    for (const [x, y] of [[70, 0], [70, 20], [0, 20]]) pointer('pointermove', x, y)
+    for (const [x, y] of [
+      [70, 0],
+      [70, 20],
+      [0, 20],
+    ])
+      pointer('pointermove', x, y)
     pointer('pointerup', 0, 20)
   }
 
@@ -393,7 +423,12 @@ describe('SelectController', () => {
   it('selects by lasso, moves the selection by dragging inside the frame, and records it for undo', () => {
     const { store, selection, history, pointer } = setup()
     pointer('pointerdown', 0, 0)
-    for (const [x, y] of [[70, 0], [70, 20], [0, 20]]) pointer('pointermove', x, y)
+    for (const [x, y] of [
+      [70, 0],
+      [70, 20],
+      [0, 20],
+    ])
+      pointer('pointermove', x, y)
     pointer('pointerup', 0, 20)
     expect([...selection.ids]).toEqual(['a'])
     const before = structuredClone(store.get('a')!.points)
@@ -423,7 +458,12 @@ describe('SelectController', () => {
 })
 
 describe('frame grips and drag transforms', () => {
-  const corners: [number, number][] = [[0, 0], [100, 0], [100, 50], [0, 50]]
+  const corners: [number, number][] = [
+    [0, 0],
+    [100, 0],
+    [100, 50],
+    [0, 50],
+  ]
   it('finds the rotate handle, the corners and the inside', () => {
     expect(gripAt(corners, [50, -28])).toEqual({ kind: 'rotate' })
     expect(gripAt(corners, [101, 49])).toEqual({ kind: 'scale', corner: 2 })
@@ -478,7 +518,17 @@ describe('Export of the selection (decision 0077)', () => {
     const store = new StrokeStore({ order: 'custom' })
     store.apply({ type: 'load', strokes: [line('a', [0.5, 0.5], 3, 1)] }, 'remote')
     store.apply({ type: 'begin', id: 'draft', author: 'a', color: '#000000', width: 2, zoom: 12 }, 'local')
-    store.apply({ type: 'points', id: 'draft', pts: [[0.5, 0.5], [0.6, 0.5]] }, 'local')
+    store.apply(
+      {
+        type: 'points',
+        id: 'draft',
+        pts: [
+          [0.5, 0.5],
+          [0.6, 0.5],
+        ],
+      },
+      'local',
+    )
     store.apply({ type: 'end', id: 'draft' }, 'local')
     const out = JSON.parse(exportGeoJSON(store, ['missing', 'draft', 'a'])) as Collection
     expect(out.features.map((f) => f.properties.id)).toEqual(['a'])
@@ -578,10 +628,13 @@ describe('StrokeScene with a selection', () => {
     const strokes = Array.from({ length: 200 }, (_, i) => line(`s${i}`, [0.5, 0.5 + i * 2 * PX], 5, i + 1))
     store.apply({ type: 'load', strokes }, 'remote')
     let appended = 0
-    const writer = { ...fakeWriter, appendStroke: (...args: Parameters<typeof fakeWriter.appendStroke>): void => {
-      appended++
-      fakeWriter.appendStroke.apply(writer, args)
-    } }
+    const writer = {
+      ...fakeWriter,
+      appendStroke: (...args: Parameters<typeof fakeWriter.appendStroke>): void => {
+        appended++
+        fakeWriter.appendStroke.apply(writer, args)
+      },
+    }
     const builds = new DeferredBuilds()
     const selection = new Selection(store)
     const scene = new StrokeScene(store, writer, builds, zoom, () => {}, selection)
@@ -630,18 +683,32 @@ describe('StrokeScene with a selection', () => {
 describe('frame cursors', () => {
   // Top left, top right, bottom right, bottom left of a frame turned by `angle` about the origin
   const turned = (angle: number): [number, number][] =>
-    ([[-50, -30], [50, -30], [50, 30], [-50, 30]] as [number, number][]).map(([x, y]) => [
-      x * Math.cos(angle) - y * Math.sin(angle),
-      x * Math.sin(angle) + y * Math.cos(angle),
-    ])
+    (
+      [
+        [-50, -30],
+        [50, -30],
+        [50, 30],
+        [-50, 30],
+      ] as [number, number][]
+    ).map(([x, y]) => [x * Math.cos(angle) - y * Math.sin(angle), x * Math.sin(angle) + y * Math.cos(angle)])
 
   it('gives the corners the diagonal resize cursor nearest to their diagonal as the frame turns', () => {
     const upright = turned(0)
-    expect([0, 1, 2, 3].map((corner) => cornerCursor(upright, corner))).toEqual(['nwse-resize', 'nesw-resize', 'nwse-resize', 'nesw-resize'])
+    expect([0, 1, 2, 3].map((corner) => cornerCursor(upright, corner))).toEqual([
+      'nwse-resize',
+      'nesw-resize',
+      'nwse-resize',
+      'nesw-resize',
+    ])
     // A little turn keeps them; a quarter turn swaps them
     expect(cornerCursor(turned(0.3), 0)).toBe('nwse-resize')
     expect(cornerCursor(turned(-0.3), 1)).toBe('nesw-resize')
-    expect([0, 1, 2, 3].map((corner) => cornerCursor(turned(Math.PI / 2), corner))).toEqual(['nesw-resize', 'nwse-resize', 'nesw-resize', 'nwse-resize'])
+    expect([0, 1, 2, 3].map((corner) => cornerCursor(turned(Math.PI / 2), corner))).toEqual([
+      'nesw-resize',
+      'nwse-resize',
+      'nesw-resize',
+      'nwse-resize',
+    ])
     expect(cornerCursor(turned(Math.PI), 0)).toBe('nwse-resize')
     expect(cornerCursor(turned(-Math.PI / 2 + 0.2), 0)).toBe('nesw-resize')
   })

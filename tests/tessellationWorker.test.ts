@@ -17,7 +17,18 @@ const job: BuildJob = {
   tile: { z: 12, x: 0, y: 0 },
   zoom: 12,
   strokes: [
-    { id: 'a', author: '', color: '#000000', width: 4, zoom: 12, points: [[0.0001, 0.0001], [0.0002, 0.0001]], order: 1 },
+    {
+      id: 'a',
+      author: '',
+      color: '#000000',
+      width: 4,
+      zoom: 12,
+      points: [
+        [0.0001, 0.0001],
+        [0.0002, 0.0001],
+      ],
+      order: 1,
+    },
   ],
 }
 

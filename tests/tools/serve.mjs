@@ -47,8 +47,11 @@ createServer((request, response) => {
     response.writeHead(404, { 'content-type': 'text/plain' }).end('not found')
     return
   }
-  response.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store' })
+  response.writeHead(200, {
+    'content-type': TYPES[extname(file)] ?? 'application/octet-stream',
+    'cache-control': 'no-store',
+  })
   if (request.method === 'HEAD') response.end()
   else createReadStream(file).pipe(response)
-// 127.0.0.1, where Chrome sends browser.mjs's INSECURE_HOST: 'localhost' may resolve to ::1 only
+  // 127.0.0.1, where Chrome sends browser.mjs's INSECURE_HOST: 'localhost' may resolve to ::1 only
 }).listen(Number(port), '127.0.0.1')

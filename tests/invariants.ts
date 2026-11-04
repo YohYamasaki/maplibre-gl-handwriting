@@ -7,7 +7,13 @@ import type { StrokeData, StrokeStore } from '../src/core/stroke'
 import { boundsOf, grow, intersects, type Bounds } from '../src/bounds'
 import { isTranslucent, type MeshBuffer } from '../src/MeshBuffer'
 import { mercatorPerPixelAt } from '../src/mercator'
-import { ORDER_DEPTH_BITS, type BucketMesh, type DrawRange, type FrameDraws, type StrokeScene } from '../src/StrokeScene'
+import {
+  ORDER_DEPTH_BITS,
+  type BucketMesh,
+  type DrawRange,
+  type FrameDraws,
+  type StrokeScene,
+} from '../src/StrokeScene'
 
 /** Ranges tile the mesh in order with no gaps, and every index points into its own stroke's vertices */
 export function expectValidMesh(mesh: MeshBuffer): void {
@@ -60,7 +66,8 @@ export function expectConsistentScene(store: StrokeStore, scene: StrokeScene, dr
         // Every vertex holds the stroke's place in the drawing order as the store has it, which becomes its depth
         const order = store.get(range.id)!.order ?? 0
         expect(range.order, `${range.id} holds order ${range.order}, the store ${order}`).toBe(order)
-        for (let v = range.firstVertex; v < range.firstVertex + range.vertexCount; v++) expect(mesh.orders[v]).toBe(order)
+        for (let v = range.firstVertex; v < range.firstVertex + range.vertexCount; v++)
+          expect(mesh.orders[v]).toBe(order)
       }
     }
     // An up-to-date mesh holds every stroke of the area it was made for
@@ -68,7 +75,10 @@ export function expectConsistentScene(store: StrokeStore, scene: StrokeScene, dr
       const inMesh = new Set([...bucket.mesh.opaque.ranges, ...bucket.mesh.translucent.ranges].map((range) => range.id))
       for (const [id, bounds] of bucket.strokeBounds) {
         if (intersects(bounds, bucket.meshArea)) {
-          expect(inMesh.has(id), `bucket ${key} v${bucket.version}: ${id} is in the mesh's area but not in the mesh`).toBe(true)
+          expect(
+            inMesh.has(id),
+            `bucket ${key} v${bucket.version}: ${id} is in the mesh's area but not in the mesh`,
+          ).toBe(true)
         }
       }
     }
@@ -130,8 +140,10 @@ export function expectValidDraws(
   // Strokes being drawn are in the list their color calls for
   for (const hot of active.values()) {
     if (!hot) continue
-    for (const draw of frame.opaque) if (draw.mesh === hot.frozen || draw.mesh === hot.tail) expect(hot.translucent).toBe(false)
-    for (const draw of frame.translucent) if (draw.mesh === hot.frozen || draw.mesh === hot.tail) expect(hot.translucent).toBe(true)
+    for (const draw of frame.opaque)
+      if (draw.mesh === hot.frozen || draw.mesh === hot.tail) expect(hot.translucent).toBe(false)
+    for (const draw of frame.translucent)
+      if (draw.mesh === hot.frozen || draw.mesh === hot.tail) expect(hot.translucent).toBe(true)
   }
   // An opaque mesh is drawn whole in one call, and a translucent one whole or not at all
   const opaqueDraws = new Map(frame.opaque.map((draw) => [draw.mesh, draw]))

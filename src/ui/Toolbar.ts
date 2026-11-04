@@ -28,9 +28,19 @@ type PopoverOwner = Tool
 const TOOLS: ToolButton[] = [
   { tool: null, label: 'Move map', icon: 'hand', description: 'Drag to pan; pinch or scroll to zoom' },
   { tool: 'pen', label: 'Pen', icon: 'pen', description: 'Draw. Press again for color and width' },
-  { tool: 'highlighter', label: 'Highlighter', icon: 'highlighter', description: 'Draw translucent lines. Press again for color and width' },
+  {
+    tool: 'highlighter',
+    label: 'Highlighter',
+    icon: 'highlighter',
+    description: 'Draw translucent lines. Press again for color and width',
+  },
   { tool: 'eraser', label: 'Eraser', icon: 'eraser', description: 'Erase lines you touch. Press again for size' },
-  { tool: 'lasso', label: 'Lasso', icon: 'lasso', description: 'Circle lines to select them, then move, scale or rotate' },
+  {
+    tool: 'lasso',
+    label: 'Lasso',
+    icon: 'lasso',
+    description: 'Circle lines to select them, then move, scale or rotate',
+  },
   // The laser pointer has no settings, like the lasso
   { tool: 'laser', label: 'Laser', icon: 'laser', description: 'Point at the map; the line fades and is not saved' },
 ]
@@ -128,13 +138,19 @@ export class HandwritingToolbar implements IControl {
     this.undoButton.addEventListener('click', () => this.handle.undo())
     this.redoButton = button('handwriting-toolbar-button handwriting-toolbar-history', 'Redo', 'redo')
     this.redoButton.addEventListener('click', () => this.handle.redo())
-    this.penOnlyButton = button('handwriting-toolbar-button handwriting-toolbar-pen-only', 'Draw with pen only', 'pen-tool')
+    this.penOnlyButton = button(
+      'handwriting-toolbar-button handwriting-toolbar-pen-only',
+      'Draw with pen only',
+      'pen-tool',
+    )
     this.penOnlyButton.addEventListener('click', () => this.handle.setPenOnly(!this.handle.getSettings().penOnly))
     appendChildren(tools, separator, this.undoButton, this.redoButton)
     // Pen-only input keeps touch from drawing: a toggle only where there is touch
     if (navigator.maxTouchPoints > 0) appendChildren(tools, this.penOnlyButton)
     const collapse = button('handwriting-toolbar-collapse', 'Collapse toolbar', 'collapse')
-    collapse.addEventListener('click', () => this.handle.setToolbar({ collapsed: !this.handle.getSettings().toolbar.collapsed }))
+    collapse.addEventListener('click', () =>
+      this.handle.setToolbar({ collapsed: !this.handle.getSettings().toolbar.collapsed }),
+    )
     appendChildren(bar, grip, tools, collapse)
 
     const popover = document.createElement('div')
@@ -190,7 +206,12 @@ export class HandwritingToolbar implements IControl {
   }
 
   /** Adds a DOM listener that onRemove takes off again */
-  private listen<E extends Event>(target: EventTarget, type: string, listener: (event: E) => void, capture = false): void {
+  private listen<E extends Event>(
+    target: EventTarget,
+    type: string,
+    listener: (event: E) => void,
+    capture = false,
+  ): void {
     const fn = listener as EventListener
     target.addEventListener(type, fn, capture)
     this.cleanups.push(() => target.removeEventListener(type, fn, capture))
@@ -240,20 +261,35 @@ export class HandwritingToolbar implements IControl {
     const node = this.toolButtons.get(this.handle.getTool())
     if (!this.tools || !node) return
     if (this.bar?.dataset.orientation === 'vertical') {
-      this.tools.scrollTop = scrollToShow(node.offsetTop, node.offsetHeight, this.tools.scrollTop, this.tools.clientHeight)
+      this.tools.scrollTop = scrollToShow(
+        node.offsetTop,
+        node.offsetHeight,
+        this.tools.scrollTop,
+        this.tools.clientHeight,
+      )
     } else {
-      this.tools.scrollLeft = scrollToShow(node.offsetLeft, node.offsetWidth, this.tools.scrollLeft, this.tools.clientWidth)
+      this.tools.scrollLeft = scrollToShow(
+        node.offsetLeft,
+        node.offsetWidth,
+        this.tools.scrollLeft,
+        this.tools.clientWidth,
+      )
     }
   }
 
   private listenDocument(): void {
     // A press outside the toolbar and the popover closes the popover; the press still does what it does there
-    this.listen(document, 'pointerdown', (e: PointerEvent) => {
-      const target = e.target as Node | null
-      if (this.popover?.hidden || !target) return
-      if (this.popover?.contains(target) || this.bar?.contains(target)) return
-      this.closePopover()
-    }, true)
+    this.listen(
+      document,
+      'pointerdown',
+      (e: PointerEvent) => {
+        const target = e.target as Node | null
+        if (this.popover?.hidden || !target) return
+        if (this.popover?.contains(target) || this.bar?.contains(target)) return
+        this.closePopover()
+      },
+      true,
+    )
     // Esc closes the popover. The handle's shortcuts listen on the window, after the document, and leave an Esc
     // prevented here alone, so the selection stays
     this.listen(document, 'keydown', (e: KeyboardEvent) => {
@@ -279,7 +315,8 @@ export class HandwritingToolbar implements IControl {
     if (!keyboard) return { name: label, description }
     const mod = modifierLabel()
     if (button === this.undoButton) return { name: label, description, keys: `${mod}Z` }
-    if (button === this.redoButton) return { name: label, description, keys: `${isApplePlatform() ? '⇧' : 'Shift+'}${mod}Z` }
+    if (button === this.redoButton)
+      return { name: label, description, keys: `${isApplePlatform() ? '⇧' : 'Shift+'}${mod}Z` }
     return { name: label, description }
   }
 
@@ -333,7 +370,14 @@ export class HandwritingToolbar implements IControl {
       if (!this.bar || !this.map || e.button !== 0) return
       const bar = rectIn(this.bar, this.map.getContainer())
       const container = this.map.getContainer().getBoundingClientRect()
-      drag = { id: e.pointerId, startX: e.clientX, startY: e.clientY, dx: e.clientX - container.left - bar.left, dy: e.clientY - container.top - bar.top, moved: false }
+      drag = {
+        id: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        dx: e.clientX - container.left - bar.left,
+        dy: e.clientY - container.top - bar.top,
+        moved: false,
+      }
       grip.setPointerCapture(e.pointerId)
       e.preventDefault()
     })

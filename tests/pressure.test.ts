@@ -97,7 +97,18 @@ describe('StrokeStore with pressure', () => {
     const store = new StrokeStore({ order: 'custom' })
     store.apply(begin, 'remote')
     store.apply({ type: 'points', id: 'a', pts: [[0.5, 0.5]], ps: [0.5] }, 'remote')
-    store.apply({ type: 'points', id: 'a', pts: [[0.6, 0.5], [0.7, 0.5]], ps: [0.6, 0.7] }, 'remote')
+    store.apply(
+      {
+        type: 'points',
+        id: 'a',
+        pts: [
+          [0.6, 0.5],
+          [0.7, 0.5],
+        ],
+        ps: [0.6, 0.7],
+      },
+      'remote',
+    )
     expect(store.get('a')!.pressure).toEqual([0.5, 0.6, 0.7])
     expect(store.get('a')!.points).toHaveLength(3)
   })

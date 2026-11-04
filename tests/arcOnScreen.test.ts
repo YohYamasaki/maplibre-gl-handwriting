@@ -13,7 +13,9 @@ const root = join(import.meta.dirname, '..')
 let tessellator: StrokeTessellator
 
 beforeAll(async () => {
-  tessellator = await StrokeTessellator.load(readFileSync(join(root, 'tessellator/pkg/handwriting_tessellator_bg.wasm')))
+  tessellator = await StrokeTessellator.load(
+    readFileSync(join(root, 'tessellator/pkg/handwriting_tessellator_bg.wasm')),
+  )
 })
 
 const center: Point = [0.5003, 0.5003]

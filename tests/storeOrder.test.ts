@@ -15,13 +15,28 @@ const PX = 1e-6
 /** Draws a horizontal stroke of `n` points from `from`, 1px apart, as begin, points and end */
 function draw(store: StrokeStore, id: string, from: Point, n = 3, origin: Origin = 'local'): void {
   store.apply({ type: 'begin', id, author: 'a', color: '#000000', width: 2, zoom: 12 }, origin)
-  if (n > 0) store.apply({ type: 'points', id, pts: Array.from({ length: n }, (_, i): Point => [from[0] + i * PX, from[1]]) }, origin)
+  if (n > 0)
+    store.apply(
+      { type: 'points', id, pts: Array.from({ length: n }, (_, i): Point => [from[0] + i * PX, from[1]]) },
+      origin,
+    )
   store.apply({ type: 'end', id }, origin)
 }
 
 /** A finished stroke as handed to load, reset or restore */
 function stroke(id: string, order?: number): StrokeData {
-  return { id, author: 'a', color: '#000000', width: 2, zoom: 12, points: [[0.5, 0.5], [0.5 + PX, 0.5]], ...(order === undefined ? {} : { order }) }
+  return {
+    id,
+    author: 'a',
+    color: '#000000',
+    width: 2,
+    zoom: 12,
+    points: [
+      [0.5, 0.5],
+      [0.5 + PX, 0.5],
+    ],
+    ...(order === undefined ? {} : { order }),
+  }
 }
 
 function recorded(store: StrokeStore): [StrokeOp, Origin][] {
@@ -104,7 +119,12 @@ describe('a default store', () => {
     draw(store, 'a', [0.5, 0.5], 10)
     draw(store, 'b', [0.5, 0.5], 10)
     const index = new StrokeIndex(store)
-    const box: Point[] = [[0.5 - PX, 0.5 - PX], [0.5 + 20 * PX, 0.5 - PX], [0.5 + 20 * PX, 0.5 + PX], [0.5 - PX, 0.5 + PX]]
+    const box: Point[] = [
+      [0.5 - PX, 0.5 - PX],
+      [0.5 + 20 * PX, 0.5 - PX],
+      [0.5 + 20 * PX, 0.5 + PX],
+      [0.5 - PX, 0.5 + PX],
+    ]
     expect(strokesInLasso(index, store, box).sort()).toEqual(['a', 'b'])
     // b was drawn later, so it is on top
     expect(topmostStrokeAt(index, store, [0.5 + 2 * PX, 0.5], () => 3 * PX, 3 * PX)).toBe('b')
@@ -115,7 +135,9 @@ describe('a default store', () => {
     expect(store.get('a')!.points[0][0]).toBeCloseTo(0.5 + 10 * PX, 15)
     const copies = duplicateSelected(store, selection, () => ({ id: 'copy', author: 'me' }), 16 * PX)
     expect(copies.map((s) => [s.id, s.order])).toEqual([['copy', 3]])
-    const geojson = JSON.parse(exportGeoJSON(store, ['a', 'b', 'copy'])) as { features: { properties: { id: string } }[] }
+    const geojson = JSON.parse(exportGeoJSON(store, ['a', 'b', 'copy'])) as {
+      features: { properties: { id: string } }[]
+    }
     expect(geojson.features.map((f) => f.properties.id)).toEqual(['a', 'b', 'copy'])
     expect(deleteSelected(store, selection).map((s) => s.id)).toEqual(['a'])
     expect(store.get('a')).toBeUndefined()

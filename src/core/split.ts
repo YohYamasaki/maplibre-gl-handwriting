@@ -59,7 +59,10 @@ export function piecePoints(stroke: StrokeData, { from, to }: PieceRange): { poi
   const points = [pointAt(stroke.points, from), ...indices.map((i) => stroke.points[i]), pointAt(stroke.points, to)]
   if (!stroke.pressure) return { points }
   const pressure = stroke.pressure
-  return { points, pressure: [pressureAt(pressure, from), ...indices.map((i) => pressure[i]), pressureAt(pressure, to)] }
+  return {
+    points,
+    pressure: [pressureAt(pressure, from), ...indices.map((i) => pressure[i]), pressureAt(pressure, to)],
+  }
 }
 
 /** A piece as a stroke of its own: it keeps the original's author, style, zoom and place in the drawing order */
@@ -84,7 +87,11 @@ export function pieceStroke(stroke: StrokeData, piece: StrokePiece): StrokeData 
  * Returns null when the eraser does not reach the stroke, and an empty list when nothing of it stays.
  * All lengths are in normalized Web Mercator units
  */
-export function cutStroke(points: readonly Point[], sweeps: readonly EraserSweep[], minLength: number): PieceRange[] | null {
+export function cutStroke(
+  points: readonly Point[],
+  sweeps: readonly EraserSweep[],
+  minLength: number,
+): PieceRange[] | null {
   const erased = erasedIntervals(points, sweeps)
   return erased === null ? null : keptRanges(points, erased, minLength)
 }
@@ -124,7 +131,11 @@ export function mergeIntervals(a: readonly [number, number][], b: readonly [numb
  * The parts of a stroke that stay once the `erased` intervals (in order and apart) are gone, dropping the parts
  * shorter than `minLength`. Nothing stays of a dot
  */
-export function keptRanges(points: readonly Point[], erased: readonly [number, number][], minLength: number): PieceRange[] {
+export function keptRanges(
+  points: readonly Point[],
+  erased: readonly [number, number][],
+  minLength: number,
+): PieceRange[] {
   if (points.length < 2) return []
   const pieces: PieceRange[] = []
   const keep = (from: number, to: number): void => {
@@ -150,7 +161,8 @@ function pathLength(points: readonly Point[], from: number, to: number): number 
   for (let i = Math.floor(from) + 1; i < to; i++) along.push(points[i])
   along.push(pointAt(points, to))
   let length = 0
-  for (let i = 1; i < along.length; i++) length += Math.hypot(along[i][0] - along[i - 1][0], along[i][1] - along[i - 1][1])
+  for (let i = 1; i < along.length; i++)
+    length += Math.hypot(along[i][0] - along[i - 1][0], along[i][1] - along[i - 1][1])
   return length
 }
 

@@ -33,13 +33,24 @@ export async function checkExample(run, { name, origin, path, insecure = false }
   const page = await run.openClient()
   await page.send('Page.addScriptToEvaluateOnNewDocument', { source: RECORD_WORKERS })
   await page.navigate(insecure ? `${origin}${path}` : path)
-  await waitFor(`the ${name} example`, () => page.eval(`!!window.example && !!document.querySelector('.handwriting-toolbar')`), 60000)
-  await waitFor(`the layer of the ${name} example`, () => page.eval(`!!window.example.map.getLayer('handwriting')`), 30000)
+  await waitFor(
+    `the ${name} example`,
+    () => page.eval(`!!window.example && !!document.querySelector('.handwriting-toolbar')`),
+    60000,
+  )
+  await waitFor(
+    `the layer of the ${name} example`,
+    () => page.eval(`!!window.example.map.getLayer('handwriting')`),
+    30000,
+  )
 
   if (insecure) {
     await run.check(`${name}: the page is not a secure context`, async () => {
       const context = await page.eval(`({ secure: window.isSecureContext, randomUUID: typeof crypto.randomUUID })`)
-      assert(context.secure === false, `the page at ${origin}${path} is a secure context (randomUUID: ${context.randomUUID})`)
+      assert(
+        context.secure === false,
+        `the page at ${origin}${path} is a secure context (randomUUID: ${context.randomUUID})`,
+      )
     })
   }
 
@@ -47,7 +58,10 @@ export async function checkExample(run, { name, origin, path, insecure = false }
     await waitFor('ready to settle', () => page.eval(`window.example.ready !== null`), 30000)
     const ready = await page.eval(`window.example.ready`)
     const errors = await page.eval(`window.example.errors`)
-    assert(ready === true && errors.length === 0, `ready ${ready ? 'resolved' : 'rejected'}, errors on the map: ${JSON.stringify(errors)}`)
+    assert(
+      ready === true && errors.length === 0,
+      `ready ${ready ? 'resolved' : 'rejected'}, errors on the map: ${JSON.stringify(errors)}`,
+    )
   })
 
   await run.check(`${name}: the stroke from the load op is drawn in its color, by the worker`, async () => {
@@ -61,10 +75,15 @@ export async function checkExample(run, { name, origin, path, insecure = false }
   await run.check(`${name}: a stroke drawn by dragging is drawn and gets an order from the default store`, async () => {
     await page.drag(line([300, 450], [700, 450]))
     const stroke = await waitFor('the stroke with an order', () =>
-      page.eval(`[...window.example.store.values()].map((s) => ({ id: s.id, order: s.order ?? null, points: s.points.length })).find((s) => s.id !== 'loaded' && s.order !== null) ?? null`),
+      page.eval(
+        `[...window.example.store.values()].map((s) => ({ id: s.id, order: s.order ?? null, points: s.points.length })).find((s) => s.id !== 'loaded' && s.order !== null) ?? null`,
+      ),
     )
     assert(stroke.points > 2, `the stroke holds ${stroke.points} points`)
-    const [on, off] = await page.pixels([[500, 450], [500, 550]])
+    const [on, off] = await page.pixels([
+      [500, 450],
+      [500, 550],
+    ])
     const black = hexToRgb('#000000')
     assert(near(on, black) && !near(off, black), `the page shows ${on} on the stroke and ${off} away from it`)
   })
@@ -75,10 +94,18 @@ export async function checkExample(run, { name, origin, path, insecure = false }
     assert(tessellation.length === 1, `${tessellation.length} tessellation workers: ${JSON.stringify(workers)}`)
     const [{ url, wasmUrl }] = tessellation
     const build = `${origin}${path}`
-    for (const [what, at, type] of [['worker', url, 'text/javascript'], ['WebAssembly module', wasmUrl, 'application/wasm']]) {
+    for (const [what, at, type] of [
+      ['worker', url, 'text/javascript'],
+      ['WebAssembly module', wasmUrl, 'application/wasm'],
+    ]) {
       assert(at.startsWith(build), `the ${what} is loaded from ${at}, not from the build at ${build}`)
-      const served = await page.eval(`fetch(${JSON.stringify(at)}).then((r) => ({ ok: r.ok, type: r.headers.get('content-type') }))`)
-      assert(served.ok && served.type.startsWith(type), `the ${what} at ${at} is served with ${served.ok ? served.type : 'an error'}`)
+      const served = await page.eval(
+        `fetch(${JSON.stringify(at)}).then((r) => ({ ok: r.ok, type: r.headers.get('content-type') }))`,
+      )
+      assert(
+        served.ok && served.type.startsWith(type),
+        `the ${what} at ${at} is served with ${served.ok ? served.type : 'an error'}`,
+      )
     }
   })
   return page

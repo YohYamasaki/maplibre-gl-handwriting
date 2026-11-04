@@ -1,0 +1,14 @@
+# The harness, its instructions and the decision records: kept out of git, written by the hooks
+.claude/
+CLAUDE.md
+docs/adr/
+
+# Build output
+dist/
+tessellator/target/
+tessellator/pkg/
+examples/*/dist/
+
+# Written by npm and by the snapshot tool
+package-lock.json
+tests/snapshots/

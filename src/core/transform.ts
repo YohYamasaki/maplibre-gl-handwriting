@@ -87,7 +87,10 @@ export function similarityAbout(center: Point, scale: number, angle: number, off
  * Returns null when a point would leave the map (0 to 1) or the zoom would leave MIN/MAX_STROKE_ZOOM, by more than
  * rounding (EDGE_TOLERANCE, ZOOM_TOLERANCE; within it, the value is clamped); such a stroke is left as it is
  */
-export function transformStroke(stroke: Pick<StrokeData, 'points' | 'zoom'>, m: Matrix): { points: Point[]; zoom: number } | null {
+export function transformStroke(
+  stroke: Pick<StrokeData, 'points' | 'zoom'>,
+  m: Matrix,
+): { points: Point[]; zoom: number } | null {
   const zoom = clampWithin(stroke.zoom - Math.log2(scaleOf(m)), MIN_STROKE_ZOOM, MAX_STROKE_ZOOM, ZOOM_TOLERANCE)
   if (zoom === null) return null
   const points: Point[] = []

@@ -209,14 +209,18 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
     for (const listener of [...(listeners.get(type) ?? [])]) (listener as HandwritingListener<K>)(event)
   }
 
-  const settings = new PenSettings(options.defaults, (changed) => {
-    // A touch drawing or erasing when pen-only input turns on ends there, as when a pen lands
-    if (settings.penOnly() && !penOnlyWas) releaseTouches(penOnly.pressedTouches())
-    penOnlyWas = settings.penOnly()
-    if (changed.pen) emit('penchange', { tool: changed.pen, pen: settings.pen(changed.pen) })
-    emit('settingschange', { settings: settings.get() })
-    updateTouch()
-  }, options.experimental?.partialEraser === true)
+  const settings = new PenSettings(
+    options.defaults,
+    (changed) => {
+      // A touch drawing or erasing when pen-only input turns on ends there, as when a pen lands
+      if (settings.penOnly() && !penOnlyWas) releaseTouches(penOnly.pressedTouches())
+      penOnlyWas = settings.penOnly()
+      if (changed.pen) emit('penchange', { tool: changed.pen, pen: settings.pen(changed.pen) })
+      emit('settingschange', { settings: settings.get() })
+      updateTouch()
+    },
+    options.experimental?.partialEraser === true,
+  )
   const penOnly = new PenOnlyInput(() => settings.penOnly())
   let penOnlyWas = settings.penOnly()
 
@@ -232,32 +236,32 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
   // The browser's predicted points after the tip of the stroke being drawn, drawn but never applied to the store
   const prediction = new Prediction()
   const draw = new DrawController(element, store, project, {
-      startStroke: (e) => {
-        if ((tool !== 'pen' && tool !== 'highlighter') || !penOnly.accepts(e)) return null
-        const identity = newIdentity()
-        if (!identity) return null
-        const pen = settings.pen(tool)
-        return {
-          id: identity.id,
-          author: identity.author,
-          color: strokeColor(pen),
-          width: pen.width,
-          pressure: pen.pressure ? settings.pressureCurve() : null,
-        }
-      },
-      getZoom: () => map.getZoom(),
-      onStroke: (stroke) => history.record({ type: 'draw', strokes: [stroke] }),
-      prediction,
-    })
+    startStroke: (e) => {
+      if ((tool !== 'pen' && tool !== 'highlighter') || !penOnly.accepts(e)) return null
+      const identity = newIdentity()
+      if (!identity) return null
+      const pen = settings.pen(tool)
+      return {
+        id: identity.id,
+        author: identity.author,
+        color: strokeColor(pen),
+        width: pen.width,
+        pressure: pen.pressure ? settings.pressureCurve() : null,
+      }
+    },
+    getZoom: () => map.getZoom(),
+    onStroke: (stroke) => history.record({ type: 'draw', strokes: [stroke] }),
+    prediction,
+  })
   const erase = new EraseController(element, store, project, index, {
-      isEnabled: (e) => tool === 'eraser' && penOnly.accepts(e),
-      radius: () => settings.eraserRadius(),
-      pixelSize: () => mercatorPerPixel(map),
-      mode: () => settings.eraserMode(),
-      newPieceId: () => newIdentity()?.id ?? null,
-      onErase: (strokes) => history.record({ type: 'erase', strokes }),
-      onCut: (cuts) => history.record({ type: 'split', cuts }),
-    })
+    isEnabled: (e) => tool === 'eraser' && penOnly.accepts(e),
+    radius: () => settings.eraserRadius(),
+    pixelSize: () => mercatorPerPixel(map),
+    mode: () => settings.eraserMode(),
+    newPieceId: () => newIdentity()?.id ?? null,
+    onErase: (strokes) => history.record({ type: 'erase', strokes }),
+    onCut: (cuts) => history.record({ type: 'split', cuts }),
+  })
   const selection = new Selection(store)
   const toScreen = createScreenProjector(map)
   const select = new SelectController(element, store, project, toScreen, index, selection, {
@@ -437,26 +441,29 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
 
   const container = map.getContainer()
   const shortcutList = new ShortcutList(container, tools)
-  const shortcuts = new KeyboardShortcuts({
-    getTool: () => tool,
-    hasTool: (which) => tools.includes(which),
-    setTool: (next) => {
-      // A tool chosen while Space holds the hand takes the selection away too
-      if (next !== 'lasso') selection.clear()
-      selectTool(next, false)
+  const shortcuts = new KeyboardShortcuts(
+    {
+      getTool: () => tool,
+      hasTool: (which) => tools.includes(which),
+      setTool: (next) => {
+        // A tool chosen while Space holds the hand takes the selection away too
+        if (next !== 'lasso') selection.clear()
+        selectTool(next, false)
+      },
+      holdHand: () => selectTool(null, true),
+      undo: () => handle.undo(),
+      redo: () => handle.redo(),
+      hasSelection: () => selection.size > 0,
+      deleteSelection,
+      duplicateSelection,
+      clearSelection: () => selection.clear(),
+      changeSize: (delta) => changeToolSize(settings, tool, delta),
+      toggleList: () => shortcutList.toggle(),
+      closeList: () => shortcutList.close(),
+      isInMap: (target) => target instanceof Node && container.contains(target),
     },
-    holdHand: () => selectTool(null, true),
-    undo: () => handle.undo(),
-    redo: () => handle.redo(),
-    hasSelection: () => selection.size > 0,
-    deleteSelection,
-    duplicateSelection,
-    clearSelection: () => selection.clear(),
-    changeSize: (delta) => changeToolSize(settings, tool, delta),
-    toggleList: () => shortcutList.toggle(),
-    closeList: () => shortcutList.close(),
-    isInMap: (target) => target instanceof Node && container.contains(target),
-  }, window)
+    window,
+  )
   function setKeyboard(enabled: boolean): void {
     if (!destroyed) shortcuts.setEnabled(enabled)
   }
@@ -464,7 +471,8 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
   const handle: Handwriting = {
     ready,
     setTool(next) {
-      if (next !== null && !tools.includes(next)) throw new RangeError(`The handle does not offer the tool '${String(next)}'`)
+      if (next !== null && !tools.includes(next))
+        throw new RangeError(`The handle does not offer the tool '${String(next)}'`)
       selectTool(next, false)
     },
     getTool: () => tool,

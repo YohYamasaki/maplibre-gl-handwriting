@@ -87,14 +87,7 @@ export class StrokeTessellator {
    * Each vertex carries its width over the stroke's, from the samples' width coefficients (1 without them); the
    * pieces on either side of a seam both end in a cap of the seam sample's coefficient
    */
-  appendPiece(
-    mesh: MeshBuffer,
-    stroke: StrokeData,
-    samples: Samples,
-    from: number,
-    to: number,
-    zoom: number,
-  ): void {
+  appendPiece(mesh: MeshBuffer, stroke: StrokeData, samples: Samples, from: number, to: number, zoom: number): void {
     // Only the range and one neighbor on each side affect the result, so only those are passed
     const { points, pressure } = samples
     const start = Math.max(0, from - 1)

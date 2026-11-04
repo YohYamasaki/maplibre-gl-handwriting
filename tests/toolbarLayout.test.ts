@@ -29,7 +29,10 @@ describe('toolbar layout', () => {
     const vertical = { width: bar.height, height: bar.width }
     const left = toolbarPosition('left', 0.75, container, vertical)
     expect(left.left).toBe(TOOLBAR_MARGIN)
-    expect(edgeOffset('left', left.left, left.top + vertical.height / 2, container, vertical.height)).toBeCloseTo(0.75, 12)
+    expect(edgeOffset('left', left.left, left.top + vertical.height / 2, container, vertical.height)).toBeCloseTo(
+      0.75,
+      12,
+    )
   })
 
   it('keeps the toolbar inside the map, at the margin when it is longer than the side', () => {
@@ -49,9 +52,21 @@ describe('toolbar layout', () => {
     const above = popoverPosition('bottom', button, barRect, popover, container)
     expect(above.top + popover.height).toBe(barRect.top - TOOLBAR_MARGIN)
     expect(above.left + popover.width / 2).toBe(button.left + button.width / 2)
-    const nearCorner = popoverPosition('top', { left: 4, top: 12, width: 36, height: 36 }, { left: 0, top: 8, width: 300, height: 44 }, popover, container)
+    const nearCorner = popoverPosition(
+      'top',
+      { left: 4, top: 12, width: 36, height: 36 },
+      { left: 0, top: 8, width: 300, height: 44 },
+      popover,
+      container,
+    )
     expect(nearCorner).toEqual({ left: TOOLBAR_MARGIN, top: 8 + 44 + TOOLBAR_MARGIN })
-    const beside = popoverPosition('right', { left: 952, top: 680, width: 36, height: 36 }, { left: 948, top: 392, width: 44, height: 300 }, popover, container)
+    const beside = popoverPosition(
+      'right',
+      { left: 952, top: 680, width: 36, height: 36 },
+      { left: 948, top: 392, width: 44, height: 300 },
+      popover,
+      container,
+    )
     expect(beside.left + popover.width).toBe(948 - TOOLBAR_MARGIN)
     expect(beside.top + popover.height).toBe(container.height - TOOLBAR_MARGIN)
   })
@@ -62,9 +77,21 @@ describe('toolbar layout', () => {
     const button = { left: 400, top: 12, width: 36, height: 36 }
     const below = tooltipPosition('top', button, barRect, tooltip, container)
     expect(below).toEqual({ left: 418 - 80, top: 8 + 44 + TOOLTIP_GAP })
-    const left = tooltipPosition('right', { left: 952, top: 4, width: 36, height: 36 }, { left: 948, top: 0, width: 44, height: 300 }, tooltip, container)
+    const left = tooltipPosition(
+      'right',
+      { left: 952, top: 4, width: 36, height: 36 },
+      { left: 948, top: 0, width: 44, height: 300 },
+      tooltip,
+      container,
+    )
     expect(left).toEqual({ left: 948 - TOOLTIP_GAP - 160, top: TOOLBAR_MARGIN })
-    const right = tooltipPosition('left', { left: 12, top: 300, width: 36, height: 36 }, { left: 8, top: 200, width: 44, height: 300 }, tooltip, container)
+    const right = tooltipPosition(
+      'left',
+      { left: 12, top: 300, width: 36, height: 36 },
+      { left: 8, top: 200, width: 44, height: 300 },
+      tooltip,
+      container,
+    )
     expect(right).toEqual({ left: 8 + 44 + TOOLTIP_GAP, top: 318 - 25 })
   })
 })

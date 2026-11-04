@@ -14,8 +14,14 @@ describe('StrokeIndex', () => {
       store.apply({ type: 'points', id, pts }, 'local')
       store.apply({ type: 'end', id }, 'local')
     }
-    line('near', [[0.5, 0.5], [0.5001, 0.5]])
-    line('far', [[0.1, 0.1], [0.1001, 0.1]])
+    line('near', [
+      [0.5, 0.5],
+      [0.5001, 0.5],
+    ])
+    line('far', [
+      [0.1, 0.1],
+      [0.1001, 0.1],
+    ])
     line('dot', [[0.50005, 0.500005]])
     expect(index.search(box(0.50005, 0.5, 1e-5)).sort()).toEqual(['dot', 'near'])
 

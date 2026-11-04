@@ -39,7 +39,12 @@ async function drawUntilSeam(
   )
   const store = new StrokeStore({ order: 'custom' })
   const scene = new StrokeScene(store, tessellator, { build: () => {} }, zoom)
-  const view = { minX: origin[0] - 500 * px, maxX: origin[0] + 500 * px, minY: origin[1] - 350 * px, maxY: origin[1] + 350 * px }
+  const view = {
+    minX: origin[0] - 500 * px,
+    maxX: origin[0] + 500 * px,
+    minY: origin[1] - 350 * px,
+    maxY: origin[1] + 350 * px,
+  }
   const id = 'me:1'
   store.apply({ type: 'begin', id, author: 'me', color: '#33669980', width, zoom }, 'local')
   let afterFreeze = -1
@@ -67,7 +72,8 @@ async function drawUntilSeam(
       (g[F * v] - local[0]) / unitsPerPx + (g[F * v + 2] * width) / 2,
       (g[F * v + 1] - local[1]) / unitsPerPx + (g[F * v + 3] * width) / 2,
     ]
-    for (let i = 0; i < mesh.indexCount; i += 3) triangles.push([at(mesh.indices[i]), at(mesh.indices[i + 1]), at(mesh.indices[i + 2])])
+    for (let i = 0; i < mesh.indexCount; i += 3)
+      triangles.push([at(mesh.indices[i]), at(mesh.indices[i + 1]), at(mesh.indices[i + 2])])
     return triangles
   }
   const coefficient = hot.samples.pressure?.[hot.frozenTo] ?? 1
@@ -138,18 +144,38 @@ describe('the frozen part and the tail of a stroke being drawn cover the whole c
     ['a circle of radius 20 px', bend, 8, defaultOrigin, true],
     ['the same circle the other way round', bendBack, 8, defaultOrigin, true],
     ['turning straight back', turnBack, 8, defaultOrigin, true],
-    ["lyon dropping the earlier piece's last point", (i: number): Px | undefined => droppedEnd[i], 0.5, defaultOrigin, false],
+    [
+      "lyon dropping the earlier piece's last point",
+      (i: number): Px | undefined => droppedEnd[i],
+      0.5,
+      defaultOrigin,
+      false,
+    ],
     ['a tail shorter than lyon keeps', (i: number): Px | undefined => collapsedTail[i], 0.5, [0.5, 0.5] as Point, true],
-    ["lyon dropping the earlier piece's whole last curve", (i: number): Px | undefined => decimatedEnd[i], 8, [0.5, 0.5] as Point, true],
+    [
+      "lyon dropping the earlier piece's whole last curve",
+      (i: number): Px | undefined => decimatedEnd[i],
+      8,
+      [0.5, 0.5] as Point,
+      true,
+    ],
     ['the same, then going on', (i: number): Px | undefined => decimatedEndThenOn[i], 8, [0.5, 0.5] as Point, true],
   ] as const) {
     it(name, async () => {
       const { frozen, tail } = await drawUntilSeam(path, width, origin)
       // Each piece ends in a round cap there, so each covers the whole circle on its own (ADR 0043)
-      const pieces: [string, Px[][]][] = alone ? [['frozen part', frozen], ['tail', tail]] : [['two pieces', [...frozen, ...tail]]]
+      const pieces: [string, Px[][]][] = alone
+        ? [
+            ['frozen part', frozen],
+            ['tail', tail],
+          ]
+        : [['two pieces', [...frozen, ...tail]]]
       for (const [piece, triangles] of pieces) {
         const missed = uncovered(triangles, width)
-        expect(missed.length, `points at the seam outside every triangle of the ${piece}: ${missed.slice(0, 20).join(' ')}`).toBe(0)
+        expect(
+          missed.length,
+          `points at the seam outside every triangle of the ${piece}: ${missed.slice(0, 20).join(' ')}`,
+        ).toBe(0)
       }
     })
   }
@@ -163,11 +189,22 @@ describe('the frozen part and the tail of a stroke being drawn cover the whole c
   ] as const) {
     it(`with pen pressure: ${name}`, async () => {
       const width = 12
-      const { frozen, tail, coefficient } = await drawUntilSeam(path, width, defaultOrigin, (i) => 0.6 + 0.35 * Math.sin(i / 4))
+      const { frozen, tail, coefficient } = await drawUntilSeam(
+        path,
+        width,
+        defaultOrigin,
+        (i) => 0.6 + 0.35 * Math.sin(i / 4),
+      )
       expect(coefficient, 'a width coefficient below 1 at the seam').toBeLessThan(1)
-      for (const [piece, triangles] of [['frozen part', frozen], ['tail', tail]] as const) {
+      for (const [piece, triangles] of [
+        ['frozen part', frozen],
+        ['tail', tail],
+      ] as const) {
         const missed = uncovered(triangles, width * coefficient)
-        expect(missed.length, `points at the seam outside every triangle of the ${piece}: ${missed.slice(0, 20).join(' ')}`).toBe(0)
+        expect(
+          missed.length,
+          `points at the seam outside every triangle of the ${piece}: ${missed.slice(0, 20).join(' ')}`,
+        ).toBe(0)
       }
     })
   }

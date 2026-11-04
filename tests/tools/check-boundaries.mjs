@@ -29,7 +29,8 @@ const NO_RUNTIME_DEPENDENCY = [
   },
 ]
 
-const IMPORT = /(?:^|\n)\s*(import|export)\s+(type\s+)?(?:[^'"`;]*?\sfrom\s+)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g
+const IMPORT =
+  /(?:^|\n)\s*(import|export)\s+(type\s+)?(?:[^'"`;]*?\sfrom\s+)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g
 
 /** Imports of a file: { spec, target (repository path or package name), typeOnly } */
 function importsOf(file) {

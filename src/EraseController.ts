@@ -138,7 +138,10 @@ export class EraseController {
       // store the split reaches cuts it
       pending.original = back
       const { original } = pending
-      this.show(pending, keptRanges(original.points, pending.erased, original.width * mercatorPerPixelAt(original.zoom)))
+      this.show(
+        pending,
+        keptRanges(original.points, pending.erased, original.width * mercatorPerPixelAt(original.zoom)),
+      )
     }
   }
 
@@ -193,7 +196,13 @@ export class EraseController {
     const maxHalfWidth = this.index.maxWidthMercator / 2
     const radius = this.options.radius() * pixelSize
     // A stroke is hit when the pointer is within its half width plus the eraser radius
-    const ids = findStrokesNear(this.index, this.store, p, (stroke) => halfWidth(stroke) + radius, maxHalfWidth + radius)
+    const ids = findStrokesNear(
+      this.index,
+      this.store,
+      p,
+      (stroke) => halfWidth(stroke) + radius,
+      maxHalfWidth + radius,
+    )
     for (const id of ids) {
       const stroke = this.store.get(id)!
       if (this.store.apply({ type: 'remove', id }, 'local')) this.erased.push(stroke)
@@ -280,7 +289,8 @@ export class EraseController {
       const widthMercator = original.width * mercatorPerPixelAt(original.zoom)
       const ranges = keptRanges(original.points, pending.erased, widthMercator)
       if (ranges.length === 0) {
-        if (this.store.apply({ type: 'remove', id: stroke.id }, 'local')) this.cuts.push({ removed: stroke, pieces: [] })
+        if (this.store.apply({ type: 'remove', id: stroke.id }, 'local'))
+          this.cuts.push({ removed: stroke, pieces: [] })
         continue
       }
       const pieces: StrokePiece[] = []

@@ -17,7 +17,8 @@ function copyFiles() {
   return {
     name: 'copy-files',
     generateBundle() {
-      for (const [fileName, from] of Object.entries(COPIED)) this.emitFile({ type: 'asset', fileName, source: readFileSync(from) })
+      for (const [fileName, from] of Object.entries(COPIED))
+        this.emitFile({ type: 'asset', fileName, source: readFileSync(from) })
     },
   }
 }

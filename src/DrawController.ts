@@ -110,9 +110,13 @@ export class DrawController {
     const offered = e.getPredictedEvents?.() ?? []
     const predicted = predictedPositions(from, offered, moved)
     if (__HANDWRITING_DEBUG__) countPrediction(prediction, offered.length, predicted.length)
-    prediction.set(drawing.id, predicted.map(([x, y]) => this.project(x, y)))
+    prediction.set(
+      drawing.id,
+      predicted.map(([x, y]) => this.project(x, y)),
+    )
     if (drawing.timer !== null) clearTimeout(drawing.timer)
-    drawing.timer = predicted.length > 0 ? setTimeout(() => this.dropPrediction(drawing.id), PREDICTION_TIMEOUT_MS) : null
+    drawing.timer =
+      predicted.length > 0 ? setTimeout(() => this.dropPrediction(drawing.id), PREDICTION_TIMEOUT_MS) : null
   }
 
   /** Drops the predicted points of stroke `id` when the pointer has rested since the last pointermove */

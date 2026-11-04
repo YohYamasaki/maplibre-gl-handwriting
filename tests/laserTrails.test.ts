@@ -26,7 +26,7 @@ describe('LaserTrails', () => {
     expect(read(trails, 500 + LASER_LIFETIME)).toEqual([])
   })
 
-  it('an add drops its own source\'s old points and the sources gone quiet; prune drops the rest', () => {
+  it("an add drops its own source's old points and the sources gone quiet; prune drops the rest", () => {
     const trails = new LaserTrails()
     trails.add('a', 1, [pt(0)], 0)
     trails.add('b', 1, [pt(1)], 0)
@@ -46,7 +46,12 @@ describe('LaserTrails', () => {
     const trails = new LaserTrails()
     // Each reconnect is a new source
     for (let s = 0; s < 1000; s++) {
-      trails.add(`s${s}`, 1, Array.from({ length: 1000 }, (_, i) => pt(i)), s * 2000)
+      trails.add(
+        `s${s}`,
+        1,
+        Array.from({ length: 1000 }, (_, i) => pt(i)),
+        s * 2000,
+      )
     }
     expect(trails.size).toBe(1000)
     expect(read(trails, 999 * 2000).length).toBe(1)

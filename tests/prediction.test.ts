@@ -37,7 +37,8 @@ function drawing(): {
   store.subscribe((op) => ops.push(op))
   const pointer = (type: string, x: number, y: number, predicted?: [number, number][]): void => {
     const fields: Record<string, unknown> = { pointerId: 1, button: 0, pointerType: 'mouse', clientX: x, clientY: y }
-    if (predicted) fields.getPredictedEvents = (): Position[] => predicted.map(([px, py]) => ({ clientX: px, clientY: py }))
+    if (predicted)
+      fields.getPredictedEvents = (): Position[] => predicted.map(([px, py]) => ({ clientX: px, clientY: py }))
     element.dispatchEvent(Object.assign(new Event(type), fields))
   }
   return { store, ops, prediction, pointer }
@@ -47,7 +48,17 @@ const pointsOf = (ops: StrokeOp[]): Point[] => ops.flatMap((op) => (op.type === 
 
 describe('predictedPositions', () => {
   it('keeps at most two points', () => {
-    expect(predictedPositions([0, 0], [{ clientX: 1, clientY: 0 }, { clientX: 2, clientY: 0 }, { clientX: 3, clientY: 0 }], 10)).toEqual([
+    expect(
+      predictedPositions(
+        [0, 0],
+        [
+          { clientX: 1, clientY: 0 },
+          { clientX: 2, clientY: 0 },
+          { clientX: 3, clientY: 0 },
+        ],
+        10,
+      ),
+    ).toEqual([
       [1, 0],
       [2, 0],
     ])
@@ -55,8 +66,26 @@ describe('predictedPositions', () => {
 
   // Decision 0080: a point beyond the limit is not pulled back; it and every point after it are dropped
   it('drops a point farther than the limit and every point after it', () => {
-    expect(predictedPositions([0, 0], [{ clientX: 3, clientY: 4 }, { clientX: 6, clientY: 8 }], 5)).toEqual([[3, 4]])
-    expect(predictedPositions([0, 0], [{ clientX: 9, clientY: 0 }, { clientX: 1, clientY: 0 }], 5)).toEqual([])
+    expect(
+      predictedPositions(
+        [0, 0],
+        [
+          { clientX: 3, clientY: 4 },
+          { clientX: 6, clientY: 8 },
+        ],
+        5,
+      ),
+    ).toEqual([[3, 4]])
+    expect(
+      predictedPositions(
+        [0, 0],
+        [
+          { clientX: 9, clientY: 0 },
+          { clientX: 1, clientY: 0 },
+        ],
+        5,
+      ),
+    ).toEqual([])
   })
 
   it('caps the limit at 24 px however far the pointer moved', () => {
@@ -75,7 +104,10 @@ describe('DrawController with predicted events', () => {
   it('hands predicted points to the prediction only, replaces them on each move and drops them at the end', () => {
     const { store, ops, prediction, pointer } = drawing()
     pointer('pointerdown', 0, 0)
-    pointer('pointermove', 10, 0, [[12, 0], [14, 0]])
+    pointer('pointermove', 10, 0, [
+      [12, 0],
+      [14, 0],
+    ])
     expect(prediction.get('s:1')).toEqual([project(12, 0), project(14, 0)])
     pointer('pointermove', 20, 0, [[23, 0]])
     expect(prediction.get('s:1')).toEqual([project(23, 0)])
@@ -97,7 +129,10 @@ describe('DrawController with predicted events', () => {
     // Moved 5 px from the pointerdown: a point 6 px ahead is dropped, though it is within 24 px
     pointer('pointermove', 105, 0, [[111, 0]])
     expect(prediction.get('s:1')).toBeUndefined()
-    pointer('pointermove', 120, 0, [[130, 0], [140, 0]])
+    pointer('pointermove', 120, 0, [
+      [130, 0],
+      [140, 0],
+    ])
     // Moved 15 px: 10 px ahead is kept, 20 px ahead is dropped
     expect(prediction.get('s:1')).toEqual([project(130, 0)])
   })
@@ -105,8 +140,14 @@ describe('DrawController with predicted events', () => {
   it('counts the kept and dropped 1st and 2nd points', () => {
     const { prediction, pointer } = drawing()
     pointer('pointerdown', 0, 0)
-    pointer('pointermove', 10, 0, [[15, 0], [25, 0]])
-    pointer('pointermove', 20, 0, [[40, 0], [41, 0]])
+    pointer('pointermove', 10, 0, [
+      [15, 0],
+      [25, 0],
+    ])
+    pointer('pointermove', 20, 0, [
+      [40, 0],
+      [41, 0],
+    ])
     pointer('pointermove', 30, 0, [[35, 0]])
     expect(prediction.debug?.counts).toEqual({ kept: [2, 0], dropped: [1, 2] })
   })
@@ -184,7 +225,8 @@ describe('StrokeScene with predicted points', () => {
     const real = new Set(store.get('s:1')!.points.map((p) => p.join()))
     const frozen = pieces.filter((piece) => piece.mesh === hot().frozen)
     expect(frozen.length).toBeGreaterThan(0)
-    for (const piece of frozen) for (const p of piece.points) expect(real.has(p.join()), `${p} in the frozen part`).toBe(true)
+    for (const piece of frozen)
+      for (const p of piece.points) expect(real.has(p.join()), `${p} in the frozen part`).toBe(true)
     // The latest tail ends with the two predicted points
     const tail = pieces.filter((piece) => piece.mesh === hot().tail).at(-1)!
     expect(tail.points.slice(-3)).toEqual([at(79), at(80), at(81)])

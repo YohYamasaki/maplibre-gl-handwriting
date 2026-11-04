@@ -79,21 +79,21 @@ handwriting.setTool('pen')
 
 Options:
 
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `store` | (required) | The `StrokeStore` to draw and edit. The handle loads nothing itself |
-| `startStroke` | random UUIDs | Called on every pointerdown with a drawing tool; returns `{ id, author }` for the new stroke, or `null` to ignore the input. Also called for the ID of each piece the partial eraser leaves |
-| `author` | | Author of new strokes when `startStroke` is omitted |
-| `layerId` | `'handwriting'` | ID of the map layer |
-| `beforeId` | on top | The layer is inserted before this layer. While the style has no such layer, the handle waits for it and does not put its layer on top |
-| `defaults` | see below | Initial pens, palette, eraser, pressure curve, toolbar placement, laser color, pen-only input |
-| `keyboard` | `false` | Keyboard shortcuts on the page (below) |
-| `tools` | all five | The tools the handle offers (below) |
-| `experimental` | all off | Features being worked on (below) |
-| `laser` | own channel | The `LaserChannel` the laser pointer's lines go to and come from |
-| `wasmUrl` | next to the script | Where to fetch the WebAssembly module |
-| `workerUrl` | next to the script | Where to load the tessellation worker |
-| `onExport` | downloads `strokes.geojson` | What Export in the selection's bar does with the selected strokes' GeoJSON; `null` hides Export |
+| Option         | Default                     | Meaning                                                                                                                                                                                     |
+| -------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `store`        | (required)                  | The `StrokeStore` to draw and edit. The handle loads nothing itself                                                                                                                         |
+| `startStroke`  | random UUIDs                | Called on every pointerdown with a drawing tool; returns `{ id, author }` for the new stroke, or `null` to ignore the input. Also called for the ID of each piece the partial eraser leaves |
+| `author`       |                             | Author of new strokes when `startStroke` is omitted                                                                                                                                         |
+| `layerId`      | `'handwriting'`             | ID of the map layer                                                                                                                                                                         |
+| `beforeId`     | on top                      | The layer is inserted before this layer. While the style has no such layer, the handle waits for it and does not put its layer on top                                                       |
+| `defaults`     | see below                   | Initial pens, palette, eraser, pressure curve, toolbar placement, laser color, pen-only input                                                                                               |
+| `keyboard`     | `false`                     | Keyboard shortcuts on the page (below)                                                                                                                                                      |
+| `tools`        | all five                    | The tools the handle offers (below)                                                                                                                                                         |
+| `experimental` | all off                     | Features being worked on (below)                                                                                                                                                            |
+| `laser`        | own channel                 | The `LaserChannel` the laser pointer's lines go to and come from                                                                                                                            |
+| `wasmUrl`      | next to the script          | Where to fetch the WebAssembly module                                                                                                                                                       |
+| `workerUrl`    | next to the script          | Where to load the tessellation worker                                                                                                                                                       |
+| `onExport`     | downloads `strokes.geojson` | What Export in the selection's bar does with the selected strokes' GeoJSON; `null` hides Export                                                                                             |
 
 A map made with `canvasContextAttributes: { desynchronized: true }` shows the tip of a stroke being drawn sooner,
 where the browser supports it.
@@ -168,12 +168,12 @@ The defaults are: pen black, 4 px, with pressure; highlighter yellow, 50% opacit
 
 `on(type, listener)` and `off(type, listener)`:
 
-| Event | Payload |
-| --- | --- |
-| `history` | `{ canUndo, canRedo }` |
-| `toolchange` | `{ tool }` |
-| `penchange` | `{ tool, pen }` |
-| `settingschange` | `{ settings }` |
+| Event            | Payload                |
+| ---------------- | ---------------------- |
+| `history`        | `{ canUndo, canRedo }` |
+| `toolchange`     | `{ tool }`             |
+| `penchange`      | `{ tool, pen }`        |
+| `settingschange` | `{ settings }`         |
 
 ### Keyboard shortcuts
 

@@ -15,9 +15,13 @@ class CopyFiles {
   apply(compiler) {
     const { Compilation, sources } = compiler.webpack
     compiler.hooks.thisCompilation.tap('CopyFiles', (compilation) => {
-      compilation.hooks.processAssets.tap({ name: 'CopyFiles', stage: Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL }, () => {
-        for (const [name, from] of Object.entries(COPIED)) compilation.emitAsset(name, new sources.RawSource(readFileSync(from)))
-      })
+      compilation.hooks.processAssets.tap(
+        { name: 'CopyFiles', stage: Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL },
+        () => {
+          for (const [name, from] of Object.entries(COPIED))
+            compilation.emitAsset(name, new sources.RawSource(readFileSync(from)))
+        },
+      )
     })
   }
 }

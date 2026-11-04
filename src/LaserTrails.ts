@@ -84,7 +84,10 @@ export class LaserTrails {
   forEach(now: number, fn: (pts: Point[], ages: number[]) => void): void {
     for (const trails of this.sources.values()) {
       for (const line of trails.values()) {
-        fn(line.pts, line.times.map((t) => Math.min(1, Math.max(0, (now - t) / LASER_LIFETIME))))
+        fn(
+          line.pts,
+          line.times.map((t) => Math.min(1, Math.max(0, (now - t) / LASER_LIFETIME))),
+        )
       }
     }
   }

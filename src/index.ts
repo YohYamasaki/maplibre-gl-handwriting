@@ -37,12 +37,7 @@ export {
   type StrokeOp,
 } from './core/stroke'
 // The laser pointer's channel is the caller's, like the store
-export {
-  LaserChannel,
-  type LaserListener,
-  type LaserOp,
-  type LaserOrigin,
-} from './core/laser'
+export { LaserChannel, type LaserListener, type LaserOp, type LaserOrigin } from './core/laser'
 export type { PieceRange, StrokePiece } from './core/split'
 // The transform op's matrix
 export type { Matrix } from './core/transform'

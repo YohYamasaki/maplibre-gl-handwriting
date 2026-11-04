@@ -23,7 +23,12 @@ it('drawing a stroke whose frozen piece lost its last curve to lyon never throws
   const view = { minX: 0.5 - 500 * px, maxX: 0.5 + 500 * px, minY: 0.5 - 350 * px, maxY: 0.5 + 350 * px }
   const id = 'me:1'
   store.apply({ type: 'begin', id, author: 'me', color: '#336699', width: 8, zoom }, 'local')
-  const points: [number, number][] = [...Array.from({ length: 31 }, (_, i): [number, number] => [i, 0]), [29.855, 0.106], [29.977, 0.076], [29.87, -0.104]]
+  const points: [number, number][] = [
+    ...Array.from({ length: 31 }, (_, i): [number, number] => [i, 0]),
+    [29.855, 0.106],
+    [29.977, 0.076],
+    [29.87, -0.104],
+  ]
   for (const [x, y] of points) {
     store.apply({ type: 'points', id, pts: [[0.5 + x / 2097152, 0.5 + y / 2097152]] }, 'local')
     expect(() => scene.frame(view, zoom)).not.toThrow()

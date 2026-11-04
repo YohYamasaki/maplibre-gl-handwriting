@@ -20,7 +20,11 @@
   background: var(--_background);
   border: 1px solid var(--_border);
   box-shadow: var(--_shadow);
-  font: 12px/1.3 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font:
+    12px/1.3 system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -344,7 +348,11 @@
   color: var(--handwriting-tooltip-color, #ffffff);
   background: var(--handwriting-tooltip-background, rgba(32, 33, 36, 0.94));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  font: 12px/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font:
+    12px/1.35 system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
   pointer-events: none;
 }
 
@@ -365,7 +373,11 @@
 }
 
 .handwriting-tooltip-keys {
-  font: 11px/1 ui-monospace, 'SF Mono', Menlo, monospace;
+  font:
+    11px/1 ui-monospace,
+    'SF Mono',
+    Menlo,
+    monospace;
   opacity: 0.8;
 }
 

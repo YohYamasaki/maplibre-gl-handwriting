@@ -21,11 +21,25 @@ import {
 } from './layerFakes'
 import { fakeWriter } from './support'
 
-vi.mock('../src/ui/cursor', () => ({ EraserCursor: class { show(): void {} hide(): void {} destroy(): void {} } }))
-vi.mock('../src/ui/selection', () => ({
-  SelectionFrame: class { update(): void {} showLasso(): void {} destroy(): void {} },
+vi.mock('../src/ui/cursor', () => ({
+  EraserCursor: class {
+    show(): void {}
+    hide(): void {}
+    destroy(): void {}
+  },
 }))
-vi.mock('../src/ui/laser', () => ({ LaserOverlay: class { destroy(): void {} } }))
+vi.mock('../src/ui/selection', () => ({
+  SelectionFrame: class {
+    update(): void {}
+    showLasso(): void {}
+    destroy(): void {}
+  },
+}))
+vi.mock('../src/ui/laser', () => ({
+  LaserOverlay: class {
+    destroy(): void {}
+  },
+}))
 
 const tessellator = fakeWriter as unknown as StrokeTessellator
 const gl = {} as WebGL2RenderingContext
@@ -53,7 +67,10 @@ function loadByHand(): { resolve: () => void; reject: (error: unknown) => void }
 /** Whether `promise` has resolved (true), rejected (false) or neither (null), once the pending callbacks have run */
 async function stateOf(promise: Promise<void>): Promise<boolean | null> {
   let state: boolean | null = null
-  promise.then(() => (state = true), () => (state = false))
+  promise.then(
+    () => (state = true),
+    () => (state = false),
+  )
   await settle()
   return state
 }

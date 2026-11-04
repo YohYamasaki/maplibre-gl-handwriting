@@ -161,6 +161,8 @@ describe('generateBenchStrokes', () => {
   })
 
   it('does not gather the strokes in the middle of a narrow, tall bounds', () => {
-    expect(medianLongSide(generateBenchStrokes(1000, box(10 * PX, 300 * STEP), 12, seeded(1)))).toBeGreaterThanOrEqual(50)
+    expect(medianLongSide(generateBenchStrokes(1000, box(10 * PX, 300 * STEP), 12, seeded(1)))).toBeGreaterThanOrEqual(
+      50,
+    )
   })
 })

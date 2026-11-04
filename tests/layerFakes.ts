@@ -27,7 +27,8 @@ export class FakeWorker {
   }
 
   constructor(readonly url: string | URL) {
-    if (FakeWorker.behavior === 'throw') throw new DOMException('The worker script is of another origin', 'SecurityError')
+    if (FakeWorker.behavior === 'throw')
+      throw new DOMException('The worker script is of another origin', 'SecurityError')
     FakeWorker.live.add(this)
     FakeWorker.made.push(this)
   }

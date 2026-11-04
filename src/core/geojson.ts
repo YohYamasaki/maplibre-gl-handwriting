@@ -63,9 +63,7 @@ function strokeFeature(stroke: StrokeData): unknown {
   })
   if (coordinates.length === 0) return null
   const geometry =
-    coordinates.length === 1
-      ? { type: 'Point', coordinates: coordinates[0] }
-      : { type: 'LineString', coordinates }
+    coordinates.length === 1 ? { type: 'Point', coordinates: coordinates[0] } : { type: 'LineString', coordinates }
   const properties: StrokeFeatureProperties = {
     id: stroke.id,
     author: stroke.author,

@@ -16,14 +16,7 @@ export const fakeWriter: MeshWriter = {
     appendSamples(samples, stroke, 0, zoom)
     this.appendPiece(mesh, stroke, samples, 0, samples.points.length - 1, zoom)
   },
-  appendPiece(
-    mesh: MeshBuffer,
-    stroke: StrokeData,
-    _samples: Samples,
-    from: number,
-    to: number,
-    _zoom: number,
-  ): void {
+  appendPiece(mesh: MeshBuffer, stroke: StrokeData, _samples: Samples, from: number, to: number, _zoom: number): void {
     const segments = to - from
     mesh.appendStroke(stroke.id, stroke, (target) => {
       const vertexCount = 2 * (segments + 1)

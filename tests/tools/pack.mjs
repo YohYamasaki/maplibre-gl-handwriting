@@ -53,14 +53,16 @@ try {
   ]
   for (const path of required) if (!shipped.has(path)) problems.push(`${path} is not in the package`)
   for (const path of shipped) {
-    if (!/^(dist\/|package\.json$|LICENSE$|README\.md$|THIRD_PARTY_LICENSES$|CHANGELOG\.md$)/.test(path)) problems.push(`${path} should not be in the package`)
+    if (!/^(dist\/|package\.json$|LICENSE$|README\.md$|THIRD_PARTY_LICENSES$|CHANGELOG\.md$)/.test(path))
+      problems.push(`${path} should not be in the package`)
   }
 
   // Every export of package.json is a file in the package
   const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
   for (const [entry, target] of Object.entries(manifest.exports)) {
     for (const file of typeof target === 'string' ? [target] : Object.values(target)) {
-      if (!shipped.has(posix.normalize(file))) problems.push(`exports['${entry}'] points at ${file}, which is not in the package`)
+      if (!shipped.has(posix.normalize(file)))
+        problems.push(`exports['${entry}'] points at ${file}, which is not in the package`)
     }
   }
 
@@ -73,10 +75,14 @@ try {
     if (text.includes('data:application/wasm')) problems.push(`${name} inlines the WebAssembly module`)
     const all = text.split('import.meta.url').length - 1
     const generic = [...text.matchAll(/new URL\("(\.\.?\/[^"]+)", import\.meta\.url\)/g)]
-    if (generic.length !== all) problems.push(`${name} uses import.meta.url ${all - generic.length} times outside new URL("./<path>", import.meta.url)`)
+    if (generic.length !== all)
+      problems.push(
+        `${name} uses import.meta.url ${all - generic.length} times outside new URL("./<path>", import.meta.url)`,
+      )
     for (const [, spec] of generic) {
       const target = posix.normalize(posix.join(posix.dirname(name), spec))
-      if (!shipped.has(target)) problems.push(`${name} has new URL("${spec}", import.meta.url), and ${target} is not in the package`)
+      if (!shipped.has(target))
+        problems.push(`${name} has new URL("${spec}", import.meta.url), and ${target} is not in the package`)
     }
   }
 
@@ -86,7 +92,9 @@ try {
   for (const path of declarations) {
     for (const [, spec] of readFileSync(path, 'utf8').matchAll(IMPORT)) {
       const base = resolve(dirname(path), spec).replace(/\.js$/, '')
-      const found = [`${base}.d.ts`, join(base, 'index.d.ts'), base].some((candidate) => declarations.includes(candidate))
+      const found = [`${base}.d.ts`, join(base, 'index.d.ts'), base].some((candidate) =>
+        declarations.includes(candidate),
+      )
       if (!found) problems.push(`${path.slice(dir.length + 1)} imports '${spec}', which is not in the package`)
     }
   }
@@ -95,7 +103,9 @@ try {
   const debugOut = join(work, 'debug-build')
   run('npx', ['vite', 'build'], { HANDWRITING_DEBUG: '1', HANDWRITING_OUT_DIR: debugOut })
   if (!filesUnder(debugOut).some((path) => path.endsWith('.js') && readFileSync(path, 'utf8').includes(MARKER))) {
-    problems.push('a build with __HANDWRITING_DEBUG__ true does not have the marker: the check of the package proves nothing')
+    problems.push(
+      'a build with __HANDWRITING_DEBUG__ true does not have the marker: the check of the package proves nothing',
+    )
   }
 } finally {
   rmSync(work, { recursive: true, force: true })

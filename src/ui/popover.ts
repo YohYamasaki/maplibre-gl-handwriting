@@ -103,10 +103,18 @@ export function penPopover(handle: Handwriting, tool: PenTool): PopoverContent {
   line.setAttribute('stroke-linejoin', 'round')
   appendChildren(preview, line)
 
-  const width = slider('Width', { min: MIN_WIDTH, max: MAX_WIDTH, step: 0.5 }, (v) => `${v}px`, (v) => handle.setPen(tool, { width: v }))
+  const width = slider(
+    'Width',
+    { min: MIN_WIDTH, max: MAX_WIDTH, step: 0.5 },
+    (v) => `${v}px`,
+    (v) => handle.setPen(tool, { width: v }),
+  )
   width.input.name = 'width'
-  const opacity = slider('Opacity', { min: Math.round(MIN_OPACITY * 100), max: 100, step: 1 }, (v) => `${v}%`, (v) =>
-    handle.setPen(tool, { opacity: v / 100 }),
+  const opacity = slider(
+    'Opacity',
+    { min: Math.round(MIN_OPACITY * 100), max: 100, step: 1 },
+    (v) => `${v}%`,
+    (v) => handle.setPen(tool, { opacity: v / 100 }),
   )
   opacity.input.name = 'opacity'
 
@@ -218,8 +226,11 @@ export function eraserPopover(handle: Handwriting): PopoverContent {
   const preview = element('div', 'handwriting-popover-eraser')
   const circle = element('span', 'handwriting-eraser-circle')
   appendChildren(preview, circle)
-  const size = slider('Size', { min: MIN_ERASER_RADIUS, max: MAX_ERASER_RADIUS, step: 1 }, (v) => `${v}px`, (v) =>
-    handle.setEraser({ radius: v }),
+  const size = slider(
+    'Size',
+    { min: MIN_ERASER_RADIUS, max: MAX_ERASER_RADIUS, step: 1 },
+    (v) => `${v}px`,
+    (v) => handle.setEraser({ radius: v }),
   )
   size.input.name = 'radius'
   // The mode switch only while the partial eraser is enabled

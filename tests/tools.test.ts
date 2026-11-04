@@ -13,11 +13,25 @@ import { fakeWriter, UUID_V4 } from './support'
 
 const lists = vi.hoisted(() => ({ tools: [] as unknown[] }))
 
-vi.mock('../src/ui/cursor', () => ({ EraserCursor: class { show(): void {} hide(): void {} destroy(): void {} } }))
-vi.mock('../src/ui/selection', () => ({
-  SelectionFrame: class { update(): void {} showLasso(): void {} destroy(): void {} },
+vi.mock('../src/ui/cursor', () => ({
+  EraserCursor: class {
+    show(): void {}
+    hide(): void {}
+    destroy(): void {}
+  },
 }))
-vi.mock('../src/ui/laser', () => ({ LaserOverlay: class { destroy(): void {} } }))
+vi.mock('../src/ui/selection', () => ({
+  SelectionFrame: class {
+    update(): void {}
+    showLasso(): void {}
+    destroy(): void {}
+  },
+}))
+vi.mock('../src/ui/laser', () => ({
+  LaserOverlay: class {
+    destroy(): void {}
+  },
+}))
 // The list's rows come from shortcutRows (tests/keyboard.test.ts); here, the tools it is given
 vi.mock('../src/ui/shortcuts', () => ({
   ShortcutList: class {
@@ -141,7 +155,14 @@ describe('the IDs of a handle without startStroke, where crypto.randomUUID is mi
     const element = map.getCanvasContainer()
     const pointer = (type: string, x: number, y: number): void =>
       void element.dispatchEvent(
-        Object.assign(new Event(type), { pointerId: 1, pointerType: 'pen', button: 0, pressure: 0.5, clientX: x, clientY: y }),
+        Object.assign(new Event(type), {
+          pointerId: 1,
+          pointerType: 'pen',
+          button: 0,
+          pressure: 0.5,
+          clientX: x,
+          clientY: y,
+        }),
       )
     const drag = (path: [number, number][]): void => {
       pointer('pointerdown', ...path[0]!)
@@ -152,7 +173,11 @@ describe('the IDs of a handle without startStroke, where crypto.randomUUID is mi
   }
 
   /** A pen stroke from client (10, 10) to (60, 10), and its ID */
-  function drawLine(handle: ReturnType<typeof createHandwriting>, drag: (path: [number, number][]) => void, store: StrokeStore): string {
+  function drawLine(
+    handle: ReturnType<typeof createHandwriting>,
+    drag: (path: [number, number][]) => void,
+    store: StrokeStore,
+  ): string {
     handle.setTool('pen')
     drag(Array.from({ length: 11 }, (_, i): [number, number] => [10 + 5 * i, 10]))
     const ids = [...store.values()].map((stroke) => stroke.id)
@@ -174,7 +199,10 @@ describe('the IDs of a handle without startStroke, where crypto.randomUUID is mi
     const id = drawLine(handle, drag, store)
     handle.setEraser({ mode: 'partial' })
     handle.setTool('eraser')
-    drag([[35, -10], [35, 30]])
+    drag([
+      [35, -10],
+      [35, 30],
+    ])
     const pieces = [...store.values()].map((stroke) => stroke.id)
     expect(pieces).toHaveLength(2)
     expect(pieces).not.toContain(id)
@@ -186,7 +214,12 @@ describe('the IDs of a handle without startStroke, where crypto.randomUUID is mi
     const { store, handle, drag } = setup()
     const id = drawLine(handle, drag, store)
     handle.setTool('lasso')
-    drag([[0, -10], [100, -10], [100, 30], [0, 30]])
+    drag([
+      [0, -10],
+      [100, -10],
+      [100, 30],
+      [0, 30],
+    ])
     expect(keydown('d', true).defaultPrevented).toBe(true)
     const copies = [...store.values()].map((stroke) => stroke.id).filter((other) => other !== id)
     expect(copies).toHaveLength(1)
