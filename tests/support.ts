@@ -1,5 +1,5 @@
 // Stand-ins for the tests: a mesh writer that needs no WebAssembly, a build queue the test drives by hand,
-// and a seeded random source so a failing op sequence can be replayed
+// a seeded random source so a failing op sequence can be replayed, and the shape of a UUID v4
 import type { StrokeData } from '../src/core/stroke'
 import type { MeshBuffer } from '../src/MeshBuffer'
 import type { BuildQueue } from '../src/StrokeScene'
@@ -66,3 +66,6 @@ export function random(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
+
+/** A UUID v4 as crypto.randomUUID gives it: lowercase 8-4-4-4-12, version 4, variant 10xx */
+export const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/

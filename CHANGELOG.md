@@ -18,4 +18,7 @@ the versioned API and may change in any release.
 - A WebAssembly module or tessellation worker that fails to load, or a worker that cannot be made, is the map's
   `error` event `{ error, layerId }` (on the console when nothing listens for it) and rejects `ready`, which resolves
   once the module has loaded on the main thread and in the layer's first worker.
+- A handle without `startStroke` draws with the pen and the highlighter also on a page that is not a secure context
+  (http from another host than localhost): the IDs of its strokes, of the pieces the partial eraser leaves and of
+  duplicates are random UUID v4 made with `crypto.getRandomValues`, not `crypto.randomUUID`.
 - Experimental: the partial eraser (`experimental.partialEraser`).

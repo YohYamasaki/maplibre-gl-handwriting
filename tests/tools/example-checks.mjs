@@ -26,14 +26,22 @@ const LOADED_AT = [141.355, 43.07]
 
 /**
  * Opens the example at `path` (a directory of the server at `origin`, ending in /) in a new tab and runs its checks,
- * each named after `name`
+ * each named after `name`. With `insecure`, the page is opened from `origin` (a host that is not localhost, e.g.
+ * browser.mjs's INSECURE_HOST) and must not be a secure context: there crypto.randomUUID is missing
  */
-export async function checkExample(run, { name, origin, path }) {
+export async function checkExample(run, { name, origin, path, insecure = false }) {
   const page = await run.openClient()
   await page.send('Page.addScriptToEvaluateOnNewDocument', { source: RECORD_WORKERS })
-  await page.navigate(path)
+  await page.navigate(insecure ? `${origin}${path}` : path)
   await waitFor(`the ${name} example`, () => page.eval(`!!window.example && !!document.querySelector('.handwriting-toolbar')`), 60000)
   await waitFor(`the layer of the ${name} example`, () => page.eval(`!!window.example.map.getLayer('handwriting')`), 30000)
+
+  if (insecure) {
+    await run.check(`${name}: the page is not a secure context`, async () => {
+      const context = await page.eval(`({ secure: window.isSecureContext, randomUUID: typeof crypto.randomUUID })`)
+      assert(context.secure === false, `the page at ${origin}${path} is a secure context (randomUUID: ${context.randomUUID})`)
+    })
+  }
 
   await run.check(`${name}: ready resolves and the map reports no error`, async () => {
     await waitFor('ready to settle', () => page.eval(`window.example.ready !== null`), 30000)

@@ -1,6 +1,7 @@
 // A static file server for the browser checks of built examples (e2e-bundlers.mjs): `node serve.mjs <dir> <port>`.
 // A directory serves its index.html. .wasm goes as application/wasm, which WebAssembly.instantiateStreaming needs, and
-// .js and .mjs as text/javascript, which module scripts and module workers need. Nothing outside <dir> is served
+// .js and .mjs as text/javascript, which module scripts and module workers need. Nothing outside <dir> is served.
+// It listens on 127.0.0.1, for http://localhost:<port> and for http://handwriting.test:<port> (browser.mjs)
 import { createReadStream, statSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { extname, join, resolve, sep } from 'node:path'
@@ -49,4 +50,5 @@ createServer((request, response) => {
   response.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store' })
   if (request.method === 'HEAD') response.end()
   else createReadStream(file).pipe(response)
-}).listen(Number(port), 'localhost')
+// 127.0.0.1, where Chrome sends browser.mjs's INSECURE_HOST: 'localhost' may resolve to ::1 only
+}).listen(Number(port), '127.0.0.1')

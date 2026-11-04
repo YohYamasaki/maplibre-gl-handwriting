@@ -9,6 +9,8 @@ import { join } from 'node:path'
 
 const CHROME = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 export const SCREEN = { width: 1000, height: 700 }
+/** A host name Chrome resolves to 127.0.0.1: http from it is not a secure context, as from the machine's IP address */
+export const INSECURE_HOST = 'handwriting.test'
 const SEND_TIMEOUT_MS = 30_000
 const RUN_TIMEOUT_MS = 10 * 60_000
 const KILL_GRACE_MS = 5000
@@ -139,7 +141,17 @@ export async function startRun(name, { command, args, cwd, port }) {
   children.push(server)
   const chrome = spawn(
     CHROME,
-    ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--use-angle=metal', '--enable-unsafe-swiftshader', 'about:blank'],
+    [
+      '--headless=new',
+      '--remote-debugging-port=0',
+      `--user-data-dir=${profile}`,
+      '--use-angle=metal',
+      '--enable-unsafe-swiftshader',
+      // A host name for this machine that is not localhost, so a page loaded from it is not a secure context (the
+      // checks with insecure: true in example-checks.mjs); the servers listen on 127.0.0.1 too
+      `--host-resolver-rules=MAP ${INSECURE_HOST} 127.0.0.1`,
+      'about:blank',
+    ],
     { stdio: 'ignore' },
   )
   children.push(chrome)
@@ -218,8 +230,10 @@ export async function startRun(name, { command, args, cwd, port }) {
         if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text)
         return result.result.value
       },
+      /** Opens a path of the server (starting with /), or any other URL as given */
       async navigate(path) {
-        await send('Page.navigate', { url: `http://localhost:${port}${path}` }, sessionId)
+        const url = path.startsWith('/') ? `http://localhost:${port}${path}` : path
+        await send('Page.navigate', { url }, sessionId)
       },
       /** Drags through `points`; `whileDown`, if given, runs before the button is released */
       async drag(points, whileDown) {

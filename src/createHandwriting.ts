@@ -26,6 +26,7 @@ import { SelectController } from './SelectController'
 import { Selection } from './Selection'
 import { deleteSelected, duplicateSelected, exportGeoJSON } from './selectionActions'
 import { StrokeIndex } from './StrokeIndex'
+import { randomStrokeId } from './strokeId'
 import { holdsLayer, StrokeLayer } from './StrokeLayer'
 import { StrokeTessellator } from './StrokeTessellator'
 import { EraserCursor } from './ui/cursor'
@@ -50,7 +51,8 @@ export type HandwritingOptions = {
   /**
    * Called on every pointerdown with a drawing tool. Returns the new stroke's ID and author, or null to ignore
    * the input. Also called for the ID of each piece the partial eraser leaves of a stroke (the piece keeps the
-   * stroke's author); null leaves that stroke uncut. When omitted, strokes get crypto.randomUUID() and `author`
+   * stroke's author); null leaves that stroke uncut. When omitted, strokes get a random UUID v4 (made with
+   * crypto.getRandomValues, so also on a page that is not a secure context) and `author`
    */
   startStroke?: () => StrokeIdentity | null
   /** Author of new strokes when startStroke is omitted */
@@ -226,7 +228,7 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
   const project = createMapProjector(map)
   const index = new StrokeIndex(store)
   const newIdentity = (): StrokeIdentity | null =>
-    options.startStroke ? options.startStroke() : { id: crypto.randomUUID(), author: options.author ?? '' }
+    options.startStroke ? options.startStroke() : { id: randomStrokeId(), author: options.author ?? '' }
   // The browser's predicted points after the tip of the stroke being drawn, drawn but never applied to the store
   const prediction = new Prediction()
   const draw = new DrawController(element, store, project, {
