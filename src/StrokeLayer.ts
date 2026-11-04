@@ -14,6 +14,7 @@ import type { Prediction } from "./Prediction";
 import type { Selection } from "./Selection";
 import { StrokeScene, type DrawRange } from "./StrokeScene";
 import type { StrokeTessellator } from "./StrokeTessellator";
+import { asError } from "./reportError";
 import { TessellationWorker, type WorkerLocation } from "./TessellationWorker";
 import {
   compositeFragmentSource,
@@ -101,6 +102,12 @@ export type StrokeLayerOptions = WorkerLocation & {
   selection?: Selection;
   /** The browser's predicted points after the tips of the strokes being drawn */
   prediction?: Prediction;
+  /**
+   * Called once for each worker an onAdd makes, on the map of that onAdd: with null once the worker has loaded its
+   * WebAssembly module, or with the error when the worker could not be made or its script or module failed to load.
+   * After a failure the layer has let go of its scene and worker, draws nothing, and makes neither again
+   */
+  onLoad: (error: Error | null, map: MapLibreMap) => void;
 };
 
 /**
@@ -111,7 +118,9 @@ export type StrokeLayerOptions = WorkerLocation & {
  *
  * MapLibre does not call onRemove when it rebuilds the style (setStyle without a diff) or when the map is removed,
  * so an onAdd may come while the last one's scene, worker and GPU resources are still held: they are freed first.
- * dispose frees them when the layer is no longer on the map's style and onRemove will not come
+ * dispose frees them when the layer is no longer on the map's style and onRemove will not come.
+ *
+ * onAdd throws nothing of its own: a worker that cannot be made goes to options.onLoad, as one that fails to load
  */
 export class StrokeLayer implements CustomLayerInterface {
   readonly id: string;
@@ -131,6 +140,8 @@ export class StrokeLayer implements CustomLayerInterface {
   private composite: Composite | null = null;
   // Debug view: draws the outlines of the tessellated triangles over the strokes
   private wireframe = false;
+  // A worker failed to load (options.onLoad): the layer stays empty from then on
+  private failed = false;
 
   constructor(
     private store: StrokeStore,
@@ -143,13 +154,21 @@ export class StrokeLayer implements CustomLayerInterface {
   onAdd(map: MapLibreMap, gl: WebGL2RenderingContext): void {
     // Added again without onRemove (a style rebuilt): the last scene, worker and GPU resources go first
     this.release();
+    if (this.failed) return;
     this.map = map;
     this.gl = gl;
     const repaint = (): void => map.triggerRepaint();
-    const worker = new TessellationWorker(
-      (result) => scene.onBuilt(result),
-      this.options,
-    );
+    let worker: TessellationWorker;
+    try {
+      worker = new TessellationWorker(
+        (result) => scene.onBuilt(result),
+        (error) => this.loaded(error, map),
+        this.options,
+      );
+    } catch (error) {
+      this.loaded(asError(error), map);
+      return;
+    }
     const scene = new StrokeScene(
       this.store,
       this.tessellator,
@@ -161,6 +180,17 @@ export class StrokeLayer implements CustomLayerInterface {
     );
     this.worker = worker;
     this.currentScene = scene;
+  }
+
+  /** A worker's load, from onAdd: a failure lets go of everything and leaves the layer empty for good */
+  private loaded(error: Error | null, map: MapLibreMap): void {
+    if (error) {
+      this.failed = true;
+      this.release();
+      // What the scene drew last goes too
+      map.triggerRepaint();
+    }
+    this.options.onLoad(error, map);
   }
 
   /** Development builds only (debug.ts); the package never draws the wireframe */
@@ -216,8 +246,10 @@ export class StrokeLayer implements CustomLayerInterface {
    * set up for this layer, so other layers stay above or below it as before
    */
   render(gl: WebGL2RenderingContext, options: CustomRenderMethodInput): void {
-    const map = this.map!;
-    const scene = this.currentScene!;
+    const map = this.map;
+    const scene = this.currentScene;
+    // Nothing once a worker failed to load
+    if (!map || !scene) return;
     const zoom = map.getZoom();
     const frame = scene.frame(visibleBounds(map), zoom);
     for (const mesh of scene.takeRetired()) this.deleteGpu(gl, mesh);

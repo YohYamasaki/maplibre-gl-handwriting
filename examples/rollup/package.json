@@ -1,0 +1,16 @@
+{
+  "name": "maplibre-gl-handwriting-example-rollup",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rollup --config"
+  },
+  "dependencies": {
+    "maplibre-gl": "^6.16.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@web/rollup-plugin-import-meta-assets": "^3.0.0",
+    "rollup": "^4.67.4"
+  }
+}

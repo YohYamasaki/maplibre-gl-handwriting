@@ -1,4 +1,4 @@
-// Laser pointer lines: shown for a moment on every screen, never stored or saved.
+// Laser pointer lines: shown for a moment, never stored or saved.
 // Used by the input, render and sync layers, so it must not depend on the DOM, MapLibre or any platform's APIs.
 import type { Point } from './stroke'
 

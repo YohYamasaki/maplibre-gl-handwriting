@@ -1,5 +1,6 @@
 // The list of keyboard shortcuts that ? shows over the map. Styled inline, like the
 // eraser's circle, so that it shows without the package's style.css
+import type { Tool } from '../createHandwriting'
 import { shortcutRows } from '../keyboard'
 import { appendChildren } from './dom'
 
@@ -10,7 +11,11 @@ import { appendChildren } from './dom'
 export class ShortcutList {
   private element: HTMLElement | null = null
 
-  constructor(private container: HTMLElement) {}
+  /** `tools`: the handle's tools, the only ones with a row */
+  constructor(
+    private container: HTMLElement,
+    private tools: readonly NonNullable<Tool>[],
+  ) {}
 
   get isOpen(): boolean {
     return this.element !== null
@@ -62,7 +67,7 @@ export class ShortcutList {
     title.style.marginBottom = '6px'
     const table = document.createElement('table')
     table.style.borderCollapse = 'collapse'
-    for (const [keys, action] of shortcutRows()) {
+    for (const [keys, action] of shortcutRows(undefined, this.tools)) {
       const row = document.createElement('tr')
       const key = document.createElement('td')
       key.textContent = keys

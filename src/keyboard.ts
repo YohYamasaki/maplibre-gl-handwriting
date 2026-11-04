@@ -20,6 +20,8 @@ export type KeyEventLike = {
 /** What the shortcuts do, given by the handle */
 export type KeyboardActions = {
   getTool(): Tool
+  /** Whether the handle offers this tool (HandwritingOptions.tools); the keys of the others are left to the page */
+  hasTool(tool: NonNullable<Tool>): boolean
   setTool(tool: Tool): void
   /** Selects the hand while Space is held, keeping the lasso's selection */
   holdHand(): void
@@ -38,6 +40,9 @@ export type KeyboardActions = {
   /** Whether `target` is inside the map's container */
   isInMap(target: EventTarget | null): boolean
 }
+
+/** Every tool, the default of HandwritingOptions.tools. The hand (null) is always there */
+export const ALL_TOOLS: readonly NonNullable<Tool>[] = ['pen', 'highlighter', 'eraser', 'lasso', 'laser']
 
 /** The tool each letter selects, compared with `e.key` lowercased */
 export const TOOL_KEYS: readonly { key: string; tool: Tool }[] = [
@@ -68,17 +73,23 @@ export function modifierLabel(apple = isApplePlatform()): string {
   return apple ? '⌘' : 'Ctrl+'
 }
 
-/** The rows of the shortcut list: the keys as shown, and what they do */
-export function shortcutRows(apple = isApplePlatform()): [string, string][] {
+/**
+ * The rows of the shortcut list: the keys as shown, and what they do. Only the tools in `tools` have a row, with the
+ * keys they have whichever tools are left out
+ */
+export function shortcutRows(apple = isApplePlatform(), tools: readonly NonNullable<Tool>[] = ALL_TOOLS): [string, string][] {
   const mod = modifierLabel(apple)
   const shift = apple ? '⇧' : 'Shift+'
+  const toolRows: [NonNullable<Tool>, [string, string]][] = [
+    ['pen', [`${toolKey('pen')} / 2`, 'Pen']],
+    ['highlighter', [`${toolKey('highlighter')} / 3`, 'Highlighter']],
+    ['eraser', [`${toolKey('eraser')} / 4`, 'Eraser']],
+    ['lasso', [`${toolKey('lasso')} / 5`, 'Lasso']],
+    ['laser', [toolKey('laser'), 'Laser pointer']],
+  ]
   return [
     [`${toolKey(null)} / 1`, 'Move map'],
-    [`${toolKey('pen')} / 2`, 'Pen'],
-    [`${toolKey('highlighter')} / 3`, 'Highlighter'],
-    [`${toolKey('eraser')} / 4`, 'Eraser'],
-    [`${toolKey('lasso')} / 5`, 'Lasso'],
-    [toolKey('laser'), 'Laser pointer'],
+    ...toolRows.filter(([tool]) => tools.includes(tool)).map(([, row]) => row),
     ['Space (hold)', 'Move map while held'],
     [`${mod}Z`, 'Undo'],
     [apple ? `${shift}${mod}Z` : `${shift}${mod}Z / Ctrl+Y`, 'Redo'],
@@ -204,6 +215,8 @@ export class KeyboardShortcuts {
       ? { tool: TOOL_ORDER[digit - 1] }
       : TOOL_KEYS.find((entry) => entry.key === key)
     if (!tool) return
+    // The key of a tool the handle does not offer does nothing, and the page may take it
+    if (tool.tool !== null && !a.hasTool(tool.tool)) return
     e.preventDefault()
     if (e.repeat) return
     this.spaceTool = null

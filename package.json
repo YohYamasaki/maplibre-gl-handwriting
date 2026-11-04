@@ -45,7 +45,7 @@
     "lint:boundaries": "node tests/tools/check-boundaries.mjs",
     "snapshots": "node tests/tools/snapshots.mjs",
     "pack:check": "node tests/tools/pack.mjs",
-    "e2e": "node tests/tools/e2e-example.mjs && node tests/tools/e2e-dev.mjs"
+    "e2e": "node tests/tools/e2e-example.mjs && node tests/tools/e2e-bundlers.mjs && node tests/tools/e2e-dev.mjs"
   },
   "peerDependencies": {
     "maplibre-gl": "^6.16.0"

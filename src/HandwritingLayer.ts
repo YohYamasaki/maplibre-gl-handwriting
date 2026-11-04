@@ -1,5 +1,6 @@
 import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapLibreMap } from 'maplibre-gl'
 import type { StrokeStore } from './core/stroke'
+import { asError, reportError } from './reportError'
 import { holdsLayer, StrokeLayer } from './StrokeLayer'
 import { StrokeTessellator } from './StrokeTessellator'
 
@@ -19,10 +20,12 @@ export type HandwritingLayerOptions = {
  * that shows strokes without editing them, or to place the strokes among the style's layers yourself:
  * `map.addLayer(new HandwritingLayer({ store, id: 'strokes' }), beforeId)`.
  *
- * The WebAssembly module starts loading on the first onAdd; nothing is drawn until it has loaded (`ready`), and then
- * the map is repainted. MapLibre calls no onRemove when it rebuilds the style (setStyle without a diff) or when the map
- * is removed: add the layer again after such a setStyle (e.g. on style.load), and call destroy once it is no longer
- * wanted, which frees its worker and GPU resources whether or not it is still on the map.
+ * The WebAssembly module starts loading on the first onAdd; nothing is drawn until it has loaded, and then the map is
+ * repainted. A module or a tessellation worker that fails to load is the map's error event, `{ error, layerId }` (on
+ * the console when nothing listens for it), and the layer then draws nothing, also when added again. MapLibre calls no
+ * onRemove when it rebuilds the style (setStyle without a diff) or when the map is removed: add the layer again after
+ * such a setStyle (e.g. on style.load), and call destroy once it is no longer wanted, which frees its worker and GPU
+ * resources whether or not it is still on the map.
  *
  * A store given to both a HandwritingLayer and createHandwriting is drawn, and tessellated, twice
  */
@@ -31,8 +34,11 @@ export class HandwritingLayer implements CustomLayerInterface {
   readonly type = 'custom'
   readonly renderingMode = '2d'
   /**
-   * Resolves once the WebAssembly module has loaded; the loading starts on the first onAdd, so it never resolves for a
-   * layer never added to a map. Rejects when the module fails to load, and the layer then draws nothing
+   * Resolves once the WebAssembly module has loaded on the main thread and in the first of the layer's tessellation
+   * workers to answer; the loading starts on the first onAdd and the worker is made by an onAdd, so it never resolves
+   * for a layer never added to a map. Rejects when either fails to load, and the layer then draws nothing. A worker
+   * that fails after it has settled (one made after a style was rebuilt) is only the map's error event. Resolves on
+   * destroy when it has not settled yet
    */
   readonly ready: Promise<void>
 
@@ -73,10 +79,15 @@ export class HandwritingLayer implements CustomLayerInterface {
     const generation = this.generation
     StrokeTessellator.load(this.options.wasmUrl).then(
       (tessellator) => {
-        this.resolveReady()
         if (this.destroyed) return
         const { store, id, wasmUrl, workerUrl } = this.options
-        this.inner = new StrokeLayer(store, tessellator, { id, wasmUrl, workerUrl })
+        // Nothing here throws: the inner layer's onAdd gives a worker that cannot be made to onLoad
+        this.inner = new StrokeLayer(store, tessellator, {
+          id,
+          wasmUrl,
+          workerUrl,
+          onLoad: (error, on) => this.loaded(error, on),
+        })
         // Unless onAdds and onRemoves came while loading, the onAdd that began the load still holds the layer; else the
         // latest decides, and a layer removed then is only made here, for its next onAdd to add
         const target = generation === this.generation ? added : this.added
@@ -84,8 +95,20 @@ export class HandwritingLayer implements CustomLayerInterface {
         this.inner.onAdd(target.map, target.gl)
         target.map.triggerRepaint()
       },
-      (error: unknown) => this.rejectReady(error),
+      // Told on the map the layer is on, or else on the one whose onAdd began the load
+      (error: unknown) => this.loaded(asError(error), this.added?.map ?? map),
     )
+  }
+
+  /** A load on the main thread or in a worker: settles ready unless it has settled, and reports a failure */
+  private loaded(error: Error | null, map: MapLibreMap): void {
+    if (this.destroyed) return
+    if (!error) {
+      this.resolveReady()
+      return
+    }
+    reportError(map, error, this.id)
+    this.rejectReady(error)
   }
 
   onRemove(): void {
@@ -107,6 +130,8 @@ export class HandwritingLayer implements CustomLayerInterface {
   destroy(): void {
     if (this.destroyed) return
     this.destroyed = true
+    // Nothing is told after this; a ready still waiting resolves
+    this.resolveReady()
     const map = this.added?.map
     // removeLayer calls onRemove, which frees the inner layer with the map's context. A layer of another with this ID
     // (added after a style rebuilt without this one) stays

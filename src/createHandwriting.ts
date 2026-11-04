@@ -6,11 +6,12 @@ import { EraseController } from './EraseController'
 import { LaserController } from './LaserController'
 import { registerDebugLayer, registerDebugPrediction } from './debug'
 import { registerExperimental, type ExperimentalFeatures } from './experimental'
-import { changeToolSize, KeyboardShortcuts } from './keyboard'
+import { ALL_TOOLS, changeToolSize, KeyboardShortcuts } from './keyboard'
 import { CLAIM_CURSOR, claimMapGestures, type GestureClaim } from './mapGestures'
 import { createMapProjector, createScreenProjector, mercatorPerPixel } from './mapProjector'
 import { PenOnlyInput } from './penOnly'
 import { Prediction } from './Prediction'
+import { asError, reportError } from './reportError'
 import {
   PenSettings,
   strokeColor,
@@ -71,9 +72,16 @@ export type HandwritingOptions = {
    * Keyboard shortcuts on the page: H or 1 move map, P or 2 pen, M or 3 highlighter, E or 4
    * eraser, L or 5 lasso, K laser pointer, Space held to move the map, Cmd/Ctrl+Z undo, Shift+Cmd/Ctrl+Z or Ctrl+Y
    * redo, Delete or Backspace and Cmd/Ctrl+D delete and duplicate the selection, Esc clears it, [ and ] change the
-   * pen's width or the eraser's radius, ? lists them. Ignored while typing in a form field. Default false; see setKeyboard
+   * pen's width or the eraser's radius, ? lists them. Ignored while typing in a form field. The keys of a tool left
+   * out of `tools` do nothing and are left to the page. Default false; see setKeyboard
    */
   keyboard?: boolean
+  /**
+   * The tools the handle offers: setTool, the keyboard shortcuts, their list and the toolbar take only these, and the
+   * hand (null) always. Their order changes nothing: the toolbar's buttons and the keys 1 to 5 stay as with every tool.
+   * Fixed when the handle is created. Default every tool; createHandwriting throws a RangeError for an unknown one
+   */
+  tools?: readonly NonNullable<Tool>[]
   /**
    * Features still being worked on, off by default. `partialEraser` enables the eraser mode
    * 'partial': while it is off, setEraser({ mode: 'partial' }) throws a RangeError, a default mode 'partial'
@@ -112,12 +120,20 @@ export type HandwritingListener<K extends keyof HandwritingEventMap> = (event: H
 /** What createHandwriting returns */
 export type Handwriting = {
   /**
-   * Resolves once the WebAssembly module is loaded. The layer is added then, or once the style has loaded, and again
-   * after each style.load that leaves it out, such as setStyle without a diff
+   * Resolves once the WebAssembly module has loaded on the main thread and in the first of the layer's tessellation
+   * workers to answer. The layer is added once the module has loaded on the main thread and the style has loaded (and
+   * holds the beforeId layer), and again after each style.load that leaves it out, such as setStyle without a diff;
+   * its worker is made when it is added, so ready waits for the style and the beforeId layer too. Rejects when either
+   * module or the worker fails to load, which is also the map's error event, `{ error, layerId }` (on the console when
+   * nothing listens for it); the layer then draws nothing. A worker that fails after ready has settled is only the
+   * error event. Resolves on destroy when it has not settled yet
    */
   readonly ready: Promise<void>
+  /** Throws a RangeError for a tool the handle does not offer (HandwritingOptions.tools) */
   setTool(tool: Tool): void
   getTool(): Tool
+  /** The tools the handle offers, as given in HandwritingOptions.tools (without repeats); the hand is not one of them */
+  getTools(): NonNullable<Tool>[]
   /**
    * Changes the given fields of a pen. The next stroke drawn with it uses them. Throws a RangeError for a color
    * that is not #rrggbb; numbers are clamped to their ranges
@@ -180,6 +196,7 @@ const DUPLICATE_OFFSET = 16
 export function createHandwriting(map: MapLibreMap, options: HandwritingOptions): Handwriting {
   const { store } = options
   const layerId = options.layerId ?? 'handwriting'
+  const tools = toolsOf(options.tools)
   let tool: Tool = null
   const listeners = new Map<keyof HandwritingEventMap, Set<(event: never) => void>>()
   let destroyed = false
@@ -343,22 +360,46 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
     try {
       map.addLayer(layer, beforeId)
     } catch {
-      // The style has not loaded yet; its style.load adds the layer
+      // Only a style not loaded yet throws here (the layer's onAdd gives a worker that cannot be made to onLoad); its
+      // style.load adds the layer
     }
   }
   map.on('style.load', addLayer)
-  const ready = StrokeTessellator.load(options.wasmUrl).then((tessellator) => {
-    if (destroyed) return
-    layer = new StrokeLayer(store, tessellator, {
-      id: layerId,
-      wasmUrl: options.wasmUrl,
-      workerUrl: options.workerUrl,
-      selection,
-      prediction,
-    })
-    if (__HANDWRITING_DEBUG__) registerDebugLayer(handle, layer)
-    addLayer()
+  // Settles ready, once: null when the module has loaded on the main thread and in the first worker to answer, or the
+  // first failure. Itself null once ready has settled
+  let settleReady: ((error: Error | null) => void) | null = null
+  const ready = new Promise<void>((resolve, reject) => {
+    settleReady = (error) => {
+      settleReady = null
+      if (error) reject(error)
+      else resolve()
+    }
   })
+  // No one has to wait for it: a failure is also the map's error event
+  ready.catch(() => {})
+  /** A load on the main thread or in one of the layer's workers. Nothing is told after destroy */
+  const loaded = (error: Error | null): void => {
+    if (destroyed) return
+    if (error) reportError(map, error, layerId)
+    settleReady?.(error)
+  }
+  StrokeTessellator.load(options.wasmUrl).then(
+    (tessellator) => {
+      if (destroyed) return
+      layer = new StrokeLayer(store, tessellator, {
+        id: layerId,
+        wasmUrl: options.wasmUrl,
+        workerUrl: options.workerUrl,
+        selection,
+        prediction,
+        // Waits for the first worker; the main thread's module has loaded
+        onLoad: (error) => loaded(error),
+      })
+      if (__HANDWRITING_DEBUG__) registerDebugLayer(handle, layer)
+      addLayer()
+    },
+    (error: unknown) => loaded(asError(error)),
+  )
 
   /** Holds a claim on the map's pointer gestures while a tool is selected (shared with other handles on the map) */
   function updateMapGestures(): void {
@@ -393,9 +434,10 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
   }
 
   const container = map.getContainer()
-  const shortcutList = new ShortcutList(container)
+  const shortcutList = new ShortcutList(container, tools)
   const shortcuts = new KeyboardShortcuts({
     getTool: () => tool,
+    hasTool: (which) => tools.includes(which),
     setTool: (next) => {
       // A tool chosen while Space holds the hand takes the selection away too
       if (next !== 'lasso') selection.clear()
@@ -419,8 +461,12 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
 
   const handle: Handwriting = {
     ready,
-    setTool: (next) => selectTool(next, false),
+    setTool(next) {
+      if (next !== null && !tools.includes(next)) throw new RangeError(`The handle does not offer the tool '${String(next)}'`)
+      selectTool(next, false)
+    },
     getTool: () => tool,
+    getTools: () => [...tools],
     setPen(which, pen) {
       if (!destroyed) settings.setPen(which, pen)
     },
@@ -485,12 +531,21 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
       else layer?.dispose()
       if (__HANDWRITING_DEBUG__) registerDebugLayer(handle, null)
       listeners.clear()
+      settleReady?.(null)
     },
   }
   if (__HANDWRITING_DEBUG__) registerDebugPrediction(handle, prediction)
   registerExperimental(handle, options.experimental)
   setKeyboard(options.keyboard ?? false)
   return handle
+}
+
+/** The tools HandwritingOptions.tools gives, checked, without repeats; every tool when omitted */
+function toolsOf(given: readonly NonNullable<Tool>[] = ALL_TOOLS): readonly NonNullable<Tool>[] {
+  for (const tool of given) {
+    if (!ALL_TOOLS.includes(tool)) throw new RangeError(`Unknown tool '${String(tool)}' in tools`)
+  }
+  return [...new Set(given)]
 }
 
 /** Saves `geojson` as strokes.geojson through the browser's download */

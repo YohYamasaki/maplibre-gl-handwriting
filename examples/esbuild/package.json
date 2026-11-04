@@ -1,0 +1,14 @@
+{
+  "name": "maplibre-gl-handwriting-example-esbuild",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "maplibre-gl": "^6.16.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

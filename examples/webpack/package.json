@@ -1,0 +1,15 @@
+{
+  "name": "maplibre-gl-handwriting-example-webpack",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "webpack"
+  },
+  "dependencies": {
+    "maplibre-gl": "^6.16.0"
+  },
+  "devDependencies": {
+    "webpack": "^5.112.2",
+    "webpack-cli": "^7.3.1"
+  }
+}

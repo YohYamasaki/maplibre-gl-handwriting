@@ -1,11 +1,13 @@
 // Browser check of the package as a user gets it (decisions 0091, 0094): packs it, installs the tgz into a copy of
-// examples/basic, builds the example with Vite, serves the build and draws one stroke in headless Chrome. The stroke
-// must be drawn and get its order from the default store, with no server
+// examples/basic, builds the example with Vite, serves the build and runs the example's checks in headless Chrome
+// (example-checks.mjs): the stroke of a load op and one drawn by dragging are drawn, ready resolves with no error on
+// the map, and the worker and the WebAssembly module come from the build. No server: the default store gives the order
 import { spawnSync } from 'node:child_process'
 import { cpSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import { assert, freePort, hexToRgb, line, near, startRun, waitFor } from './browser.mjs'
+import { freePort, startRun } from './browser.mjs'
+import { checkExample } from './example-checks.mjs'
 
 const root = resolve(dirname(new URL(import.meta.url).pathname), '..', '..')
 const work = mkdtempSync(join(tmpdir(), 'handwriting-example-'))
@@ -36,20 +38,6 @@ const port = await freePort()
 const browser = await startRun('e2e-example', { command: 'npx', args: ['vite', 'preview', '--port', String(port), '--strictPort'], cwd: example, port })
 
 console.log('e2e-example')
-const a = await browser.openClient()
-await a.navigate('/')
-await waitFor('the example', () => a.eval(`!!window.example && !!document.querySelector('.handwriting-toolbar')`), 60000)
-await waitFor('the layer', () => a.eval(`!!window.example.map.getLayer('handwriting')`), 30000)
-
-await browser.check('a stroke drawn in the built example is drawn and gets an order from the default store', async () => {
-  await a.drag(line([300, 350], [700, 350]))
-  const stroke = await waitFor('the stroke with an order', () =>
-    a.eval(`[...window.example.store.values()].map((s) => ({ order: s.order ?? null, points: s.points.length })).find((s) => s.order !== null) ?? null`),
-  )
-  assert(stroke.points > 2, `the stroke holds ${stroke.points} points`)
-  const [on, off] = await a.pixels([[500, 350], [500, 450]])
-  const black = hexToRgb('#000000')
-  assert(near(on, black) && !near(off, black), `the page shows ${on} on the stroke and ${off} away from it`)
-})
+await checkExample(browser, { name: 'Vite', origin: `http://localhost:${port}`, path: '/' })
 
 await browser.done()

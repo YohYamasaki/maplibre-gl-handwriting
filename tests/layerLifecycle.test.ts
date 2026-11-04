@@ -1,35 +1,15 @@
 // What the layers hold across onAdd, onRemove, dispose and destroy, without a browser: Worker is a stand-in that
-// counts the live workers, the WebGL context is never used (nothing is rendered), and the store counts its live
-// subscriptions. MapLibre calls no onRemove when it rebuilds the style or the map is removed, so an onAdd can come
-// while the last one's resources are still held
+// counts the live workers and loads its module at once, the WebGL context is never used (nothing is rendered), and
+// the store counts its live subscriptions. MapLibre calls no onRemove when it rebuilds the style or the map is
+// removed, so an onAdd can come while the last one's resources are still held
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StrokeStore, type StrokeListener } from '../src/core/stroke'
 import { HandwritingLayer } from '../src/HandwritingLayer'
 import { StrokeLayer } from '../src/StrokeLayer'
-import { StrokeTessellator } from '../src/StrokeTessellator'
+import { StrokeTessellator, WASM_URL } from '../src/StrokeTessellator'
+import { fakeMap, FakeWorker, settle } from './layerFakes'
 import { fakeWriter } from './support'
-
-class FakeWorker {
-  static live = new Set<FakeWorker>()
-  messages: unknown[] = []
-  terminated = false
-
-  constructor() {
-    FakeWorker.live.add(this)
-  }
-
-  addEventListener(): void {}
-
-  postMessage(message: unknown): void {
-    this.messages.push(message)
-  }
-
-  terminate(): void {
-    this.terminated = true
-    FakeWorker.live.delete(this)
-  }
-}
 
 /** Counts the store's subscriptions not yet unsubscribed */
 function liveSubscriptions(store: StrokeStore): () => number {
@@ -48,17 +28,6 @@ function liveSubscriptions(store: StrokeStore): () => number {
   return () => live
 }
 
-type FakeMap = MapLibreMap & { triggerRepaint: ReturnType<typeof vi.fn> }
-
-function fakeMap(): FakeMap {
-  return {
-    getZoom: () => 12,
-    triggerRepaint: vi.fn(),
-    getLayer: () => undefined,
-    removeLayer: vi.fn(),
-  } as unknown as FakeMap
-}
-
 // Only handed back to the layers: nothing is rendered, so no GPU resource is ever made on it
 const gl = {} as WebGL2RenderingContext
 const tessellator = fakeWriter as unknown as StrokeTessellator
@@ -73,11 +42,10 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; reje
   return { promise, resolve, reject }
 }
 
-/** Lets the promise callbacks run */
-const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+const onLoad = (): void => {}
 
 beforeEach(() => {
-  FakeWorker.live.clear()
+  FakeWorker.reset()
   vi.stubGlobal('Worker', FakeWorker)
 })
 
@@ -90,7 +58,7 @@ describe('StrokeLayer', () => {
   it('frees the last scene and worker when it is added again without onRemove', () => {
     const store = new StrokeStore()
     const live = liveSubscriptions(store)
-    const layer = new StrokeLayer(store, tessellator, { id: 'strokes' })
+    const layer = new StrokeLayer(store, tessellator, { id: 'strokes', onLoad })
     const map = fakeMap()
     layer.onAdd(map, gl)
     const [first] = FakeWorker.live
@@ -108,7 +76,7 @@ describe('StrokeLayer', () => {
   it('dispose frees the scene and the worker, and later ops reach neither', () => {
     const store = new StrokeStore()
     const live = liveSubscriptions(store)
-    const layer = new StrokeLayer(store, tessellator, { id: 'strokes' })
+    const layer = new StrokeLayer(store, tessellator, { id: 'strokes', onLoad })
     const map = fakeMap()
     layer.onAdd(map, gl)
     const [worker] = FakeWorker.live
@@ -122,7 +90,8 @@ describe('StrokeLayer', () => {
     store.apply({ type: 'begin', id: 'a', author: '', color: '#000000', width: 4, zoom: 12 }, 'remote')
     store.apply({ type: 'points', id: 'a', pts: [[0.5, 0.5], [0.5001, 0.5]] }, 'remote')
     store.apply({ type: 'end', id: 'a' }, 'remote')
-    expect(worker.messages).toEqual([])
+    // Only the TessellationInit it was made with
+    expect(worker.messages).toEqual([{ wasmUrl: WASM_URL.href }])
     expect(map.triggerRepaint).not.toHaveBeenCalled()
     // Freed twice (dispose after onRemove) is fine
     layer.dispose()
@@ -182,7 +151,7 @@ describe('HandwritingLayer', () => {
     expect(live()).toBe(1)
   })
 
-  it('resolves ready after an onRemove while loading, and adds the layer it made on the next onAdd', async () => {
+  it('makes the layer after an onRemove while loading, adds it on the next onAdd, and resolves ready with its worker', async () => {
     const load = loadByHand()
     const store = new StrokeStore()
     const live = liveSubscriptions(store)
@@ -190,17 +159,21 @@ describe('HandwritingLayer', () => {
     const map = fakeMap()
     layer.onAdd(map, gl)
     layer.onRemove()
+    let resolved = false
+    void layer.ready.then(() => (resolved = true))
 
     load.resolve(tessellator)
-    await layer.ready
     await settle()
     expect(FakeWorker.live.size).toBe(0)
     expect(live()).toBe(0)
+    // No worker yet, so ready waits
+    expect(resolved).toBe(false)
 
     layer.onAdd(map, gl)
     expect(load.calls()).toBe(1)
     expect(FakeWorker.live.size).toBe(1)
     expect(live()).toBe(1)
+    await layer.ready
     layer.onRemove()
     expect(FakeWorker.live.size).toBe(0)
     expect(live()).toBe(0)
@@ -222,6 +195,7 @@ describe('HandwritingLayer', () => {
       await settle()
       expect(unhandled).toEqual([])
       await expect(layer.ready).rejects.toThrow('no module')
+      expect(map.errors).toEqual([{ type: 'error', error: new Error('no module'), layerId: 'view' }])
 
       layer.onRemove()
       layer.onAdd(map, gl)

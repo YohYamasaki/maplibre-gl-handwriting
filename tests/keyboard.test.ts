@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Tool } from '../src/createHandwriting'
 import {
+  ALL_TOOLS,
   changeToolSize,
   KeyboardShortcuts,
   shortcutRows,
@@ -10,16 +11,24 @@ import {
 } from '../src/keyboard'
 import { MAX_ERASER_RADIUS, MAX_WIDTH, MIN_ERASER_RADIUS, MIN_WIDTH, PenSettings } from '../src/pens'
 
-type Fake = KeyboardActions & { tool: Tool; selected: boolean; listOpen: boolean; calls: string[] }
+type Fake = KeyboardActions & {
+  tool: Tool
+  tools: readonly NonNullable<Tool>[]
+  selected: boolean
+  listOpen: boolean
+  calls: string[]
+}
 
-/** Actions that record what they were asked to do, with a tool, a selection and the list's state */
-function fakeActions(tool: Tool = 'pen'): Fake {
+/** Actions that record what they were asked to do, with a tool, the tools offered, a selection and the list's state */
+function fakeActions(tool: Tool = 'pen', tools: readonly NonNullable<Tool>[] = ALL_TOOLS): Fake {
   const fake: Fake = {
     tool,
+    tools,
     selected: false,
     listOpen: false,
     calls: [],
     getTool: () => fake.tool,
+    hasTool: (which) => fake.tools.includes(which),
     setTool: (next) => {
       fake.calls.push(`tool:${String(next)}`)
       if (next !== 'lasso') fake.selected = false
@@ -75,8 +84,11 @@ function key(k: string, fields: Partial<KeyEventLike> = {}): KeyEvent {
   return event
 }
 
-function setup(tool: Tool = 'pen'): { actions: Fake; shortcuts: KeyboardShortcuts } {
-  const actions = fakeActions(tool)
+function setup(
+  tool: Tool = 'pen',
+  tools: readonly NonNullable<Tool>[] = ALL_TOOLS,
+): { actions: Fake; shortcuts: KeyboardShortcuts } {
+  const actions = fakeActions(tool, tools)
   const shortcuts = new KeyboardShortcuts(actions, new EventTarget())
   return { actions, shortcuts }
 }
@@ -122,6 +134,28 @@ describe('keyboard shortcuts', () => {
     expect(actions.calls).toEqual(['tool:laser', 'tool:laser'])
     expect(toolKey('laser')).toBe('K')
     expect(shortcutRows(true)).toContainEqual(['K', 'Laser pointer'])
+  })
+
+  it('leaves the keys of the tools the handle does not offer to the page, and lists only the tools offered', () => {
+    const { actions, shortcuts } = setup('pen', ['pen'])
+    const keys = ['k', 'K', 'm', '3', 'e', '4', 'l', '5'].map((k) => key(k))
+    for (const e of keys) shortcuts.keydown(e)
+    expect(keys.filter((e) => e.prevented).map((e) => e.key)).toEqual([])
+    expect(actions.calls).toEqual([])
+    // The hand and the pen keep their keys
+    for (const k of ['h', '1', 'p', '2']) {
+      const e = key(k)
+      shortcuts.keydown(e)
+      expect(e.prevented).toBe(true)
+    }
+    expect(actions.calls).toEqual(['tool:null', 'tool:null', 'tool:pen', 'tool:pen'])
+
+    const rows = shortcutRows(true, ['pen']).map(([, what]) => what)
+    expect(rows).toContain('Move map')
+    expect(rows).toContain('Pen')
+    for (const left of ['Highlighter', 'Eraser', 'Lasso', 'Laser pointer']) expect(rows).not.toContain(left)
+    // Keys stay as with every tool: the eraser is still 4
+    expect(shortcutRows(true, ['eraser'])).toContainEqual(['E / 4', 'Eraser'])
   })
 
   it('undoes and redoes with Cmd or Ctrl, and leaves Ctrl or Cmd with other letters to the browser', () => {

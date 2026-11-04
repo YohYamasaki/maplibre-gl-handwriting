@@ -8,7 +8,7 @@ import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl
 // MapLibre finds its worker next to its own module, which Vite's pre-bundling moves: give it the worker's URL
 import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { debugPredictionCounts, debugSceneOf, setDebugPrediction } from '../src/debug'
-import { createHandwriting, HandwritingLayer, HandwritingToolbar, LaserChannel, StrokeStore } from '../src/index'
+import { createHandwriting, HandwritingLayer, HandwritingToolbar, LaserChannel, StrokeStore, type Tool } from '../src/index'
 import { mountPanel } from './panel'
 
 setWorkerUrl(mapLibreWorkerUrl)
@@ -46,14 +46,17 @@ const partialEraser = new URLSearchParams(location.search).has('partialEraser')
 // ?overlay: the page adds a layer of its own, 'overlay', on every style.load, as an app that adds its layers again
 // after setStyle does, and the handle goes before it (beforeId). window.__handwriting.addOverlay = false stops that
 const overlay = new URLSearchParams(location.search).has('overlay')
+// ?tools=pen,eraser: the handle offers only these tools (HandwritingOptions.tools)
+const tools = new URLSearchParams(location.search).get('tools')?.split(',') as NonNullable<Tool>[] | undefined
 const handle = createHandwriting(map, {
   store,
   laser,
   author: 'dev',
   experimental: { partialEraser },
   beforeId: overlay ? 'overlay' : undefined,
+  tools,
 })
-handle.setTool('pen')
+if (handle.getTools().includes('pen')) handle.setTool('pen')
 handle.setKeyboard(true)
 map.addControl(new HandwritingToolbar(handle))
 mountPanel(document.body, handle, map, store)

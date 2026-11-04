@@ -1,12 +1,18 @@
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { posix, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
 
+/** The `new URL(<literal>, import.meta.url)` that load the WebAssembly module, by the file that has it */
+const WASM_URLS: Record<string, string> = {
+  '/tessellator/pkg/handwriting_tessellator.js': "new URL('handwriting_tessellator_bg.wasm', import.meta.url)",
+  '/src/StrokeTessellator.ts': "new URL('../tessellator/pkg/handwriting_tessellator_bg.wasm', import.meta.url)",
+}
+
 /**
  * Library mode inlines every `new URL(file, import.meta.url)` asset as base64. The WebAssembly module is meant to be
- * a file of its own (fetched and compiled by streaming, and replaceable with the wasmUrl option), so the URL in the
- * generated bindings is marked `?no-inline` for this build only
+ * a file of its own (fetched and compiled by streaming, and replaceable with the wasmUrl option), so its URLs, in the
+ * generated bindings and in StrokeTessellator.ts, are marked `?no-inline` for this build only
  */
 function keepWasmAFile(): Plugin {
   return {
@@ -14,10 +20,53 @@ function keepWasmAFile(): Plugin {
     enforce: 'pre',
     apply: 'build',
     transform(code, id) {
-      if (!id.endsWith('/tessellator/pkg/handwriting_tessellator.js')) return null
-      const marked = code.replace("new URL('handwriting_tessellator_bg.wasm', import.meta.url)", "new URL('handwriting_tessellator_bg.wasm?no-inline', import.meta.url)")
-      if (marked === code) this.error('the WebAssembly URL in the generated bindings has changed; update keepWasmAFile')
+      const file = Object.keys(WASM_URLS).find((suffix) => id.endsWith(suffix))
+      if (!file) return null
+      const url = WASM_URLS[file]
+      const marked = code.replace(url, url.replace(".wasm'", ".wasm?no-inline'"))
+      if (marked === code) this.error(`the WebAssembly URL in ${file} has changed; update keepWasmAFile`)
       return { code: marked, map: null }
+    },
+  }
+}
+
+// What Vite writes for an asset of a library with a relative base: `new URL(new URL("assets/x", import.meta.url).href,
+// "" + import.meta.url)`, the inner one maybe after a /* @vite-ignore */, with any of the three quotes
+const VITE_ASSET_URL =
+  /new URL\(\s*(?:\/\*\s*@vite-ignore\s*\*\/\s*)?new URL\(\s*(["'`])([^"'`]+)\1\s*,\s*import\.meta\.url\s*\)\.href\s*,\s*(["'`])\3\s*\+\s*import\.meta\.url\s*\)/g
+// The form bundlers find: webpack makes an asset of it (and a bundled worker inside new Worker), Rollup's
+// import-meta-assets plugin copies the file
+const GENERIC_ASSET_URL = /new URL\("(\.\.?\/[^"]+)", import\.meta\.url\)/g
+
+/**
+ * Rewrites the asset URLs Vite writes into the form bundlers find, `new URL("./<relative path>", import.meta.url)`, in
+ * every JavaScript file of the build, the worker's included. The build fails when import.meta.url is anywhere else
+ * than in that form, or when a path does not point at a file of the build
+ */
+function genericAssetUrls(): Plugin {
+  return {
+    name: 'generic-asset-urls',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_options, bundle) {
+      for (const file of Object.values(bundle)) {
+        if (!file.fileName.endsWith('.js')) continue
+        const code = file.type === 'chunk' ? file.code : String(file.source)
+        const rewritten = code.replace(VITE_ASSET_URL, (_url, _quote, path: string) =>
+          `new URL("${path.startsWith('./') || path.startsWith('../') ? path : `./${path}`}", import.meta.url)`,
+        )
+        const all = rewritten.split('import.meta.url').length - 1
+        const generic = [...rewritten.matchAll(GENERIC_ASSET_URL)]
+        if (generic.length !== all) {
+          this.error(`${file.fileName}: import.meta.url is used ${all - generic.length} times outside new URL("./<path>", import.meta.url); update genericAssetUrls`)
+        }
+        for (const [, path] of generic) {
+          const target = posix.normalize(posix.join(posix.dirname(file.fileName), path))
+          if (!(target in bundle)) this.error(`${file.fileName}: new URL("${path}", import.meta.url) points at ${target}, which is not in the build`)
+        }
+        if (file.type === 'chunk') file.code = rewritten
+        else file.source = rewritten
+      }
     },
   }
 }
@@ -42,14 +91,15 @@ function emitToolbarStyles(): Plugin {
 
 // `vite` serves the dev page (dev/) from the source with the debug code in; `vite build` is the package: ESM with
 // src/core bundled in and also its own entry (./core), maplibre-gl left to the user as a peer dependency, the
-// tessellation worker and the WebAssembly module as files next to it. HANDWRITING_DEBUG=1 builds it with the debug
+// tessellation worker (assets/tessellation.worker.js) and the WebAssembly module as files next to it, found through
+// new URL("./<path>", import.meta.url) (genericAssetUrls). HANDWRITING_DEBUG=1 builds it with the debug
 // code in, for the pack check only (decision 0096). The .d.ts files come from tsconfig.build.json (npm run build)
 export default defineConfig(({ command }) => {
   const debug = command === 'serve' || process.env.HANDWRITING_DEBUG === '1'
   // HANDWRITING_OUT_DIR puts that build elsewhere (an absolute path, or relative to this directory)
   const outDir = resolve(fileURLToPath(new URL('.', import.meta.url)), process.env.HANDWRITING_OUT_DIR ?? 'dist')
   return {
-    plugins: [keepWasmAFile(), emitToolbarStyles()],
+    plugins: [keepWasmAFile(), emitToolbarStyles(), genericAssetUrls()],
     define: { __HANDWRITING_DEBUG__: JSON.stringify(debug) },
     root: command === 'serve' ? fileURLToPath(new URL('./dev', import.meta.url)) : undefined,
     publicDir: false,
@@ -76,7 +126,8 @@ export default defineConfig(({ command }) => {
     worker: {
       format: 'es',
       plugins: () => [keepWasmAFile()],
-      rollupOptions: { output: { assetFileNames: 'assets/[name][extname]' } },
+      // Unhashed, as the WebAssembly module: a bundler that copies the files finds the same names in every version
+      rollupOptions: { output: { entryFileNames: 'assets/[name].js', assetFileNames: 'assets/[name][extname]' } },
     },
   }
 })

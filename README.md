@@ -3,8 +3,8 @@
 Freehand drawing on a [MapLibre GL JS](https://maplibre.org/) map. Strokes are kept in map coordinates, tessellated
 off the main thread by [lyon](https://github.com/nical/lyon) compiled to WebAssembly, and drawn by a custom layer.
 It comes with a pen, a highlighter, an eraser, a lasso to move, scale, rotate, duplicate or delete strokes, a laser
-pointer, undo and redo, keyboard shortcuts and a toolbar control. `HandwritingLayer` draws the strokes alone, for
-maps that only show them.
+pointer, undo and redo, keyboard shortcuts and a toolbar control; the `tools` option chooses which tools a map
+offers. `HandwritingLayer` draws the strokes alone, for maps that only show them.
 
 The package draws and edits the strokes of a store you own. It does not save or share them: keep the store's
 strokes yourself, or connect the store to your own sync layer.
@@ -34,8 +34,18 @@ map.addControl(new HandwritingToolbar(handwriting))
 ```
 
 `style.css` holds the toolbar's styles. The toolbar floats along an edge of the map, wherever its placement setting
-says, not in the corner given to `addControl`. With Vite, exclude the package from dependency pre-bundling, so that its
-tessellation worker and WebAssembly module are served from where the package looks for them:
+says, not in the corner given to `addControl`.
+
+`handwriting.ready` resolves once the WebAssembly module has loaded on the main thread and in the layer's
+tessellation worker, which starts when the layer is added: after the style has loaded, and with `beforeId`, once the
+style has that layer. When the module or the worker fails to load, `ready` rejects and the map fires an `error` event
+with the layer's ID as `layerId` (on the console when nothing listens for it); the layer then draws nothing.
+
+The package loads its worker and its WebAssembly module with `new URL('./…', import.meta.url)`, which Vite and
+webpack 5 find by themselves; Rollup needs `@web/rollup-plugin-import-meta-assets`, and with esbuild copy the
+package's `dist/assets` next to the bundle ([docs/usage.md](docs/usage.md#bundlers)). With Vite, exclude the package
+from dependency pre-bundling, so that the dev server serves the worker and the module from where the package looks
+for them:
 
 ```ts
 // vite.config.ts
@@ -44,7 +54,8 @@ export default defineConfig({
 })
 ```
 
-[examples/basic](examples/basic) is a complete Vite project.
+[examples/basic](examples/basic) is a complete Vite project; [examples/webpack](examples/webpack),
+[examples/rollup](examples/rollup) and [examples/esbuild](examples/esbuild) are the same with the other bundlers.
 
 To only show strokes, add a `HandwritingLayer` yourself, anywhere among the style's layers:
 

@@ -39,7 +39,7 @@ export type EraserSettings = {
   mode: EraserMode
 }
 
-/** The laser pointer's lines. Every line, this screen's and the others', is drawn in this color */
+/** The laser pointer's lines. Every laser line, drawn here or received through the laser channel, is drawn in this color */
 export type LaserSettings = {
   /** #rrggbb */
   color: string

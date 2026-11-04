@@ -129,7 +129,7 @@ if (checkFirstPath) {
 const snapshots = {
   'public-api.txt': describeExports(program, 'src/index.ts') + '\n// maplibre-gl-handwriting/core\n' + describeExports(program, 'src/core/index.ts'),
   'worker-messages.txt':
-    describeExports(program, 'src/TessellationWorker.ts', ['BuildJob', 'BuildResult', 'TessellationInit']) +
+    describeExports(program, 'src/TessellationWorker.ts', ['BuildJob', 'BuildResult', 'TessellationInit', 'TessellationLoad']) +
     describeExports(program, 'src/MeshBuffer.ts', ['MeshData', 'StrokeRange']),
 }
 

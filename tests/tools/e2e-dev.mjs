@@ -1,7 +1,9 @@
 // Browser checks on the dev page (decision 0096), which has the debug code in: what the app's e2e checks looked at
 // inside the layer before the library moved here (decision 0094). The scene's meshes after a zoom, the frozen pieces
 // of a stroke being drawn, the selection and what a drag of it tessellates, and the input latency with and without
-// the predicted points. No server: the default store gives the order (decision 0091)
+// the predicted points. Also a HandwritingLayer whose worker script is missing (an error on the map, ready rejected,
+// nothing drawn) and a handle offering some tools only (?tools=). No server: the default store gives the order
+// (decision 0091)
 import { dirname, resolve } from 'node:path'
 import { assert, freePort, hexToRgb, line, near, startRun, wait, waitFor } from './browser.mjs'
 
@@ -331,6 +333,50 @@ await check("destroy leaves a layer of the style's with the handle's layer ID, a
   await e.eval(`window.__handwriting.handle.destroy(), true`)
   assert((await type()) === 'background', `destroy took the style's layer away: 'handwriting' is ${await type()}`)
   assert((await liveWorkers(e)) === 0, `${await liveWorkers(e)} tessellation workers after destroy`)
+})
+
+const f = await run.openClient()
+await f.navigate('/?blank')
+await waitFor('the dev page', () => f.eval(`!!window.__handwriting && !!document.querySelector('.handwriting-toolbar')`), 60000)
+await check('a HandwritingLayer whose worker script is missing rejects ready, is an error on the map, and draws nothing', async () => {
+  await f.eval(`(() => {
+    const h = window.__handwriting
+    h.failures = []
+    h.map.on('error', (e) => h.failures.push({ layerId: e.layerId, message: String(e.error?.message ?? e.error) }))
+    const store = new h.store.constructor()
+    h.broken = { store, layer: new h.HandwritingLayer({ store, id: 'broken', workerUrl: '/no-such-worker.js' }) }
+    h.map.addLayer(h.broken.layer)
+    return true
+  })()`)
+  const outcome = await f.eval(`window.__handwriting.broken.layer.ready.then(() => 'resolved', (e) => 'rejected: ' + e.message)`)
+  assert(outcome.startsWith('rejected'), `ready ${outcome}`)
+  const failures = await f.eval(`window.__handwriting.failures`)
+  assert(failures.length === 1 && failures[0].layerId === 'broken', `the map's errors: ${JSON.stringify(failures)}`)
+  // A stroke put in its store afterwards is not drawn either
+  await f.eval(`(() => {
+    const h = window.__handwriting
+    const mercator = ([x, y]) => {
+      const { lng, lat } = h.map.unproject([x, y])
+      const s = Math.sin((lat * Math.PI) / 180)
+      return [(lng + 180) / 360, 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)]
+    }
+    const points = ${JSON.stringify(line([300, 450], [700, 450]))}.map(mercator)
+    h.broken.store.apply({ type: 'load', strokes: [{ id: 'broken-1', author: 'e2e', color: '#ff0000', width: 8, zoom: h.map.getZoom(), points }] }, 'remote')
+    h.map.triggerRepaint()
+    return true
+  })()`)
+  await wait(1000)
+  const [at] = await f.pixels([[500, 450]])
+  assert(!near(at, hexToRgb('#ff0000')), `the stroke of the failed layer shows ${at}`)
+  assert((await f.eval(`window.__handwriting.failures.length`)) === 1, 'more errors on the map after the stroke')
+})
+
+const g = await run.openClient()
+await g.navigate('/?blank&tools=pen,eraser')
+await check('?tools=pen,eraser: the toolbar has the hand, the pen and the eraser only', async () => {
+  await waitFor('the toolbar', () => g.eval(`!!document.querySelector('.handwriting-toolbar')`), 60000)
+  const buttons = await g.eval(`[...document.querySelectorAll('.handwriting-toolbar [data-tool]')].map((b) => b.dataset.tool)`)
+  assert(JSON.stringify(buttons) === JSON.stringify(['hand', 'pen', 'eraser']), `the toolbar's tools: ${buttons}`)
 })
 
 await run.done()

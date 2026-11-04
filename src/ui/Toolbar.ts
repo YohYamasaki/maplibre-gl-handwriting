@@ -24,7 +24,7 @@ type ToolButton = { tool: Tool; label: string; icon: IconName; description: stri
 type PopoverOwner = Tool
 
 // The partial eraser is a mode in the eraser's popover. The order is the keys 1 to 5's
-// (keyboard.ts TOOL_ORDER); the descriptions are the tooltips'
+// (keyboard.ts TOOL_ORDER), also when the handle offers only some of the tools; the descriptions are the tooltips'
 const TOOLS: ToolButton[] = [
   { tool: null, label: 'Move map', icon: 'hand', description: 'Drag to pan; pinch or scroll to zoom' },
   { tool: 'pen', label: 'Pen', icon: 'pen', description: 'Draw. Press again for color and width' },
@@ -32,7 +32,7 @@ const TOOLS: ToolButton[] = [
   { tool: 'eraser', label: 'Eraser', icon: 'eraser', description: 'Erase lines you touch. Press again for size' },
   { tool: 'lasso', label: 'Lasso', icon: 'lasso', description: 'Circle lines to select them, then move, scale or rotate' },
   // The laser pointer has no settings, like the lasso
-  { tool: 'laser', label: 'Laser', icon: 'laser', description: 'Point at the map for everyone; the line fades and is not saved' },
+  { tool: 'laser', label: 'Laser', icon: 'laser', description: 'Point at the map; the line fades and is not saved' },
 ]
 
 /** The descriptions of the buttons that are not tools, by their labels */
@@ -68,7 +68,7 @@ function rectIn(node: Element, container: Element): Rect {
 }
 
 /**
- * A floating toolbar for a handle: the tools, undo and redo, per tool a popover with its
+ * A floating toolbar for a handle: the hand and the handle's tools (getTools), undo and redo, per tool a popover with its
  * settings (press the selected tool again), and a toggle for pen-only input. It can be dragged to
  * any side of the map and collapsed; where it is goes to the handle's settings (setToolbar), so it is saved and
  * restored with the pens.
@@ -112,7 +112,10 @@ export class HandwritingToolbar implements IControl {
     const tools = document.createElement('div')
     tools.className = 'handwriting-toolbar-tools'
     this.tools = tools
+    // The hand and the tools the handle offers
+    const offered = this.handle.getTools()
     for (const entry of TOOLS) {
+      if (entry.tool !== null && !offered.includes(entry.tool)) continue
       const node = button('handwriting-toolbar-button', entry.label, entry.icon)
       node.dataset.tool = entry.tool ?? 'hand'
       node.addEventListener('click', () => this.onToolClick(entry.tool))

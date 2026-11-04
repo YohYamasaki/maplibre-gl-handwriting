@@ -33,6 +33,12 @@ const PRESSURE_STEP = 0.1
  */
 const PRESSURE_MIN_DISTANCE = 0.75
 
+/**
+ * The WebAssembly module next to this script: what load() fetches when given no module, and what the main thread
+ * sends each worker (TessellationInit). The literal URL lets a bundler find the file and give it its own URL
+ */
+export const WASM_URL = new URL('../tessellator/pkg/handwriting_tessellator_bg.wasm', import.meta.url)
+
 /** A stroke's points thinned for one zoom (see appendSamples), and their width coefficients when it has pressure */
 export type Samples = { points: Point[]; pressure?: number[] }
 
@@ -57,11 +63,11 @@ export class StrokeTessellator {
 
   /**
    * Loads and instantiates the WebAssembly module, then returns a tessellator backed by it.
-   * In a browser the module is fetched next to the script, or from `wasm` when it is a URL;
+   * In a browser the module is fetched from WASM_URL, or from `wasm` when it is a URL;
    * outside one (tests, benchmarks) pass its bytes. The module is instantiated once per thread: later calls reuse it
    */
   static async load(wasm?: BufferSource | string | URL): Promise<StrokeTessellator> {
-    await (wasm ? init({ module_or_path: wasm }) : init())
+    await init({ module_or_path: wasm || WASM_URL })
     // One instance reused for every stroke, so lyon's internal buffers are allocated only once
     return new StrokeTessellator(new Tessellator())
   }
