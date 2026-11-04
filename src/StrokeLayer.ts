@@ -85,12 +85,21 @@ const UNIFORM_NAMES = [
   "u_projection_transition",
 ] as const;
 
+/**
+ * Whether the map's style holds this very layer: MapLibre wraps a custom layer it adds in a CustomStyleLayer that keeps
+ * it as `implementation`. The ID alone may be another layer's, e.g. one added after a style rebuilt without this one
+ */
+export function holdsLayer(map: MapLibreMap, layer: CustomLayerInterface): boolean {
+  const styleLayer = map.getLayer(layer.id);
+  return styleLayer !== undefined && "implementation" in styleLayer && styleLayer.implementation === layer;
+}
+
 export type StrokeLayerOptions = WorkerLocation & {
   /** The layer's ID in the map style */
   id: string;
   /** The strokes selected with the lasso tool, drawn apart and moved while they are dragged */
   selection?: Selection;
-  /** The browser's predicted points after the tips of the strokes being drawn (decision 0037 P7-1) */
+  /** The browser's predicted points after the tips of the strokes being drawn */
   prediction?: Prediction;
 };
 
@@ -98,7 +107,11 @@ export type StrokeLayerOptions = WorkerLocation & {
  * MapLibre custom layer that draws the strokes in a StrokeStore with WebGL.
  * What to draw, and in which order, comes from a StrokeScene (see there); this class owns the GPU copies
  * of the scene's meshes, the shader program and the draw calls, and runs bucket builds on a Web Worker.
- * GL resources are created lazily in render, because MapLibre resets its cached GL state only after render
+ * GL resources are created lazily in render, because MapLibre resets its cached GL state only after render.
+ *
+ * MapLibre does not call onRemove when it rebuilds the style (setStyle without a diff) or when the map is removed,
+ * so an onAdd may come while the last one's scene, worker and GPU resources are still held: they are freed first.
+ * dispose frees them when the layer is no longer on the map's style and onRemove will not come
  */
 export class StrokeLayer implements CustomLayerInterface {
   readonly id: string;
@@ -106,6 +119,8 @@ export class StrokeLayer implements CustomLayerInterface {
   readonly renderingMode = "2d";
 
   private map: MapLibreMap | null = null;
+  // The context onAdd was given, which render creates the GPU resources on, to free them with when onRemove does not come
+  private gl: WebGL2RenderingContext | null = null;
   private worker: TessellationWorker | null = null;
   private currentScene: StrokeScene | null = null;
   // One program per projection variant (mercator, globe), since the shader prelude differs
@@ -125,8 +140,11 @@ export class StrokeLayer implements CustomLayerInterface {
     this.id = options.id;
   }
 
-  onAdd(map: MapLibreMap): void {
+  onAdd(map: MapLibreMap, gl: WebGL2RenderingContext): void {
+    // Added again without onRemove (a style rebuilt): the last scene, worker and GPU resources go first
+    this.release();
     this.map = map;
+    this.gl = gl;
     const repaint = (): void => map.triggerRepaint();
     const worker = new TessellationWorker(
       (result) => scene.onBuilt(result),
@@ -145,7 +163,7 @@ export class StrokeLayer implements CustomLayerInterface {
     this.currentScene = scene;
   }
 
-  /** Development builds only (debug.ts); the package never draws the wireframe (decision 0096) */
+  /** Development builds only (debug.ts); the package never draws the wireframe */
   setWireframe(wireframe: boolean): void {
     this.wireframe = wireframe;
     this.map?.triggerRepaint();
@@ -156,21 +174,40 @@ export class StrokeLayer implements CustomLayerInterface {
     return this.currentScene;
   }
 
-  onRemove(_map: MapLibreMap, gl: WebGL2RenderingContext): void {
+  onRemove(): void {
+    this.release();
+  }
+
+  /**
+   * Frees what the last onAdd made, as onRemove does, for a layer no longer on the map's style that onRemove will not
+   * reach (a style rebuilt without it, or a removed map). The layer can be added again afterwards
+   */
+  dispose(): void {
+    this.release();
+  }
+
+  /** Frees the scene (its store subscription), the worker and the GPU resources, with the context onAdd was given */
+  private release(): void {
     this.currentScene?.destroy();
     this.worker?.terminate();
-    for (const mesh of [...this.gpu.keys()]) this.deleteGpu(gl, mesh);
-    for (const { program } of this.programs.values()) gl.deleteProgram(program);
-    this.programs.clear();
-    if (this.target) deleteTarget(gl, this.target);
-    this.target = null;
-    if (this.composite) {
-      gl.deleteProgram(this.composite.program);
-      gl.deleteVertexArray(this.composite.vao);
+    const gl = this.gl;
+    if (gl) {
+      for (const mesh of [...this.gpu.keys()]) this.deleteGpu(gl, mesh);
+      for (const { program } of this.programs.values()) gl.deleteProgram(program);
+      if (this.target) deleteTarget(gl, this.target);
+      if (this.composite) {
+        gl.deleteProgram(this.composite.program);
+        gl.deleteVertexArray(this.composite.vao);
+      }
     }
+    this.gpu.clear();
+    this.programs.clear();
+    this.target = null;
     this.composite = null;
     this.currentScene = null;
+    this.worker = null;
     this.map = null;
+    this.gl = null;
   }
 
   /**

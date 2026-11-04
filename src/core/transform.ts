@@ -1,6 +1,6 @@
-// Moving, scaling and rotating saved strokes (decision 0037 P5).
-// A transform is a similarity in normalized Web Mercator coordinates. Every client and the server apply it with
-// transformStroke, so all of them end up with the same numbers
+// Moving, scaling and rotating saved strokes.
+// A transform is a similarity in normalized Web Mercator coordinates. Every store the transform op reaches (other
+// clients, a sync layer's own copy) applies it with transformStroke, so all of them end up with the same numbers
 import type { Point, StrokeData } from './stroke'
 
 /**

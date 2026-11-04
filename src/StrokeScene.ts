@@ -42,7 +42,7 @@ const TILE_EXTENT = 8192;
 
 /**
  * Depth resolution of the drawing order: the vertex shader gives consecutive orders depths 2^-ORDER_DEPTH_BITS
- * apart, so ORDER_DEPTH_BITS sits a little below the 24 bits of the depth buffer, leaving room for rounding.
+ * apart, so ORDER_DEPTH_BITS sits a little below the 24 bits of the depth buffer, leaving a margin for rounding.
  * 2^ORDER_DEPTH_BITS - 2 consecutive orders get depths of their own (see FrameDraws.orderBase)
  */
 export const ORDER_DEPTH_BITS = 22;
@@ -68,7 +68,7 @@ export type BucketMesh = { opaque: MeshBuffer; translucent: MeshBuffer };
  * What to draw in one frame. Opaque strokes are drawn first with depth writes, in any order: each vertex's
  * order becomes its depth, so later strokes cover earlier ones. Translucent strokes are drawn after them,
  * in drawing order, with depth writes and a strictly-less test: they blend over what is under them, are hidden
- * by later opaque strokes, and each is painted once where it covers a pixel twice (ADR 0043). In each list,
+ * by later opaque strokes, and each is painted once where it covers a pixel twice. In each list,
  * strokes being drawn come last
  */
 export type FrameDraws = {
@@ -143,7 +143,7 @@ export type HotStroke = Extent & {
   // The curve up to samples[frozenTo]
   frozen: MeshBuffer;
   frozenTo: number;
-  // The curve from samples[frozenTo] to the end, then through the predicted points (decision 0037 P7-1), and the
+  // The curve from samples[frozenTo] to the end, then through the predicted points, and the
   // sample count and predicted points it was made for
   tail: MeshBuffer;
   tailSamples: number;
@@ -151,7 +151,7 @@ export type HotStroke = Extent & {
 };
 
 /**
- * The selected strokes (decision 0037 P5-4), taken out of their buckets and tessellated once into meshes of their
+ * The selected strokes, taken out of their buckets and tessellated once into meshes of their
  * own, one pair per tile the strokes are filed under, so a drag only changes the transform they are drawn with
  */
 type SelectionMeshes = {
@@ -647,7 +647,7 @@ export class StrokeScene {
         break;
       }
       case "replace": {
-        // The server's copies of strokes moved: like a transform with no one matrix for the selection
+        // Strokes set to another copy of them moved: like a transform with no one matrix for the selection
         let selectedMoved = false;
         for (const stroke of op.strokes) {
           if (this.selected.strokes.has(stroke.id)) {
@@ -885,7 +885,6 @@ export class StrokeScene {
     if (n - 2 - hot.frozenTo >= FREEZE_SEGMENTS) {
       const from = hot.frozenTo;
       // Round caps at both ends overlap the neighboring pieces; the stroke's single depth paints it once there
-      // (ADR 0043)
       this.onMainThread(frozen, () => {
         this.writer.appendPiece(frozen, stroke, samples, from, n - 2, zoom);
       });

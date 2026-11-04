@@ -1,4 +1,4 @@
-// The eraser's reach drawn around the pointer (decision 0037 P8-2). Styled inline so that it shows without the
+// The eraser's reach drawn around the pointer. Styled inline so that it shows without the
 // package's style.css; setting element.style is allowed under a CSP that forbids inline style attributes.
 // Elements styled inline are hidden with style.display, never the hidden attribute: the browser's [hidden] rule loses
 // to an inline display. Elements styled in toolbar.css (the tooltip, the popovers) use the hidden attribute, with a

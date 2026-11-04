@@ -183,4 +183,154 @@ await check('the load test strokes come in under the layer through load, and Can
   await toggle('load test strokes')
 })
 
+// MapLibre calls no onRemove when setStyle rebuilds the style or the map is removed. The checks below count the
+// tessellation workers alive (made and not terminated, through a Worker wrapped before the page loads) and the store's
+// subscriptions (StrokeStore's listeners), so a layer added again, or destroyed off the map, is seen to free them
+const COUNT_WORKERS = `(() => {
+  const Native = window.Worker
+  const counts = (window.__tessellationWorkers = { made: 0, terminated: 0 })
+  window.Worker = class extends Native {
+    constructor(url, options) {
+      super(url, options)
+      this.counted = String(url).includes('tessellation')
+      if (this.counted) counts.made++
+    }
+    terminate() {
+      if (this.counted) counts.terminated++
+      this.counted = false
+      super.terminate()
+    }
+  }
+})()`
+/** A tab on the dev page at `path`, with the tessellation workers counted, once its handle's layer is on the map */
+async function openCounted(path) {
+  const client = await run.openClient()
+  await client.send('Page.addScriptToEvaluateOnNewDocument', { source: COUNT_WORKERS })
+  await client.navigate(path)
+  await waitFor('the dev page', () => client.eval(`!!window.__handwriting && !!document.querySelector('.handwriting-toolbar')`), 60000)
+  await waitFor('the layer', () => client.eval(`!!window.__handwriting.scene() && !!window.__handwriting.map.getLayer('handwriting')`), 30000)
+  return client
+}
+const liveWorkers = (client) => client.eval(`window.__tessellationWorkers.made - window.__tessellationWorkers.terminated`)
+const subscriptions = (client) => client.eval(`window.__handwriting.store.listeners.size`)
+/** setStyle without a diff, with the style first read from the map (it leaves custom layers out); resolves after its style.load */
+const rebuildStyle = (client, style = 'window.__handwriting.style') =>
+  client.eval(`new Promise((resolve) => {
+    const h = window.__handwriting
+    h.lastScene = h.scene()
+    h.map.once('style.load', () => resolve(true))
+    h.map.setStyle(structuredClone(${style}), { diff: false })
+  })`)
+
+const c = await openCounted('/?blank')
+const black = hexToRgb('#000000')
+await check('after setStyle without a diff, the handle adds its layer again, with one worker and no subscription left over', async () => {
+  await c.drag(line([300, 330], [700, 330]))
+  await waitFor('the stroke with an order', () => c.eval(`[...window.__handwriting.store.values()].some((s) => s.order !== undefined)`))
+  await waitFor('the stroke on the page', async () => near((await c.pixels([[500, 330]]))[0], black))
+  await c.eval(`window.__handwriting.style = window.__handwriting.map.getStyle(), true`)
+  const before = await subscriptions(c)
+  assert((await liveWorkers(c)) === 1, `${await liveWorkers(c)} tessellation workers before the rebuilds`)
+  for (let i = 0; i < 3; i++) {
+    await rebuildStyle(c)
+    await waitFor(`the layer added again after rebuild ${i + 1}`, () =>
+      c.eval(`(() => { const h = window.__handwriting; return !!h.map.getLayer('handwriting') && !!h.scene() && h.scene() !== h.lastScene })()`),
+    )
+  }
+  await waitFor('the stroke on the page again', async () => near((await c.pixels([[500, 330]]))[0], black))
+  const workers = await liveWorkers(c)
+  assert(workers === 1, `${workers} tessellation workers alive after 3 rebuilds`)
+  const after = await subscriptions(c)
+  assert(after === before, `the store has ${after} subscriptions after 3 rebuilds, ${before} before`)
+})
+
+await check('setStyle with a diff keeps the layer and its scene, and the stroke stays drawn', async () => {
+  const made = await c.eval(`window.__tessellationWorkers.made`)
+  await c.eval(`new Promise((resolve) => {
+    const h = window.__handwriting
+    h.lastScene = h.scene()
+    const style = structuredClone(h.style)
+    style.layers[0].paint = { 'background-color': '#e0e0e0' }
+    h.map.once('styledata', () => resolve(true))
+    h.map.setStyle(style)
+  })`)
+  await waitFor('the new background', async () => near((await c.pixels([[500, 600]]))[0], hexToRgb('#e0e0e0')))
+  assert(await c.eval(`(() => { const h = window.__handwriting; return !!h.map.getLayer('handwriting') && h.scene() === h.lastScene })()`), 'the diff replaced the layer')
+  const [on] = await c.pixels([[500, 330]])
+  assert(near(on, black), `the stroke shows ${on}`)
+  assert((await c.eval(`window.__tessellationWorkers.made`)) === made, 'the diff made a new worker')
+})
+
+await check('a HandwritingLayer with a store of its own draws what is loaded into it, and destroy after map.remove() frees its worker', async () => {
+  await c.eval(`(() => {
+    const h = window.__handwriting
+    const store = new h.store.constructor()
+    h.view = { store, layer: new h.HandwritingLayer({ store, id: 'view' }) }
+    h.map.addLayer(h.view.layer)
+    return true
+  })()`)
+  await c.eval(`window.__handwriting.view.layer.ready.then(() => true)`)
+  const screen = line([300, 450], [700, 450])
+  await c.eval(`(() => {
+    const h = window.__handwriting
+    const mercator = ([x, y]) => {
+      const { lng, lat } = h.map.unproject([x, y])
+      const s = Math.sin((lat * Math.PI) / 180)
+      return [(lng + 180) / 360, 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)]
+    }
+    const points = ${JSON.stringify(screen)}.map(mercator)
+    h.view.store.apply({ type: 'load', strokes: [{ id: 'view-1', author: 'e2e', color: '#0000ff', width: 6, zoom: h.map.getZoom(), points }] }, 'remote')
+    return true
+  })()`)
+  const blue = hexToRgb('#0000ff')
+  await waitFor('the loaded stroke on the page', async () => near((await c.pixels([[500, 450]]))[0], blue))
+  assert((await liveWorkers(c)) === 2, `${await liveWorkers(c)} tessellation workers with the handle and the layer`)
+  await c.eval(`window.__handwriting.map.remove(), true`)
+  await c.eval(`window.__handwriting.view.layer.destroy(), true`)
+  assert((await liveWorkers(c)) === 1, `${await liveWorkers(c)} tessellation workers after the layer's destroy`)
+  await c.eval(`window.__handwriting.handle.destroy(), true`)
+  assert((await liveWorkers(c)) === 0, `${await liveWorkers(c)} tessellation workers after the handle's destroy`)
+})
+
+const d = await openCounted('/?blank&overlay')
+const order = () => d.eval(`window.__handwriting.map.getLayersOrder()`)
+await check("a handle with beforeId comes back before the page's own layer after a rebuild, and never goes on top", async () => {
+  // Before it, not necessarily right before: the frame timer's layers (dev/StrokeTimer.ts) go around the handle's
+  const placed = (ids) => ids.indexOf('handwriting') >= 0 && ids.indexOf('handwriting') < ids.indexOf('overlay')
+  await waitFor('the layer before the overlay', async () => placed(await order()))
+  // The page adds the overlay again on its style.load
+  await d.eval(`(() => { const h = window.__handwriting; const style = h.map.getStyle(); style.layers = style.layers.filter((l) => l.id !== 'overlay'); h.style = style; return true })()`)
+  await rebuildStyle(d)
+  await waitFor('the layer before the overlay after the rebuild', async () => placed(await order()))
+
+  await d.eval(`window.__handwriting.addOverlay = false, true`)
+  await rebuildStyle(d)
+  await wait(500)
+  const ids = await order()
+  assert(!ids.includes('handwriting'), `the layer went in without the overlay: ${ids}`)
+  assert((await liveWorkers(d)) === 1, `${await liveWorkers(d)} tessellation workers while the layer waits`)
+  await d.eval(`window.__handwriting.handle.destroy(), true`)
+  assert((await liveWorkers(d)) === 0, `${await liveWorkers(d)} tessellation workers after destroy off the map`)
+})
+
+const e = await openCounted('/?blank')
+await check("destroy leaves a layer of the style's with the handle's layer ID, and frees the handle's own layer", async () => {
+  // A rebuilt style with a layer of its own named 'handwriting': the handle's layer cannot go in, and is off the map
+  await e.eval(`(() => {
+    const h = window.__handwriting
+    const style = h.map.getStyle()
+    style.layers.push({ id: 'handwriting', type: 'background', paint: { 'background-color': '#000000', 'background-opacity': 0 } })
+    h.style = style
+    return true
+  })()`)
+  await rebuildStyle(e)
+  await wait(500)
+  const type = () => e.eval(`window.__handwriting.map.getLayer('handwriting')?.type ?? null`)
+  assert((await type()) === 'background', `the layer 'handwriting' is ${await type()}`)
+  assert((await liveWorkers(e)) === 1, `${await liveWorkers(e)} tessellation workers before destroy`)
+  await e.eval(`window.__handwriting.handle.destroy(), true`)
+  assert((await type()) === 'background', `destroy took the style's layer away: 'handwriting' is ${await type()}`)
+  assert((await liveWorkers(e)) === 0, `${await liveWorkers(e)} tessellation workers after destroy`)
+})
+
 await run.done()

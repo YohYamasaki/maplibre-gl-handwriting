@@ -8,7 +8,7 @@ export type LaserOptions = {
 
 /**
  * Turns Pointer Events on an element into laser ops of this screen (source '') and emits them on the channel as
- * local (decision 0078). Nothing is stored and nothing goes into the undo history
+ * local. Nothing is stored and nothing goes into the undo history
  */
 export class LaserController {
   // The line being drawn

@@ -30,7 +30,7 @@ export type GestureClaim = {
   setTouchFree(free: boolean): void
   /**
    * Sets this claim's cursor (a CSS cursor) on the canvas and the canvas container, inline so that it wins over
-   * MapLibre's stylesheet while the container holds the pointer (decision 0086). The map shows the cursor of the
+   * MapLibre's stylesheet while the container holds the pointer. The map shows the cursor of the
    * claim that set one last
    */
   setCursor(cursor: string): void

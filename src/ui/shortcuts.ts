@@ -1,4 +1,4 @@
-// The list of keyboard shortcuts that ? shows over the map (decisions 0081, 0082). Styled inline, like the
+// The list of keyboard shortcuts that ? shows over the map. Styled inline, like the
 // eraser's circle, so that it shows without the package's style.css
 import { shortcutRows } from '../keyboard'
 import { appendChildren } from './dom'

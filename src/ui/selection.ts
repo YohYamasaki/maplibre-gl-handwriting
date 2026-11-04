@@ -1,4 +1,4 @@
-// The frame around the selection, its handles, its action bar and the lasso being drawn (decision 0037 P5-5).
+// The frame around the selection, its handles, its action bar and the lasso being drawn.
 // Styled inline, like the eraser's cursor, so that they show without the package's style.css.
 // Elements styled inline are hidden with style.display, never the hidden attribute: the browser's [hidden] rule loses
 // to an inline display. Elements styled in toolbar.css (the tooltip, the popovers) use the hidden attribute, with a

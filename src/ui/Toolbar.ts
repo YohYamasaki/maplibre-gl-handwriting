@@ -18,23 +18,20 @@ import {
 import { eraserPopover, penPopover, type PopoverContent } from './popover'
 import { Tooltip, type TooltipText } from './tooltip'
 
-/** Options of HandwritingToolbar. None yet: the keyboard shortcuts are the handle's (HandwritingOptions.keyboard) */
-export type ToolbarOptions = Record<string, never>
-
 type ToolButton = { tool: Tool; label: string; icon: IconName; description: string }
 
 /** What a popover belongs to: a tool's settings */
 type PopoverOwner = Tool
 
-// The partial eraser (decision 0037 P4) is a mode in the eraser's popover. The order is the keys 1 to 5's
-// (keyboard.ts TOOL_ORDER); the descriptions are the tooltips' (decision 0083)
+// The partial eraser is a mode in the eraser's popover. The order is the keys 1 to 5's
+// (keyboard.ts TOOL_ORDER); the descriptions are the tooltips'
 const TOOLS: ToolButton[] = [
   { tool: null, label: 'Move map', icon: 'hand', description: 'Drag to pan; pinch or scroll to zoom' },
   { tool: 'pen', label: 'Pen', icon: 'pen', description: 'Draw. Press again for color and width' },
   { tool: 'highlighter', label: 'Highlighter', icon: 'highlighter', description: 'Draw translucent lines. Press again for color and width' },
   { tool: 'eraser', label: 'Eraser', icon: 'eraser', description: 'Erase lines you touch. Press again for size' },
   { tool: 'lasso', label: 'Lasso', icon: 'lasso', description: 'Circle lines to select them, then move, scale or rotate' },
-  // The laser pointer has no settings, like the lasso (decision 0079)
+  // The laser pointer has no settings, like the lasso
   { tool: 'laser', label: 'Laser', icon: 'laser', description: 'Point at the map for everyone; the line fades and is not saved' },
 ]
 
@@ -71,8 +68,8 @@ function rectIn(node: Element, container: Element): Rect {
 }
 
 /**
- * A floating toolbar for a handle (decision 0037 P6): the tools, undo and redo, per tool a popover with its
- * settings (press the selected tool again), and a toggle for pen-only input (decision 0045). It can be dragged to
+ * A floating toolbar for a handle: the tools, undo and redo, per tool a popover with its
+ * settings (press the selected tool again), and a toggle for pen-only input. It can be dragged to
  * any side of the map and collapsed; where it is goes to the handle's settings (setToolbar), so it is saved and
  * restored with the pens.
  *
@@ -100,11 +97,7 @@ export class HandwritingToolbar implements IControl {
   private tooltip: Tooltip | null = null
   private cleanups: (() => void)[] = []
 
-  constructor(
-    private handle: Handwriting,
-    // Kept for options to come
-    private options: ToolbarOptions = {},
-  ) {}
+  constructor(private handle: Handwriting) {}
 
   onAdd(map: MapLibreMap): HTMLElement {
     this.map = map
@@ -135,7 +128,7 @@ export class HandwritingToolbar implements IControl {
     this.penOnlyButton = button('handwriting-toolbar-button handwriting-toolbar-pen-only', 'Draw with pen only', 'pen-tool')
     this.penOnlyButton.addEventListener('click', () => this.handle.setPenOnly(!this.handle.getSettings().penOnly))
     appendChildren(tools, separator, this.undoButton, this.redoButton)
-    // Pen-only input keeps touch from drawing: a toggle only where there is touch (decision 0084)
+    // Pen-only input keeps touch from drawing: a toggle only where there is touch
     if (navigator.maxTouchPoints > 0) appendChildren(tools, this.penOnlyButton)
     const collapse = button('handwriting-toolbar-collapse', 'Collapse toolbar', 'collapse')
     collapse.addEventListener('click', () => this.handle.setToolbar({ collapsed: !this.handle.getSettings().toolbar.collapsed }))
@@ -259,7 +252,7 @@ export class HandwritingToolbar implements IControl {
       this.closePopover()
     }, true)
     // Esc closes the popover. The handle's shortcuts listen on the window, after the document, and leave an Esc
-    // prevented here alone, so the selection stays (decision 0082)
+    // prevented here alone, so the selection stays
     this.listen(document, 'keydown', (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || !this.popover || this.popover.hidden) return
       e.preventDefault()
@@ -267,14 +260,14 @@ export class HandwritingToolbar implements IControl {
     })
   }
 
-  /** What the tooltip of `button` says; the keys only while the handle's shortcuts are on (decision 0082) */
+  /** What the tooltip of `button` says; the keys only while the handle's shortcuts are on */
   private tooltipText(button: HTMLElement): TooltipText | null {
     const label = button.getAttribute('aria-label')
     if (!label) return null
     const keyboard = this.handle.isKeyboardEnabled()
     const entry = TOOLS.find((t) => this.toolButtons.get(t.tool) === button)
     if (entry) {
-      // The laser pointer has its letter only: 1 to 5 are the first five tools (decision 0081)
+      // The laser pointer has its letter only: 1 to 5 are the first five tools
       const digit = TOOL_ORDER.indexOf(entry.tool) + 1
       const keys = digit > 0 ? `${toolKey(entry.tool)} / ${digit}` : toolKey(entry.tool)
       return { name: label, description: entry.description, keys: keyboard ? keys : undefined }

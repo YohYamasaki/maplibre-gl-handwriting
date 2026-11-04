@@ -20,7 +20,7 @@ export type SelectOptions = {
   onTransform: (ids: string[], matrix: Matrix) => void
   /**
    * Called with the CSS cursor for what a mouse or pen over the map would grab of the selection, as it moves with
-   * the lasso and as a drag of the frame starts (decision 0086)
+   * the lasso and as a drag of the frame starts
    */
   onCursor?: (cursor: string) => void
 }
@@ -121,7 +121,7 @@ type Gesture =
   | { kind: 'frame'; pointerId: number; grip: FrameGrip; corners: Point[]; start: Point; client: [number, number]; moved: boolean }
 
 /**
- * The lasso tool (decision 0037 P5): a lasso selects the strokes with an order and at least half of their points inside
+ * The lasso tool: a lasso selects the strokes with an order and at least half of their points inside
  * it, a tap selects the topmost stroke under the pointer, and a tap on nothing clears the selection. A drag inside
  * the frame moves the selection, of a corner handle scales it about the opposite corner, and of the handle above
  * rotates it about its center. While dragging only the selection's drag transform changes; the transform op is

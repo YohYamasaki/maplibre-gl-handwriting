@@ -20,8 +20,8 @@ export type Cut = { removed: StrokeData; pieces: StrokeData[] }
  * strokes, undoing a partial erase removes the pieces and restores the cut strokes, latest cut first, so a
  * piece cut again in the same gesture comes back before its own stroke does, and undoing a transform applies its
  * inverse. All through the store as local ops like any other edit.
- * An undo can fail quietly: a stroke someone else has erased in the meantime cannot be restored,
- * and the server takes it away again
+ * An undo can fail quietly: a stroke someone else has erased in the meantime cannot be restored, and a sync layer
+ * that knows of that erase may take it away again
  */
 export class UndoHistory {
   private undoStack: HistoryAction[] = []
@@ -74,7 +74,7 @@ export class UndoHistory {
     this.onChange()
   }
 
-  /** Forgets everything, e.g. when the connection that could undo the removes on the server is gone */
+  /** Forgets everything, e.g. when the sync layer's connection that could undo the removes elsewhere is gone */
   clear(): void {
     this.undoStack = []
     this.redoStack = []
@@ -118,7 +118,7 @@ export class UndoHistory {
     }
   }
 
-  /** Redoes the cuts with remove and restore, which the server can undo again, rather than cutting anew */
+  /** Redoes the cuts with remove and restore, which every copy of the store can undo again, rather than cutting anew */
   private recut(cuts: Cut[]): void {
     for (const cut of cuts) {
       this.apply([cut.removed], 'remove')

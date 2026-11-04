@@ -1,4 +1,4 @@
-// Laser lines drawn over the whole map, labels included (decision 0079): a Canvas 2D over the map's canvas, redrawn
+// Laser lines drawn over the whole map, labels included: a Canvas 2D over the map's canvas, redrawn
 // every frame while any laser point is alive, and not at all otherwise
 import { MercatorCoordinate, type Map as MapLibreMap } from 'maplibre-gl'
 import type { LaserChannel } from '../core/laser'

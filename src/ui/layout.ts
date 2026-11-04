@@ -64,7 +64,7 @@ export function popoverPosition(edge: ToolbarEdge, anchor: Rect, bar: Rect, popo
 
 /**
  * Top-left corner of the tooltip of `anchor` (a toolbar button): on the map side of the toolbar, TOOLTIP_GAP away,
- * centered on the button, and kept inside the container (decision 0083)
+ * centered on the button, and kept inside the container
  */
 export function tooltipPosition(edge: ToolbarEdge, anchor: Rect, bar: Rect, tooltip: Size, container: Size): Position {
   return besideBar(edge, anchor, bar, tooltip, container, TOOLTIP_GAP)

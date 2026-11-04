@@ -21,7 +21,7 @@ const MAX_DETAIL_ZOOMS = 8
 
 /**
  * A sample closer to the last one than the tolerance is still kept when its width coefficient differs from the last
- * one's by this much or more, so a quick change of pressure is not thinned away (decision 0037, P3-3)
+ * one's by this much or more, so a quick change of pressure is not thinned away
  */
 const PRESSURE_STEP = 0.1
 
@@ -77,9 +77,9 @@ export class StrokeTessellator {
    * Appends the curve through `samples[from..=to]` of a stroke (see appendSamples).
    * The samples just outside the range shape its ends, so pieces of one stroke appended separately join smoothly.
    * Both ends get round caps, which overlap the neighboring pieces; a translucent stroke is still painted once
-   * there, since all of a stroke's vertices share one depth (ADR 0043).
+   * there, since all of a stroke's vertices share one depth.
    * Each vertex carries its width over the stroke's, from the samples' width coefficients (1 without them); the
-   * pieces on either side of a seam both end in a cap of the seam sample's coefficient (decision 0037 P3-4)
+   * pieces on either side of a seam both end in a cap of the seam sample's coefficient
    */
   appendPiece(
     mesh: MeshBuffer,
@@ -98,9 +98,9 @@ export class StrokeTessellator {
     if (pressure && this.flatPressure.length < end - start) this.flatPressure = new Float32Array((end - start) * 2)
     if (pressure) for (let i = start; i < end; i++) this.flatPressure[i - start] = pressure[i]
     const { tile } = mesh
-    // The width is a map scale (ADR 0030): lyon shapes round caps and joins from the width on screen at `zoom`,
-    // so that their arcs stay within the tolerance there as the centerline does (ADR 0044). Never below the drawing
-    // width (ADR 0051): lyon drops a dot narrower than about 0.25 px, and a mesh made far out is kept while zooming
+    // The width is a map scale: lyon shapes round caps and joins from the width on screen at `zoom`,
+    // so that their arcs stay within the tolerance there as the centerline does. Never below the drawing
+    // width: lyon drops a dot narrower than about 0.25 px, and a mesh made far out is kept while zooming
     // back in
     const width = Math.max(stroke.width * 2 ** (zoom - stroke.zoom), stroke.width)
     mesh.appendStroke(stroke.id, stroke, (target) => {

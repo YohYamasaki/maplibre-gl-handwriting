@@ -1,4 +1,4 @@
-// The tooltips of the toolbar's buttons (decision 0083): a name, a short description and the keys
+// The tooltips of the toolbar's buttons: a name, a short description and the keys
 import { appendChildren } from './dom'
 import type { Position, Size } from './layout'
 

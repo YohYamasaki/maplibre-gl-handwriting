@@ -1,4 +1,4 @@
-// maplibre-gl-handwriting/core (decision 0095): the stroke store, its ops, the laser channel, the split and transform
+// maplibre-gl-handwriting/core: the stroke store, its ops, the laser channel, the split and transform
 // rules, with no DOM or maplibre-gl, for code that keeps or relays strokes away from the map (a server, a sync layer).
 // May import only src/core
 export * from './stroke'

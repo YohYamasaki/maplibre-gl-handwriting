@@ -1,4 +1,4 @@
-// The experimental features a handle was created with (decision 0085), for the package's own toolbar. Kept off
+// The experimental features a handle was created with, for the package's own toolbar. Kept off
 // the handle's public functions, so that turning a feature on stays an option of createHandwriting only
 
 /** Features that are off unless HandwritingOptions.experimental turns them on */

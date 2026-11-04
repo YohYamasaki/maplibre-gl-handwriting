@@ -3,7 +3,7 @@ import { boundsOf } from './bounds'
 import { findStrokesNear } from './hitTest'
 import type { StrokeIndex } from './StrokeIndex'
 
-// Selection by lasso and by tap (decision 0037 P5-1). Only strokes with an order can be selected.
+// Selection by lasso and by tap. Only strokes with an order can be selected.
 // All coordinates and distances are in normalized Web Mercator units
 
 /** Whether p is inside the polygon (closed from its last point back to its first), by the even-odd rule */

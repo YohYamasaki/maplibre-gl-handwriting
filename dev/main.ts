@@ -8,7 +8,7 @@ import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl
 // MapLibre finds its worker next to its own module, which Vite's pre-bundling moves: give it the worker's URL
 import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { debugPredictionCounts, debugSceneOf, setDebugPrediction } from '../src/debug'
-import { createHandwriting, HandwritingToolbar, LaserChannel, StrokeStore } from '../src/index'
+import { createHandwriting, HandwritingLayer, HandwritingToolbar, LaserChannel, StrokeStore } from '../src/index'
 import { mountPanel } from './panel'
 
 setWorkerUrl(mapLibreWorkerUrl)
@@ -43,19 +43,39 @@ map.addControl(new NavigationControl())
 const store = new StrokeStore()
 const laser = new LaserChannel()
 const partialEraser = new URLSearchParams(location.search).has('partialEraser')
-const handle = createHandwriting(map, { store, laser, author: 'dev', experimental: { partialEraser } })
+// ?overlay: the page adds a layer of its own, 'overlay', on every style.load, as an app that adds its layers again
+// after setStyle does, and the handle goes before it (beforeId). window.__handwriting.addOverlay = false stops that
+const overlay = new URLSearchParams(location.search).has('overlay')
+const handle = createHandwriting(map, {
+  store,
+  laser,
+  author: 'dev',
+  experimental: { partialEraser },
+  beforeId: overlay ? 'overlay' : undefined,
+})
 handle.setTool('pen')
 handle.setKeyboard(true)
 map.addControl(new HandwritingToolbar(handle))
 mountPanel(document.body, handle, map, store)
 
-;(window as unknown as { __handwriting?: unknown }).__handwriting = {
+const debug = {
   store,
   laser,
   map,
   handle,
+  // The draw-only layer, for the checks that add one with a store of their own
+  HandwritingLayer,
+  addOverlay: overlay,
   scene: () => debugSceneOf(handle),
   setPrediction: (enabled: boolean): void => setDebugPrediction(handle, enabled),
   // Kept and dropped counts of the 1st and 2nd predicted points, to check the limit on a real pen (decision 0080)
   predictionCounts: () => debugPredictionCounts(handle),
+}
+;(window as unknown as { __handwriting?: unknown }).__handwriting = debug
+if (overlay) {
+  // Listens after the handle, which so finds no overlay on style.load and waits for it (styledata)
+  map.on('style.load', () => {
+    if (!debug.addOverlay || map.getLayer('overlay')) return
+    map.addLayer({ id: 'overlay', type: 'background', paint: { 'background-color': '#000000', 'background-opacity': 0 } })
+  })
 }

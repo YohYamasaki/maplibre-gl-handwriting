@@ -1,6 +1,6 @@
 import type { PressureCurve } from './pens'
 
-/** Weight of the newest pressure reading in the running average that smooths a pen's pressure (decision 0037, P3-1) */
+/** Weight of the newest pressure reading in the running average that smooths a pen's pressure */
 export const PRESSURE_SMOOTHING = 0.5
 
 /** Steps a width coefficient is rounded to: 1/255 */

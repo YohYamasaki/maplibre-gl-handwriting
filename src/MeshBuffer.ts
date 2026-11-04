@@ -68,7 +68,7 @@ export class MeshBuffer {
   /** Vertices before dirtyVertexFrom whose order changed and is not uploaded yet (empty when from >= to) */
   dirtyOrderFrom = Infinity
   dirtyOrderTo = 0
-  // The tessellator writes through this object only, so it can do nothing but reserve room at the end
+  // The tessellator writes through this object only, so it can do nothing but reserve space at the end
   readonly target: MeshTarget = { reserve: (vertexCount, indexCount) => this.reserve(vertexCount, indexCount) }
 
   constructor(readonly tile: TileID) {}

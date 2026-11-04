@@ -1,7 +1,7 @@
 // Buckets: every stroke belongs to the map tile, at its drawing zoom rounded down to a multiple of
-// BUCKET_ZOOM_STEP, that contains its first point. The client meshes strokes per bucket, and the server
-// stores the bucket so it can send strokes tile by tile.
-// Used by the client and the Worker, so it must not depend on DOM / MapLibre / Cloudflare APIs.
+// BUCKET_ZOOM_STEP, that contains its first point. The client meshes strokes per bucket; code that keeps strokes
+// elsewhere can file them by the same bucket to send them tile by tile.
+// Used by the client and the Worker, so it must not depend on the DOM, MapLibre or any platform's APIs.
 import type { Point } from './stroke'
 
 /** A map tile, in the XYZ scheme MapLibre uses */

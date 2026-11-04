@@ -38,8 +38,8 @@ export type EraseOptions = {
 }
 
 /**
- * Between a stroke's ID and a number, the ID of a piece shown while the partial eraser is down. Stroke IDs from
- * createHandwriting are `sessionId:seq`, so no stroke in the store has such an ID
+ * Between a stroke's ID and a number, the ID of a piece shown while the partial eraser is down. createHandwriting's
+ * default stroke IDs, random UUIDs, never contain it
  */
 const PREVIEW_SEPARATOR = '~'
 
@@ -133,8 +133,9 @@ export class EraseController {
       })
       const back = this.store.get(pending.original.id)
       if (!back) continue
-      // The stroke as it came back may have moved meanwhile (the server's copy after a transform). The parts erased
-      // are positions along it, which a transform keeps, so they are cut from where it is now, as the server will
+      // The stroke as it came back may have moved meanwhile (a transform or a replace from the sync layer). The parts
+      // erased are positions along it, which a transform keeps, so they are cut from where it is now, as every other
+      // store the split reaches cuts it
       pending.original = back
       const { original } = pending
       this.show(pending, keptRanges(original.points, pending.erased, original.width * mercatorPerPixelAt(original.zoom)))

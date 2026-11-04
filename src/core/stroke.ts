@@ -1,5 +1,6 @@
 // Stroke data and the operations (ops) that modify it.
-// Used by the input, render and sync layers and by the Worker, so it must not depend on DOM / MapLibre / Cloudflare APIs.
+// Used by the input, render and sync layers and by the Worker, so it must not depend on the DOM, MapLibre or any
+// platform's APIs.
 import { pieceStroke, validPieces, type StrokePiece } from "./split";
 import { isSimilarity, transformStroke, type Matrix } from "./transform";
 
@@ -51,19 +52,19 @@ export type StrokeOp =
   // transform would take off the map or out of the zoom range are left as they are. Listeners get only the IDs
   // that changed; the strokes are updated in place (points replaced, zoom changed)
   | { type: "transform"; ids: string[]; matrix: Matrix }
-  // Sets strokes held here to the server's copy of them: its points and zoom, which transforms change. The
-  // server's word wins over what was applied here, so every client ends with the same strokes. Strokes not held,
-  // without an order, with another number of points, or already the same are skipped. Listeners get the store's strokes
-  // that changed, updated in place like transform
+  // Sets strokes held here to another copy of them, e.g. the one a sync layer keeps: its points and zoom, which
+  // transforms change. That copy wins over what was applied here, so every client ends with the same strokes.
+  // Strokes not held, without an order, with another number of points, or already the same are skipped. Listeners
+  // get the store's strokes that changed, updated in place like transform
   | { type: "replace"; strokes: StrokeData[] }
   // Brings back a stroke that was removed (undo of an erase, redo of a stroke)
   | { type: "restore"; stroke: StrokeData }
-  // Replaces everything. Used for the snapshot on connect
+  // Replaces everything, e.g. with the strokes a sync layer sends when it connects
   | { type: "reset"; strokes: StrokeData[] }
   // Adds strokes not in the store yet, e.g. strokes loaded per tile
   | { type: "load"; strokes: StrokeData[] };
 
-/** The largest order a stroke can have: orders are uint32 vertex attributes (decision 0024) */
+/** The largest order a stroke can have: orders are uint32 vertex attributes */
 export const MAX_ORDER = 2 ** 32 - 1;
 
 /** Whether `order` can be a stroke's place in the drawing order: an integer from 1 to MAX_ORDER */
@@ -72,12 +73,13 @@ export function validOrder(order: number): boolean {
 }
 
 /**
- * Who gives strokes their order (decision 0091).
+ * Who gives strokes their order.
  * default: the store does. Right after a stroke's end, a stroke with points and no order gets the next value of
  * the store's counter, which starts at 1 and never goes down, by an order op applied with the end's origin. The
  * strokes a load or reset brings in get the next values in the order the op lists them, whatever order they held,
  * so no order is handed out twice.
- * custom: the store never gives an order; the caller applies order ops (e.g. the sync layer, from the server)
+ * custom: the store never gives an order; the caller applies order ops (e.g. a sync layer that decides one order for
+ * every client)
  */
 export type StrokeOrderMode = "default" | "custom";
 
@@ -87,7 +89,8 @@ export type StrokeStoreOptions = {
 };
 
 /**
- * local: drawn on this screen / remote: received from the server / preview: shown on this screen only, never sent
+ * local: drawn on this screen / remote: received from elsewhere, e.g. through a sync layer / preview: shown on this
+ * screen only, never sent
  * (e.g. the partial eraser's cuts while the pointer is down)
  */
 export type Origin = "local" | "remote" | "preview";

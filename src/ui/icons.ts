@@ -49,7 +49,7 @@ const ICONS: Record<Exclude<IconName, 'hand' | 'lasso'>, string> = {
   plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
 }
 
-// Lucide's hand, map and mouse-pointer-2, for the icons made of two (decision 0084)
+// Lucide's hand, map and mouse-pointer-2, for the icons made of two
 const HAND =
   '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>' +
   '<path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>' +
@@ -70,12 +70,12 @@ const group = (shape: Shape, attributes = ''): string =>
 
 /** Two shapes, the upper over the lower; the lower is drawn through a mask that cuts out the upper's area and a gap */
 const OVERLAYS: Record<'hand' | 'lasso', { lower: Shape; upper: Shape }> = {
-  // A small map at the top left and a hand over it at the bottom right (decision 0084 A)
+  // A small map at the top left and a hand over it at the bottom right
   hand: {
     lower: { markup: MAP, transform: 'translate(0.5 0.5) scale(0.62)', width: 3 },
     upper: { markup: HAND, transform: 'translate(8.2 8) scale(0.66)', width: 3 },
   },
-  // A dotted ring and a large pointer over it (decision 0084 D)
+  // A dotted ring and a large pointer over it
   lasso: {
     lower: { markup: RING, transform: 'translate(0 0)', width: 2 },
     upper: { markup: POINTER, transform: 'translate(9 9) scale(0.68)', width: 2.6, fill: true },

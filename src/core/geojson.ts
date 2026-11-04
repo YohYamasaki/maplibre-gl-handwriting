@@ -1,4 +1,4 @@
-// Strokes as GeoJSON (RFC 7946) for GIS tools such as QGIS (decision 0076). The caller chooses which strokes to pass
+// Strokes as GeoJSON (RFC 7946) for GIS tools such as QGIS. The caller chooses which strokes to pass
 import { mercatorPerPixelAt } from './mercator'
 import type { Point, StrokeData } from './stroke'
 
@@ -14,7 +14,7 @@ type Position = [lng: number, lat: number]
 export type StrokeFeatureProperties = {
   id: string
   author: string
-  /** The stroke's place in the room's drawing order, or null for a stroke not saved yet */
+  /** The stroke's place in the drawing order, or null for a stroke without an order yet */
   order: number | null
   /** #rrggbb */
   color: string

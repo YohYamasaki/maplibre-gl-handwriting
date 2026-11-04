@@ -1,6 +1,6 @@
 // The development tools (the dev page, dev/) reach the layer behind a handle through here. Every call to this file is
-// inside `if (__HANDWRITING_DEBUG__)`, which the package's build sets to false, so none of it is in the package
-// (decision 0096). Not exported from the package: the dev page imports this file from the source
+// inside `if (__HANDWRITING_DEBUG__)`, which the package's build sets to false, so none of it is in the package.
+// Not exported from the package: the dev page imports this file from the source
 import { MAX_PREDICTED_POINTS, type Prediction, type PredictionCounts } from './Prediction'
 import type { StrokeLayer } from './StrokeLayer'
 import type { StrokeScene } from './StrokeScene'

@@ -3,7 +3,8 @@
 Freehand drawing on a [MapLibre GL JS](https://maplibre.org/) map. Strokes are kept in map coordinates, tessellated
 off the main thread by [lyon](https://github.com/nical/lyon) compiled to WebAssembly, and drawn by a custom layer.
 It comes with a pen, a highlighter, an eraser, a lasso to move, scale, rotate, duplicate or delete strokes, a laser
-pointer, undo and redo, keyboard shortcuts and a toolbar control.
+pointer, undo and redo, keyboard shortcuts and a toolbar control. `HandwritingLayer` draws the strokes alone, for
+maps that only show them.
 
 The package draws and edits the strokes of a store you own. It does not save or share them: keep the store's
 strokes yourself, or connect the store to your own sync layer.
@@ -32,7 +33,8 @@ handwriting.setTool('pen')
 map.addControl(new HandwritingToolbar(handwriting))
 ```
 
-`style.css` holds the toolbar's styles. With Vite, exclude the package from dependency pre-bundling, so that its
+`style.css` holds the toolbar's styles. The toolbar floats along an edge of the map, wherever its placement setting
+says, not in the corner given to `addControl`. With Vite, exclude the package from dependency pre-bundling, so that its
 tessellation worker and WebAssembly module are served from where the package looks for them:
 
 ```ts
@@ -44,10 +46,23 @@ export default defineConfig({
 
 [examples/basic](examples/basic) is a complete Vite project.
 
+To only show strokes, add a `HandwritingLayer` yourself, anywhere among the style's layers:
+
+```ts
+import { HandwritingLayer, StrokeStore } from 'maplibre-gl-handwriting'
+
+const store = new StrokeStore()
+map.on('load', () => map.addLayer(new HandwritingLayer({ store, id: 'strokes' })))
+```
+
+After a `setStyle` that rebuilds the style, add it again; call `destroy()` when it is no longer needed, also after
+`map.remove()`. `createHandwriting` adds its own layer again by itself.
+
 ## Documentation
 
-[docs/usage.md](docs/usage.md) covers the options, the handle's functions and events, the store and its order
-modes, saving settings, the `maplibre-gl-handwriting/core` entry and bundler setup.
+[docs/usage.md](docs/usage.md) covers the options, the handle's functions and events, the toolbar, the
+`HandwritingLayer`, the store and its order modes, saving settings, the `maplibre-gl-handwriting/core` entry and
+bundler setup.
 
 ## Versioning
 

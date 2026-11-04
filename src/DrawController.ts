@@ -20,14 +20,14 @@ export type StrokeStart = {
 export type DrawOptions = {
   /**
    * Called on every pointerdown with that event. Returns the new stroke, or null to ignore the input
-   * (e.g. while drawing is turned off, before the server has given us an identity, or for touch in pen-only input)
+   * (e.g. while drawing is turned off, before the sync layer has given us an identity, or for touch in pen-only input)
    */
   startStroke: (e: PointerEvent) => StrokeStart | null
   /** Map zoom at the moment drawing starts */
   getZoom: () => number
   /** Called with each stroke this controller finishes, e.g. to record it for undo */
   onStroke: (stroke: StrokeData) => void
-  /** Where the browser's predicted points after the stroke's tip go; they never reach the store (decision 0037 P7-1) */
+  /** Where the browser's predicted points after the stroke's tip go; they never reach the store */
   prediction?: Prediction
 }
 
@@ -37,7 +37,7 @@ export type DrawOptions = {
  */
 export class DrawController {
   // The stroke currently being drawn, with the client position of the previous pointermove (the pointerdown for the
-  // first) and the timer that drops the predicted points when no pointermove comes (decision 0080)
+  // first) and the timer that drops the predicted points when no pointermove comes
   private drawing: {
     id: string
     pointerId: number

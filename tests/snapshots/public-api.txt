@@ -5,11 +5,22 @@ type ExperimentalFeatures = { partialEraser?: boolean | undefined; }
 type Handwriting = { readonly ready: Promise<void>; setTool(tool: Tool): void; getTool(): Tool; setPen(tool: PenTool, pen: Partial<Pen>): void; getPen(tool: PenTool): Pen; setPalette(colors: string[]): void; setEraser(eraser: Partial<EraserSettings>): void; setToolbar(toolbar: Partial<ToolbarSettings>): void; setPenOnly(enabled: boolean): void; getSettings(): HandwritingSettings; undo(): void; redo(): void; canUndo(): boolean; canRedo(): boolean; exportGeoJSON(ids?: Iterable<string> | undefined): string; clearHistory(): void; setKeyboard(enabled: boolean): void; isKeyboardEnabled(): boolean; on<K extends keyof HandwritingEventMap>(type: K, listener: HandwritingListener<K>): void; off<K extends keyof HandwritingEventMap>(type: K, listener: HandwritingListener<K>): void; destroy(): void; }
 type HandwritingDefaults = { pens?: Partial<Record<PenTool, Partial<Pen>>> | undefined; palette?: string[] | undefined; eraser?: Partial<EraserSettings> | undefined; pressure?: Partial<PressureCurve> | undefined; toolbar?: Partial<ToolbarSettings> | undefined; laser?: Partial<LaserSettings> | undefined; penOnly?: boolean | undefined; }
 type HandwritingEventMap = { history: { canUndo: boolean; canRedo: boolean; }; toolchange: { tool: Tool; }; penchange: { tool: PenTool; pen: Pen; }; settingschange: { settings: HandwritingSettings; }; }
+class HandwritingLayer
+  constructor(options: { store: StrokeStore; id: string; wasmUrl?: string | URL | undefined; workerUrl?: string | URL | undefined; }): HandwritingLayer
+  id: string
+  type: 'custom'
+  renderingMode: '2d'
+  ready: Promise<void>
+  onAdd: (map: Map$1, gl: WebGL2RenderingContext) => void
+  onRemove: () => void
+  render: (gl: WebGL2RenderingContext, options: CustomRenderMethodInput) => void
+  destroy: () => void
+type HandwritingLayerOptions = { store: StrokeStore; id: string; wasmUrl?: string | URL | undefined; workerUrl?: string | URL | undefined; }
 type HandwritingListener = (event: HandwritingEventMap[K]) => void
 type HandwritingOptions = { store: StrokeStore; startStroke?: (() => StrokeIdentity | null) | undefined; author?: string | undefined; layerId?: string | undefined; beforeId?: string | undefined; defaults?: HandwritingDefaults | undefined; keyboard?: boolean | undefined; experimental?: ExperimentalFeatures | undefined; laser?: LaserChannel | undefined; wasmUrl?: string | URL | undefined; workerUrl?: string | URL | undefined; onExport?: ((geojson: string) => void) | null | undefined; }
 type HandwritingSettings = { pens: Record<PenTool, Pen>; palette: string[]; eraser: EraserSettings; pressure: PressureCurve; toolbar: ToolbarSettings; laser: LaserSettings; penOnly: boolean; }
 class HandwritingToolbar
-  constructor(handle: { readonly ready: Promise<void>; setTool(tool: Tool): void; getTool(): Tool; setPen(tool: PenTool, pen: Partial<Pen>): void; getPen(tool: PenTool): Pen; setPalette(colors: string[]): void; setEraser(eraser: Partial<EraserSettings>): void; setToolbar(toolbar: Partial<ToolbarSettings>): void; setPenOnly(enabled: boolean): void; getSettings(): HandwritingSettings; undo(): void; redo(): void; canUndo(): boolean; canRedo(): boolean; exportGeoJSON(ids?: Iterable<string> | undefined): string; clearHistory(): void; setKeyboard(enabled: boolean): void; isKeyboardEnabled(): boolean; on<K extends keyof HandwritingEventMap>(type: K, listener: HandwritingListener<K>): void; off<K extends keyof HandwritingEventMap>(type: K, listener: HandwritingListener<K>): void; destroy(): void; }, options?: { [x: string]: never; }): HandwritingToolbar
+  constructor(handle: { readonly ready: Promise<void>; setTool(tool: Tool): void; getTool(): Tool; setPen(tool: PenTool, pen: Partial<Pen>): void; getPen(tool: PenTool): Pen; setPalette(colors: string[]): void; setEraser(eraser: Partial<EraserSettings>): void; setToolbar(toolbar: Partial<ToolbarSettings>): void; setPenOnly(enabled: boolean): void; getSettings(): HandwritingSettings; undo(): void; redo(): void; canUndo(): boolean; canRedo(): boolean; exportGeoJSON(ids?: Iterable<string> | undefined): string; clearHistory(): void; setKeyboard(enabled: boolean): void; isKeyboardEnabled(): boolean; on<K extends keyof HandwritingEventMap>(type: K, listener: HandwritingListener<K>): void; off<K extends keyof HandwritingEventMap>(type: K, listener: HandwritingListener<K>): void; destroy(): void; }): HandwritingToolbar
   onAdd: (map: Map$1) => HTMLElement
   onRemove: () => void
 class LaserChannel
@@ -33,7 +44,7 @@ type StrokeData = { id: string; author: string; color: string; width: number; zo
 type StrokeIdentity = { id: string; author: string; }
 type StrokeListener = (op: StrokeOp, origin: Origin) => void
 type StrokeOp = { type: 'begin'; id: string; author: string; color: string; width: number; zoom: number; } | { type: 'points'; id: string; pts: Point[]; ps?: number[] | undefined; } | { type: 'end'; id: string; } | { type: 'order'; id: string; order: number; } | { type: 'remove'; id: string; } | { type: 'split'; id: string; pieces: StrokePiece[]; } | { type: 'transform'; ids: string[]; matrix: Matrix; } | { type: 'replace'; strokes: StrokeData[]; } | { type: 'restore'; stroke: StrokeData; } | { type: 'reset'; strokes: StrokeData[]; } | { type: 'load'; strokes: StrokeData[]; }
-type StrokeOrderMode = 'default' | 'custom'
+type StrokeOrderMode = 'custom' | 'default'
 type StrokePiece = PieceRange & { id: string; }
 strokesToGeoJSON: (strokes: Iterable<StrokeData>) => string
 class StrokeStore
@@ -45,7 +56,6 @@ class StrokeStore
 type StrokeStoreOptions = { order?: StrokeOrderMode | undefined; }
 type Tool = 'pen' | 'highlighter' | 'eraser' | 'lasso' | 'laser' | null
 type ToolbarEdge = 'top' | 'bottom' | 'left' | 'right'
-type ToolbarOptions = { [x: string]: never; }
 type ToolbarSettings = { edge: ToolbarEdge; offset: number; collapsed: boolean; }
 
 // maplibre-gl-handwriting/core
@@ -86,7 +96,7 @@ similarityAbout: (center: Point, scale: number, angle: number, offset?: Point) =
 type StrokeData = { id: string; author: string; color: string; width: number; zoom: number; points: Point[]; pressure?: number[] | undefined; order?: number | undefined; }
 type StrokeListener = (op: StrokeOp, origin: Origin) => void
 type StrokeOp = { type: 'begin'; id: string; author: string; color: string; width: number; zoom: number; } | { type: 'points'; id: string; pts: Point[]; ps?: number[] | undefined; } | { type: 'end'; id: string; } | { type: 'order'; id: string; order: number; } | { type: 'remove'; id: string; } | { type: 'split'; id: string; pieces: StrokePiece[]; } | { type: 'transform'; ids: string[]; matrix: Matrix; } | { type: 'replace'; strokes: StrokeData[]; } | { type: 'restore'; stroke: StrokeData; } | { type: 'reset'; strokes: StrokeData[]; } | { type: 'load'; strokes: StrokeData[]; }
-type StrokeOrderMode = 'default' | 'custom'
+type StrokeOrderMode = 'custom' | 'default'
 type StrokePiece = PieceRange & { id: string; }
 class StrokeStore
   constructor(options?: { order?: StrokeOrderMode | undefined; }): StrokeStore

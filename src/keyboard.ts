@@ -1,7 +1,7 @@
 import type { Tool } from './createHandwriting'
 import type { PenSettings } from './pens'
 
-// The keyboard shortcuts of a handle (decisions 0081, 0082). createHandwriting gives KeyboardShortcuts the window to
+// The keyboard shortcuts of a handle. createHandwriting gives KeyboardShortcuts the window to
 // listen on while they are enabled; it looks at nothing of the DOM beyond the event's fields
 
 /** The fields of a KeyboardEvent the shortcuts look at */
@@ -39,14 +39,14 @@ export type KeyboardActions = {
   isInMap(target: EventTarget | null): boolean
 }
 
-/** The tool each letter selects, compared with `e.key` lowercased (decision 0081) */
+/** The tool each letter selects, compared with `e.key` lowercased */
 export const TOOL_KEYS: readonly { key: string; tool: Tool }[] = [
   { key: 'h', tool: null },
   { key: 'p', tool: 'pen' },
   { key: 'm', tool: 'highlighter' },
   { key: 'e', tool: 'eraser' },
   { key: 'l', tool: 'lasso' },
-  // The laser pointer (decision 0079); it has no number, 1 to 5 stay the first five tools
+  // The laser pointer; it has no number, 1 to 5 stay the first five tools
   { key: 'k', tool: 'laser' },
 ]
 
@@ -115,7 +115,7 @@ function isPlain(e: KeyEventLike): boolean {
   return !e.ctrlKey || e.altKey
 }
 
-/** Turns the key events on `target` (the window) into the actions of a handle while enabled (decision 0081) */
+/** Turns the key events on `target` (the window) into the actions of a handle while enabled */
 export class KeyboardShortcuts {
   // The tool that Space put away, given back when Space is released
   private spaceTool: Tool = null

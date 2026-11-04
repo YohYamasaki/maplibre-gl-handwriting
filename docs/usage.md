@@ -48,7 +48,8 @@ When the assets are served from somewhere else, pass `wasmUrl` and `workerUrl` (
 
 Adds a layer that draws the strokes of `options.store` and turns pointer input on the map into edits of that store
 with the selected tool. It returns a handle. The layer is added once the WebAssembly module is loaded and the
-style has loaded; `handle.ready` resolves when the module is loaded.
+style has loaded; `handle.ready` resolves when the module is loaded. After a `setStyle` that rebuilds the style
+(`{ diff: false }`, or a style the diff cannot be applied to), the handle adds its layer again on `style.load`.
 
 ```ts
 const store = new StrokeStore()
@@ -65,7 +66,7 @@ Options:
 | `startStroke` | random UUIDs | Called on every pointerdown with a drawing tool; returns `{ id, author }` for the new stroke, or `null` to ignore the input. Also called for the ID of each piece the partial eraser leaves |
 | `author` | | Author of new strokes when `startStroke` is omitted |
 | `layerId` | `'handwriting'` | ID of the map layer |
-| `beforeId` | on top | The layer is inserted before this layer |
+| `beforeId` | on top | The layer is inserted before this layer. While the style has no such layer, the handle waits for it and does not put its layer on top |
 | `defaults` | see below | Initial pens, palette, eraser, pressure curve, toolbar placement, laser color, pen-only input |
 | `keyboard` | `false` | Keyboard shortcuts on the page (below) |
 | `experimental` | all off | Features being worked on (below) |
@@ -117,7 +118,8 @@ The defaults are: pen black, 4 px, with pressure; highlighter yellow, 50% opacit
   WGS84, in drawing order. `strokesToGeoJSON(strokes)` does the same for any strokes.
 - `setKeyboard(enabled)`, `isKeyboardEnabled()`. The shortcuts listen on the window: with two handles on a page,
   turn them on for one only.
-- `destroy()` removes the layer and every listener, and gives the map its gestures back.
+- `destroy()` removes the layer and every listener, and gives the map its gestures back. It also frees the layer's
+  worker and GPU resources after `map.remove()`, so call it then too.
 
 ### Events
 
@@ -145,7 +147,36 @@ A MapLibre control with the tools, the pens' color and width, the eraser, undo a
 map.addControl(new HandwritingToolbar(handwriting))
 ```
 
-It can be dragged to any edge of the map and collapsed; where it sits is part of the settings.
+It does not sit in the corner `addControl` is given: it floats over the map along one of its edges, where the
+settings' `toolbar` placement says. It can be dragged to any edge and collapsed; where it sits is part of the
+settings. Remove it with `map.removeControl` before destroying the handle.
+
+## HandwritingLayer
+
+A custom layer that only draws the strokes of a store: no tools, no pointer input and no toolbar. Use it for a map
+that shows strokes without editing them, or to place the strokes among the style's layers yourself:
+
+```ts
+import { HandwritingLayer, StrokeStore } from 'maplibre-gl-handwriting'
+
+const store = new StrokeStore()
+const strokes = new HandwritingLayer({ store, id: 'strokes' })
+// Under the style's layer 'labels'; without a second argument, on top
+map.on('load', () => map.addLayer(strokes, 'labels'))
+store.apply({ type: 'load', strokes: savedStrokes }, 'remote')
+```
+
+Options: `store` (required), `id` (required: the layer's ID in the style, other than the `layerId` of a
+handle on the same map, `'handwriting'` by default), `wasmUrl` and `workerUrl` (as for `createHandwriting`).
+
+- The WebAssembly module starts loading when the layer is first added; nothing is drawn until it has loaded, and
+  then the map is repainted. `layer.ready` resolves once it has loaded, and rejects when it fails to load (the layer
+  then draws nothing). It does not resolve for a layer that is never added.
+- MapLibre does not call a custom layer's `onRemove` when `setStyle` rebuilds the style or when the map is removed.
+  After such a `setStyle`, add the layer again yourself, e.g. on `style.load`. A style changed by a diff keeps it.
+- `layer.destroy()` removes the layer from the map when it is there, and frees its worker and GPU resources also when
+  it is not, e.g. after `map.remove()`. A destroyed layer draws nothing.
+- A store given to both a `HandwritingLayer` and `createHandwriting` is drawn twice.
 
 ## The store
 

@@ -21,11 +21,11 @@ export type {
   ToolbarEdge,
   ToolbarSettings,
 } from './pens'
-// Checks saved settings before they are passed back as defaults (decision 0097)
+// Checks saved settings before they are passed back as defaults
 export { parseDefaults } from './pens'
-// The features still being tried out, each off unless turned on (decision 0085)
+// The features still being tried out, each off unless turned on
 export type { ExperimentalFeatures } from './experimental'
-// The store is the caller's (decision 0004): it is created by the caller and may be shared with its own sync code
+// The store is the caller's: it is created by the caller and may be shared with its own sync code
 export {
   StrokeStore,
   type StrokeOrderMode,
@@ -36,7 +36,7 @@ export {
   type StrokeListener,
   type StrokeOp,
 } from './core/stroke'
-// The laser pointer's channel is the caller's, like the store (decision 0078)
+// The laser pointer's channel is the caller's, like the store
 export {
   LaserChannel,
   type LaserListener,
@@ -44,9 +44,11 @@ export {
   type LaserOrigin,
 } from './core/laser'
 export type { PieceRange, StrokePiece } from './core/split'
-// The transform op's matrix (decision 0037 P5-3)
+// The transform op's matrix
 export type { Matrix } from './core/transform'
-// Strokes as GeoJSON, for strokes the caller chooses (decision 0076)
+// Strokes as GeoJSON, for strokes the caller chooses
 export { strokesToGeoJSON } from './core/geojson'
-// The toolbar control (decision 0037 P6); its styles are the package's style.css (ui/toolbar.css), which the user loads
-export { HandwritingToolbar, type ToolbarOptions } from './ui/Toolbar'
+// The toolbar control; its styles are the package's style.css (ui/toolbar.css), which the user loads
+export { HandwritingToolbar } from './ui/Toolbar'
+// The layer that only draws a store's strokes, for maps without the tools or to order it among the style's layers
+export { HandwritingLayer, type HandwritingLayerOptions } from './HandwritingLayer'

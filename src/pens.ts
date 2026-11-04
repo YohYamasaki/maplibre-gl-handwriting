@@ -39,7 +39,7 @@ export type EraserSettings = {
   mode: EraserMode
 }
 
-/** The laser pointer's lines (decision 0079). Every line, this screen's and the others', is drawn in this color */
+/** The laser pointer's lines. Every line, this screen's and the others', is drawn in this color */
 export type LaserSettings = {
   /** #rrggbb */
   color: string
@@ -151,7 +151,7 @@ function checkPalette(colors: unknown): string[] {
 
 /**
  * An eraser with the changed fields checked: the radius is clamped, the mode must be one of ERASER_MODES, and
- * 'partial' only while the partial eraser is enabled (decision 0085)
+ * 'partial' only while the partial eraser is enabled
  */
 function mergeEraser(eraser: EraserSettings, change: Partial<EraserSettings>, partialEraser: boolean): EraserSettings {
   const next = { ...eraser }
@@ -204,7 +204,7 @@ export class PenSettings {
   private settings: HandwritingSettings
 
   /**
-   * `partialEraser` enables the eraser mode 'partial' (decision 0085). While it is off, a default mode 'partial'
+   * `partialEraser` enables the eraser mode 'partial'. While it is off, a default mode 'partial'
    * becomes 'stroke', so settings saved with it still load, and setEraser({ mode: 'partial' }) throws a RangeError
    */
   constructor(
@@ -303,7 +303,7 @@ export class PenSettings {
  * Checks settings the caller kept, e.g. getSettings() output saved in localStorage, before they are passed back as
  * `defaults`: returns them when createHandwriting would take them, and throws otherwise (a TypeError when `value`
  * is not an object, a RangeError for a field out of shape, e.g. one saved by an older version). An eraser mode
- * 'partial' passes, as createHandwriting turns it into 'stroke' while the partial eraser is off (decision 0097)
+ * 'partial' passes, as createHandwriting turns it into 'stroke' while the partial eraser is off
  */
 export function parseDefaults(value: unknown): HandwritingDefaults {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {

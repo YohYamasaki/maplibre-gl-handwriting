@@ -2,7 +2,7 @@
 export type PointerInput = { pointerId: number; pointerType: string }
 
 /**
- * Pen-only input of one handle (decision 0045). While the setting is on, touch no longer draws or erases and moves
+ * Pen-only input of one handle. While the setting is on, touch no longer draws or erases and moves
  * the map instead, whether or not a pen has been used; pen and mouse draw and erase with the tool. Touch is kept from
  * the map while a pen or mouse presses with a tool, so a palm that lands during a stroke does not move the map under it
  */

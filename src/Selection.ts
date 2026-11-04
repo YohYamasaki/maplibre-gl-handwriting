@@ -9,7 +9,7 @@ export type SelectionChange = 'ids' | 'drag'
 export type SelectionListener = (change: SelectionChange) => void
 
 /**
- * The strokes the lasso tool selected (only strokes with an order) (decision 0037 P5), and the transform of the drag in progress, which is
+ * The strokes the lasso tool selected (only strokes with an order), and the transform of the drag in progress, which is
  * shown but not applied to the strokes until the drag ends. Shared by the select controller, the scene (which draws
  * the selected strokes apart from their buckets) and the frame around them.
  * A selected stroke that is removed, cut or reset away leaves the selection
@@ -131,7 +131,7 @@ export class Selection {
         break
       }
       case 'replace':
-        // The server's copies: no matrix says how they moved
+        // Strokes set to another copy of them (e.g. a sync layer's): no matrix says how they moved
         const changed = op.strokes.map((stroke) => stroke.id).filter((id) => this.selected.has(id))
         if (changed.length === 0) break
         this.refit(changed)

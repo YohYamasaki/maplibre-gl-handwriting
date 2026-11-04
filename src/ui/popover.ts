@@ -158,7 +158,7 @@ export function penPopover(handle: Handwriting, tool: PenTool): PopoverContent {
   appendChildren(other, icon('plus'), picker)
   appendChildren(palette, ...swatches, other)
 
-  // Pen pressure on or off for this pen (decision 0037 P3-2)
+  // Pen pressure on or off for this pen
   const pressure = toggle('Pen pressure', 'A pen draws thinner when pressed lightly', (checked) =>
     handle.setPen(tool, { pressure: checked }),
   )
@@ -199,7 +199,7 @@ const ERASER_MODE_LABELS: [EraserMode, string][] = [
   ['partial', 'Partial'],
 ]
 
-/** The eraser's mode (decision 0037 P4-6) and size, with a circle of that size */
+/** The eraser's mode and size, with a circle of that size */
 export function eraserPopover(handle: Handwriting): PopoverContent {
   const root = element('div', 'handwriting-popover-content')
   root.dataset.tool = 'eraser'
@@ -222,7 +222,7 @@ export function eraserPopover(handle: Handwriting): PopoverContent {
     handle.setEraser({ radius: v }),
   )
   size.input.name = 'radius'
-  // The mode switch only while the partial eraser is enabled (decision 0085)
+  // The mode switch only while the partial eraser is enabled
   if (experimentalOf(handle).partialEraser) appendChildren(root, modes)
   appendChildren(root, preview, size.row)
   return {

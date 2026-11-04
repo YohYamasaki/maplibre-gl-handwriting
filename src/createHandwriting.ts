@@ -25,7 +25,7 @@ import { SelectController } from './SelectController'
 import { Selection } from './Selection'
 import { deleteSelected, duplicateSelected, exportGeoJSON } from './selectionActions'
 import { StrokeIndex } from './StrokeIndex'
-import { StrokeLayer } from './StrokeLayer'
+import { holdsLayer, StrokeLayer } from './StrokeLayer'
 import { StrokeTessellator } from './StrokeTessellator'
 import { EraserCursor } from './ui/cursor'
 import { LaserOverlay } from './ui/laser'
@@ -42,8 +42,8 @@ export type StrokeIdentity = { id: string; author: string }
 export type HandwritingOptions = {
   /**
    * The strokes to draw and to edit. The handle draws every stroke in it and loads nothing itself: put the strokes
-   * in the store, e.g. with a load op, or connect a sync layer to it (decision 0092). Its order mode decides who
-   * gives strokes their place in the drawing order (decision 0091)
+   * in the store, e.g. with a load op, or connect a sync layer to it. Its order mode decides who
+   * gives strokes their place in the drawing order
    */
   store: StrokeStore
   /**
@@ -56,29 +56,32 @@ export type HandwritingOptions = {
   author?: string
   /** ID of the map layer that draws the strokes. Default 'handwriting' */
   layerId?: string
-  /** The layer is inserted before this layer, or on top when omitted */
+  /**
+   * The layer is inserted before this layer, or on top when omitted. While the style has no layer with this ID, the
+   * layer is not put on top: it waits, and is inserted before that layer once it appears
+   */
   beforeId?: string
   /**
    * Initial pens, palette, eraser, toolbar placement, laser color and pen-only input, e.g. the settings the app
    * saved from getSettings(). Fields left out keep the defaults: pen black 4px, highlighter yellow 50% 16px, eraser
-   * 6px, toolbar at the bottom center, laser #ff3b30, pen-only input on
+   * 6px, toolbar at the bottom center, laser #ff3b30, pen-only input off
    */
   defaults?: HandwritingDefaults
   /**
-   * Keyboard shortcuts on the page (decisions 0081, 0082): H or 1 move map, P or 2 pen, M or 3 highlighter, E or 4
+   * Keyboard shortcuts on the page: H or 1 move map, P or 2 pen, M or 3 highlighter, E or 4
    * eraser, L or 5 lasso, K laser pointer, Space held to move the map, Cmd/Ctrl+Z undo, Shift+Cmd/Ctrl+Z or Ctrl+Y
    * redo, Delete or Backspace and Cmd/Ctrl+D delete and duplicate the selection, Esc clears it, [ and ] change the
    * pen's width or the eraser's radius, ? lists them. Ignored while typing in a form field. Default false; see setKeyboard
    */
   keyboard?: boolean
   /**
-   * Features still being worked on, off by default (decision 0085). `partialEraser` enables the eraser mode
+   * Features still being worked on, off by default. `partialEraser` enables the eraser mode
    * 'partial': while it is off, setEraser({ mode: 'partial' }) throws a RangeError, a default mode 'partial'
    * becomes 'stroke', and the toolbar offers no mode switch
    */
   experimental?: ExperimentalFeatures
   /**
-   * Where the laser pointer's lines go and come from (decision 0078): the lines drawn with the laser tool are
+   * Where the laser pointer's lines go and come from: the lines drawn with the laser tool are
    * emitted on it as local, and every line on it is shown for a moment. Connect the sync layer to the same channel
    * to share them. When omitted, the handle makes a channel of its own
    */
@@ -108,7 +111,10 @@ export type HandwritingListener<K extends keyof HandwritingEventMap> = (event: H
 
 /** What createHandwriting returns */
 export type Handwriting = {
-  /** Resolves once the WebAssembly module is loaded. The layer is added then, or once the style has loaded */
+  /**
+   * Resolves once the WebAssembly module is loaded. The layer is added then, or once the style has loaded, and again
+   * after each style.load that leaves it out, such as setStyle without a diff
+   */
   readonly ready: Promise<void>
   setTool(tool: Tool): void
   getTool(): Tool
@@ -152,11 +158,14 @@ export type Handwriting = {
   isKeyboardEnabled(): boolean
   on<K extends keyof HandwritingEventMap>(type: K, listener: HandwritingListener<K>): void
   off<K extends keyof HandwritingEventMap>(type: K, listener: HandwritingListener<K>): void
-  /** Removes the layer and every listener, and gives the map back the gestures the tools took */
+  /**
+   * Removes the layer and every listener, and gives the map back the gestures the tools took. Also frees the layer's
+   * worker and GPU resources when the layer is no longer on the map's style, e.g. after map.remove()
+   */
   destroy(): void
 }
 
-/** How many actions undo can go back (decision 0020) */
+/** How many actions undo can go back */
 const UNDO_LIMIT = 50
 /** How far a duplicate is moved from the strokes it copies, right and down, in CSS px */
 const DUPLICATE_OFFSET = 16
@@ -182,7 +191,7 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
   }
 
   const settings = new PenSettings(options.defaults, (changed) => {
-    // A touch drawing or erasing when pen-only input turns on ends there, as when a pen lands (decision 0045)
+    // A touch drawing or erasing when pen-only input turns on ends there, as when a pen lands
     if (settings.penOnly() && !penOnlyWas) releaseTouches(penOnly.pressedTouches())
     penOnlyWas = settings.penOnly()
     if (changed.pen) emit('penchange', { tool: changed.pen, pen: settings.pen(changed.pen) })
@@ -311,9 +320,33 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
   for (const controller of controllers) controller.enable()
 
   let layer: StrokeLayer | null = null
+  // Whether addLayer listens for styledata, waiting for the style to get the layer options.beforeId names
+  let waitingForBefore = false
+  /**
+   * Adds the layer to the style when it is not there: once the module has loaded, and on every style.load, since a
+   * style rebuilt without a diff leaves the layer out (and calls no onRemove: the layer's next onAdd frees what it
+   * held). Before the style has loaded, map.addLayer throws, and the next style.load adds the layer
+   */
   const addLayer = (): void => {
-    if (!destroyed && layer && !map.getLayer(layerId)) map.addLayer(layer, options.beforeId)
+    // After map.remove() the map has no style, and map.addLayer would make an empty one. The ID taken, by this layer or
+    // another, the style cannot take the layer either
+    if (destroyed || !layer || !map.style || map.getLayer(layerId)) return
+    const { beforeId } = options
+    // Never on top while the style lacks the layer to go before: each styledata looks for it again
+    const missing = beforeId ? !map.getLayer(beforeId) : false
+    if (missing !== waitingForBefore) {
+      if (missing) map.on('styledata', addLayer)
+      else map.off('styledata', addLayer)
+      waitingForBefore = missing
+    }
+    if (missing) return
+    try {
+      map.addLayer(layer, beforeId)
+    } catch {
+      // The style has not loaded yet; its style.load adds the layer
+    }
   }
+  map.on('style.load', addLayer)
   const ready = StrokeTessellator.load(options.wasmUrl).then((tessellator) => {
     if (destroyed) return
     layer = new StrokeLayer(store, tessellator, {
@@ -324,9 +357,7 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
       prediction,
     })
     if (__HANDWRITING_DEBUG__) registerDebugLayer(handle, layer)
-    // A layer can be added only once the style is loaded; tiles still loading do not matter
-    if (map.style?._loaded) addLayer()
-    else map.once('style.load', addLayer)
+    addLayer()
   })
 
   /** Holds a claim on the map's pointer gestures while a tool is selected (shared with other handles on the map) */
@@ -354,7 +385,7 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
     if (tool !== 'eraser') cursor.hide()
     if (tool !== 'lasso' && !keepSelection) selection.clear()
     updateMapGestures()
-    // Drawing tools show a crosshair; the lasso the arrow, until a hover over the frame says otherwise (decision 0086)
+    // Drawing tools show a crosshair; the lasso the arrow, until a hover over the frame says otherwise
     gestures?.setCursor(tool === 'lasso' ? 'default' : CLAIM_CURSOR)
     // A pointer already resting on the frame (kept while Space held the hand) gets the frame's cursor at once
     if (tool === 'lasso') select.updateCursor()
@@ -446,8 +477,12 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
       selection.destroy()
       index.destroy()
       map.off('style.load', addLayer)
-      // After map.remove() the style is gone, and the layer with it
-      if (map.style && map.getLayer(layerId)) map.removeLayer(layerId)
+      map.off('styledata', addLayer)
+      // On the map's style, removeLayer frees the layer through onRemove. Off it (map.remove(), or a style rebuilt
+      // without it while beforeId is missing) no onRemove comes, and dispose frees it; a layer of another with the
+      // same ID stays
+      if (layer && holdsLayer(map, layer)) map.removeLayer(layerId)
+      else layer?.dispose()
       if (__HANDWRITING_DEBUG__) registerDebugLayer(handle, null)
       listeners.clear()
     },

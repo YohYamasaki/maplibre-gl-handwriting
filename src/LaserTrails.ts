@@ -1,15 +1,15 @@
 import type { Point } from './core/stroke'
 
-/** How long a laser point stays, in ms from when it was added (decision 0079) */
+/** How long a laser point stays, in ms from when it was added */
 export const LASER_LIFETIME = 1000
-/** The most points kept per source; past it, the oldest go first (decision 0079) */
+/** The most points kept per source; past it, the oldest go first */
 export const MAX_LASER_POINTS_PER_SOURCE = 1000
 
 /** One laser line: its points and the time each was added, oldest first */
 type Trail = { pts: Point[]; times: number[] }
 
 /**
- * The laser points still alive, per source and trail, each with the time it was added (decision 0079). Knows
+ * The laser points still alive, per source and trail, each with the time it was added. Knows
  * nothing of the screen: ui/laser.ts draws what it holds
  */
 export class LaserTrails {

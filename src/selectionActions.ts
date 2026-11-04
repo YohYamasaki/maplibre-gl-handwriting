@@ -2,7 +2,7 @@ import { strokesToGeoJSON } from './core/geojson'
 import type { Point, StrokeData, StrokeStore } from './core/stroke'
 import type { Selection } from './Selection'
 
-// The actions of the selection's bar (decision 0037 P5-5). Like the controllers, they only apply ops to the store
+// The actions of the selection's bar. Like the controllers, they only apply ops to the store
 // as local; the sync layer does the sending
 
 /** Removes the selected strokes. Returns the ones removed, in drawing order, to record them as an erase */
@@ -44,7 +44,7 @@ export function duplicateSelected(
 }
 
 /**
- * The strokes with these IDs as a GeoJSON FeatureCollection string (decision 0077). IDs not in the store and
+ * The strokes with these IDs as a GeoJSON FeatureCollection string. IDs not in the store and
  * strokes without an order yet are skipped
  */
 export function exportGeoJSON(store: StrokeStore, ids: Iterable<string>): string {

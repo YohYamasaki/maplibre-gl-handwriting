@@ -1,9 +1,9 @@
 import type { Point } from './core/stroke'
 
-/** At most this many of the browser's predicted points are drawn after a stroke's tip (decision 0037 P7-1) */
+/** At most this many of the browser's predicted points are drawn after a stroke's tip */
 export const MAX_PREDICTED_POINTS = 2
 
-/** Predicted points are kept within this distance of the last real point, in CSS px (decisions 0037 P7-1, 0080) */
+/** Predicted points are kept within this distance of the last real point, in CSS px */
 export const MAX_PREDICTED_PX = 24
 
 /**
@@ -11,7 +11,7 @@ export const MAX_PREDICTED_PX = 24
  * They are never applied to the store, so they are never sent or kept: DrawController sets them on every
  * pointermove, replacing the previous ones, and StrokeScene draws them after the stroke's tail only
  */
-/** How many of the browser's 1st and 2nd predicted points were kept and dropped by the limit (decision 0080) */
+/** How many of the browser's 1st and 2nd predicted points were kept and dropped by the limit */
 export type PredictionCounts = { kept: [number, number]; dropped: [number, number] }
 
 /** The development tools' state of a Prediction (debug.ts): the switch for the latency comparison, and the counts */
@@ -20,7 +20,7 @@ export type PredictionDebug = { on: boolean; counts: PredictionCounts }
 export class Prediction {
   private byStroke = new Map<string, Point[]>()
   private listeners = new Set<() => void>()
-  /** Only in a build with __HANDWRITING_DEBUG__ (decision 0096); null in the package */
+  /** Only in a build with __HANDWRITING_DEBUG__; null in the package */
   readonly debug: PredictionDebug | null = __HANDWRITING_DEBUG__ ? { on: true, counts: { kept: [0, 0], dropped: [0, 0] } } : null
 
   /** The predicted points after stroke `id`'s tip; a new array whenever they change */
@@ -53,13 +53,13 @@ export class Prediction {
   }
 }
 
-/** Predicted points are dropped when no pointermove comes for this long, in ms (decision 0080) */
+/** Predicted points are dropped when no pointermove comes for this long, in ms */
 export const PREDICTION_TIMEOUT_MS = 32
 
 /**
  * The client positions of the predicted events to draw after the real position `from`: at most MAX_PREDICTED_POINTS.
- * A point farther from `from` than `limit` (capped at MAX_PREDICTED_PX) is dropped with every point after it
- * (decision 0080). `limit` is how far the pointer moved since the previous pointermove
+ * A point farther from `from` than `limit` (capped at MAX_PREDICTED_PX) is dropped with every point after it.
+ * `limit` is how far the pointer moved since the previous pointermove
  */
 export function predictedPositions(
   from: [number, number],

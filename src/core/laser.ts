@@ -1,14 +1,14 @@
-// Laser pointer lines (decision 0078): shown for a moment on every screen, never stored or saved.
-// Used by the input, render and sync layers, so it must not depend on DOM / MapLibre / Cloudflare APIs.
+// Laser pointer lines: shown for a moment on every screen, never stored or saved.
+// Used by the input, render and sync layers, so it must not depend on the DOM, MapLibre or any platform's APIs.
 import type { Point } from './stroke'
 
 /**
- * Points added to one laser line. `source` tells apart whose line it is: '' for this screen's own lines, the sending
- * connection's session for a line received from the server. `trail` numbers the lines of one source
+ * Points added to one laser line. `source` tells apart whose line it is: '' for this screen's own lines, and for a
+ * line received from elsewhere whatever the sync layer names its sender with. `trail` numbers the lines of one source
  */
 export type LaserOp = { source: string; trail: number; pts: Point[] }
 
-/** local: drawn on this screen / remote: received from the server */
+/** local: drawn on this screen / remote: received from elsewhere, e.g. through a sync layer */
 export type LaserOrigin = 'local' | 'remote'
 
 export type LaserListener = (op: LaserOp, origin: LaserOrigin) => void

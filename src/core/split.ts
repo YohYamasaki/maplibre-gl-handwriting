@@ -1,8 +1,8 @@
-// Cutting strokes with the partial eraser (decision 0037 P4).
+// Cutting strokes with the partial eraser.
 // A cut is a position along a stroke's center line: s = i + t lies on the segment from points[i] to points[i + 1],
 // a fraction t of the way. A piece is the part of a stroke between two such positions. The client that erases
-// finds the pieces; every client and the server then build each piece's points from the stroke with piecePoints,
-// so all of them end up with the same numbers
+// finds the pieces; every store the split op reaches (other clients, a sync layer's own copy) then builds each piece's
+// points from the stroke with piecePoints, so all of them end up with the same numbers
 import type { Point, StrokeData } from './stroke'
 
 /** Pieces one cut may leave of a stroke; the eraser leaves a stroke that would break into more alone */
