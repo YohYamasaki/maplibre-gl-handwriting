@@ -227,3 +227,68 @@ describe('the IDs of a handle without startStroke, where crypto.randomUUID is mi
     handle.destroy()
   })
 })
+
+describe('touchstart while a tool is selected', () => {
+  /** A touchstart on the map's canvas container, as iOS dispatches it, with one changed touch */
+  function touchstart(element: EventTarget, touchType: 'stylus' | 'direct'): Event {
+    const event = Object.assign(new Event('touchstart', { cancelable: true }), {
+      changedTouches: [{ identifier: 3, touchType }],
+    })
+    element.dispatchEvent(event)
+    return event
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal('HTMLElement', class {})
+  })
+
+  /** A focused element and the document around it */
+  function focus(): { blur: ReturnType<typeof vi.fn> } {
+    const active = Object.assign(new (globalThis as unknown as { HTMLElement: new () => object }).HTMLElement(), {
+      blur: vi.fn(),
+    })
+    vi.stubGlobal('document', { activeElement: active, body: {} })
+    return active
+  }
+
+  it('prevents the default of a touch a tool takes, and lets go of the focus then only', () => {
+    const map = drawingMap()
+    const element = map.getCanvasContainer()
+    const handle = createHandwriting(map, { store: new StrokeStore() })
+    const active = focus()
+
+    expect(touchstart(element, 'stylus').defaultPrevented).toBe(false)
+    expect(active.blur).not.toHaveBeenCalled()
+
+    handle.setTool('pen')
+    expect(touchstart(element, 'stylus').defaultPrevented).toBe(true)
+    expect(active.blur).toHaveBeenCalledTimes(1)
+
+    handle.setPenOnly(true)
+    expect(touchstart(element, 'direct').defaultPrevented).toBe(false)
+    expect(touchstart(element, 'stylus').defaultPrevented).toBe(true)
+    expect(active.blur).toHaveBeenCalledTimes(2)
+
+    handle.setPenOnly(false)
+    expect(touchstart(element, 'direct').defaultPrevented).toBe(true)
+    expect(active.blur).toHaveBeenCalledTimes(3)
+
+    handle.destroy()
+    expect(touchstart(element, 'stylus').defaultPrevented).toBe(false)
+    expect(touchstart(element, 'direct').defaultPrevented).toBe(false)
+    expect(active.blur).toHaveBeenCalledTimes(3)
+  })
+
+  it('leaves the focus on the body alone', () => {
+    const map = drawingMap()
+    const handle = createHandwriting(map, { store: new StrokeStore() })
+    const body = Object.assign(new (globalThis as unknown as { HTMLElement: new () => object }).HTMLElement(), {
+      blur: vi.fn(),
+    })
+    vi.stubGlobal('document', { activeElement: body, body })
+    handle.setTool('lasso')
+    expect(touchstart(map.getCanvasContainer(), 'stylus').defaultPrevented).toBe(true)
+    expect(body.blur).not.toHaveBeenCalled()
+    handle.destroy()
+  })
+})

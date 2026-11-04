@@ -1,6 +1,11 @@
 /** The pointer fields pen-only input looks at */
 export type PointerInput = { pointerId: number; pointerType: string }
 
+/** The pointerType of a Touch: a stylus is a pen, anything else (direct, or no touchType) is a touch */
+export function touchPointerType(touch: { touchType?: string }): 'pen' | 'touch' {
+  return touch.touchType === 'stylus' ? 'pen' : 'touch'
+}
+
 /**
  * Pen-only input of one handle. While the setting is on, touch no longer draws or erases and moves
  * the map instead, whether or not a pen has been used; pen and mouse draw and erase with the tool. Touch is kept from

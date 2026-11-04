@@ -9,7 +9,7 @@ import { registerExperimental, type ExperimentalFeatures } from './experimental'
 import { ALL_TOOLS, changeToolSize, KeyboardShortcuts } from './keyboard'
 import { CLAIM_CURSOR, claimMapGestures, type GestureClaim } from './mapGestures'
 import { createMapProjector, createScreenProjector, mercatorPerPixel } from './mapProjector'
-import { PenOnlyInput } from './penOnly'
+import { PenOnlyInput, touchPointerType } from './penOnly'
 import { Prediction } from './Prediction'
 import { asError, reportError } from './reportError'
 import {
@@ -340,6 +340,23 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
     ['pointerleave', hideCursor],
   ]
   for (const [type, listener] of pointerListeners) element.addEventListener(type, listener as EventListener)
+  /**
+   * Keeps iOS from selecting the page's text or showing the loupe for a touch a tool takes: only a non-passive
+   * touchstart's preventDefault stops them (ADR 0011). The pointer events come before it and are left as they are;
+   * the compatibility mouse events, the click and the focus change of that touch do not happen, so the focus is let
+   * go of here as a tap would
+   */
+  const onTouchStart = (e: TouchEvent): void => {
+    if (tool === null) return
+    const taken = Array.from(e.changedTouches).some((touch) =>
+      penOnly.accepts({ pointerId: touch.identifier, pointerType: touchPointerType(touch as { touchType?: string }) }),
+    )
+    if (!taken) return
+    e.preventDefault()
+    const active = document.activeElement
+    if (active instanceof HTMLElement && active !== document.body) active.blur()
+  }
+  element.addEventListener('touchstart', onTouchStart as EventListener, { passive: false })
   for (const controller of controllers) controller.enable()
 
   let layer: StrokeLayer | null = null
@@ -526,6 +543,7 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
       destroyed = true
       for (const controller of controllers) controller.disable()
       for (const [type, listener] of pointerListeners) element.removeEventListener(type, listener as EventListener)
+      element.removeEventListener('touchstart', onTouchStart as EventListener)
       cursor.destroy()
       laserOverlay.destroy()
       frame.destroy()

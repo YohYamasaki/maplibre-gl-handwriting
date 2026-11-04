@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PenOnlyInput } from '../src/penOnly'
+import { PenOnlyInput, touchPointerType } from '../src/penOnly'
 
 const pen = { pointerId: 2, pointerType: 'pen' }
 const mouse = { pointerId: 1, pointerType: 'mouse' }
@@ -83,5 +83,13 @@ describe('PenOnlyInput', () => {
     input.up(touch)
     input.up({ pointerId: touch2.pointerId, pointerType: 'touch' })
     expect(input.pressedTouches()).toEqual([])
+  })
+})
+
+describe('touchPointerType', () => {
+  it('takes a stylus for a pen and any other touch for a touch', () => {
+    expect(touchPointerType({ touchType: 'stylus' })).toBe('pen')
+    expect(touchPointerType({ touchType: 'direct' })).toBe('touch')
+    expect(touchPointerType({})).toBe('touch')
   })
 })
