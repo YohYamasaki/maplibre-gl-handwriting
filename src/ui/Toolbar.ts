@@ -85,7 +85,7 @@ function rectIn(node: Element, container: Element): Rect {
  *
  * `map.addControl(new HandwritingToolbar(handle))`. The toolbar floats over the map wherever its placement says,
  * whatever corner it is added to. It uses only the handle's functions and events; remove it with
- * map.removeControl before destroying the handle. Its styles are the package's `style.css` (ui/toolbar.css here), loaded by the user
+ * map.removeControl before destroying the handle. Its styles are the package's `style.css`, loaded by the user
  */
 export class HandwritingToolbar implements IControl {
   private map: MapLibreMap | null = null

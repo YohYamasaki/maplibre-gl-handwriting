@@ -8,7 +8,10 @@ import type { Point, StrokeData } from './stroke'
 /** Pieces one cut may leave of a stroke; the eraser leaves a stroke that would break into more alone */
 export const MAX_PIECES_PER_SPLIT = 64
 
-/** The part of a stroke from position `from` to position `to` along its center line (see the top of this file) */
+/**
+ * The part of a stroke from position `from` to position `to` along its center line, where a position s = i + t lies
+ * on the segment from points[i] to points[i + 1], a fraction t of the way
+ */
 export type PieceRange = { from: number; to: number }
 
 /** A piece of a stroke with the ID it is saved under */

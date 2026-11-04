@@ -2,15 +2,7 @@
   "name": "maplibre-gl-handwriting-example-basic",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
   "dependencies": {
     "maplibre-gl": "^6.16.0"
-  },
-  "devDependencies": {
-    "vite": "^8.3.5"
   }
 }

@@ -4,14 +4,24 @@ import { asError, reportError } from './reportError'
 import { holdsLayer, StrokeLayer } from './StrokeLayer'
 import { StrokeTessellator } from './StrokeTessellator'
 
+/** The options of a new HandwritingLayer: store and id are required */
 export type HandwritingLayerOptions = {
   /** The strokes to draw. The layer only reads the store: put the strokes in it with ops, e.g. a load op */
   store: StrokeStore
-  /** The layer's ID in the map style. Required, so that it never takes createHandwriting's default 'handwriting' */
+  /**
+   * The layer's ID in the map style, other than the layerId of a handle on the same map. Required, so that it never
+   * takes createHandwriting's default 'handwriting'
+   */
   id: string
-  /** Where to fetch the WebAssembly module from, instead of next to this script */
+  /**
+   * Where to fetch the WebAssembly module from, instead of next to this script. The tessellation worker is sent the
+   * URL the main thread loads it from, so the worker script needs no module next to it
+   */
   wasmUrl?: string | URL
-  /** Where to load the tessellation worker script from, instead of next to this script */
+  /**
+   * Where to load the tessellation worker script from, instead of next to this script. It must be of the page's
+   * origin: a browser starts no worker script from another one
+   */
   workerUrl?: string | URL
 }
 
@@ -24,7 +34,7 @@ export type HandwritingLayerOptions = {
  * repainted. A module or a tessellation worker that fails to load is the map's error event, `{ error, layerId }` (on
  * the console when nothing listens for it), and the layer then draws nothing, also when added again. MapLibre calls no
  * onRemove when it rebuilds the style (setStyle without a diff) or when the map is removed: add the layer again after
- * such a setStyle (e.g. on style.load), and call destroy once it is no longer wanted, which frees its worker and GPU
+ * such a setStyle (e.g. on style.load; a style changed by a diff keeps it), and call destroy once it is no longer wanted, which frees its worker and GPU
  * resources whether or not it is still on the map.
  *
  * A store given to both a HandwritingLayer and createHandwriting is drawn, and tessellated, twice

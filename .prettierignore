@@ -7,8 +7,8 @@ docs/adr/
 dist/
 tessellator/target/
 tessellator/pkg/
-examples/*/dist/
 
-# Written by npm and by the snapshot tool
+# Written by npm, by the snapshot tool and by npm run docs:api
 package-lock.json
 tests/snapshots/
+docs/api.md

@@ -9,8 +9,9 @@ import type { Point, StrokeData } from './stroke'
  */
 export type Matrix = [a: number, b: number, c: number, d: number, e: number, f: number]
 
-/** Strokes are kept between these zooms, the range a stroke can be drawn at */
+/** The smallest zoom a stroke is kept at: strokes are kept from it to MAX_STROKE_ZOOM, where they can be drawn */
 export const MIN_STROKE_ZOOM = 0
+/** The largest zoom a stroke is kept at (see MIN_STROKE_ZOOM) */
 export const MAX_STROKE_ZOOM = 24
 
 /** The largest scale a transform may have, and the smallest is its inverse; beyond it no stroke stays in range */
@@ -27,6 +28,7 @@ const SIMILARITY_TOLERANCE = 1e-9
 const ZOOM_TOLERANCE = 1e-9
 const EDGE_TOLERANCE = 1e-12
 
+/** The transform that leaves every point where it is */
 export const IDENTITY: Matrix = [1, 0, 0, 1, 0, 0]
 
 /** Whether `m` is a similarity with finite entries and a scale within MAX_TRANSFORM_SCALE either way */
@@ -69,6 +71,7 @@ export function inverse(m: Matrix): Matrix {
   return [ia, ib, ic, id, -(ia * e + ic * f), -(ib * e + id * f)]
 }
 
+/** Where `m` takes a point */
 export function applyToPoint(m: Matrix, [x, y]: Point): Point {
   return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]
 }
@@ -85,7 +88,7 @@ export function similarityAbout(center: Point, scale: number, angle: number, off
  * The points and zoom a stroke has after `m`. Its width in pixels stays the same, so the zoom it was drawn at
  * changes by the scale: a stroke twice as large is the size it was at one zoom level further out.
  * Returns null when a point would leave the map (0 to 1) or the zoom would leave MIN/MAX_STROKE_ZOOM, by more than
- * rounding (EDGE_TOLERANCE, ZOOM_TOLERANCE; within it, the value is clamped); such a stroke is left as it is
+ * rounding (within it, the value is clamped); such a stroke is left as it is
  */
 export function transformStroke(
   stroke: Pick<StrokeData, 'points' | 'zoom'>,

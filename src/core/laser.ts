@@ -11,6 +11,7 @@ export type LaserOp = { source: string; trail: number; pts: Point[] }
 /** local: drawn on this screen / remote: received from elsewhere, e.g. through a sync layer */
 export type LaserOrigin = 'local' | 'remote'
 
+/** A subscriber of a LaserChannel (subscribe): called with every op emitted on it and the op's origin */
 export type LaserListener = (op: LaserOp, origin: LaserOrigin) => void
 
 /** The largest trail number; the count wraps around to 0 after it, within what the protocol accepts */

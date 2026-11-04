@@ -1,6 +1,6 @@
-// The checks of an example built from the packed package (e2e-example.mjs with Vite, e2e-bundlers.mjs with webpack,
-// Rollup and esbuild). The example (examples/*/main.*) puts one blue stroke in its store with a load op, which only
-// the layer's worker tessellates, records the map's errors and whether ready resolved, and selects the pen
+// The checks of examples/basic with the packed package installed (e2e-example.mjs). The example (examples/basic/main.js)
+// puts one blue stroke in its store with a load op, which only the layer's worker tessellates, and selects the pen;
+// e2e-example.mjs adds window.example = { map, store, handwriting } to it for these checks
 import { assert, hexToRgb, line, near, waitFor } from './browser.mjs'
 
 // Run before the page's own scripts: records each worker the page makes, and the WebAssembly URL the tessellation
@@ -21,7 +21,7 @@ const RECORD_WORKERS = `(() => {
   }
 })()`
 
-// The loaded stroke's middle (examples/*/main.*: from 141.32 to 141.39 east, at 43.07 north)
+// The loaded stroke's middle (examples/basic/main.js: from 141.32 to 141.39 east, at 43.07 north)
 const LOADED_AT = [141.355, 43.07]
 
 /**
@@ -54,14 +54,13 @@ export async function checkExample(run, { name, origin, path, insecure = false }
     })
   }
 
-  await run.check(`${name}: ready resolves and the map reports no error`, async () => {
-    await waitFor('ready to settle', () => page.eval(`window.example.ready !== null`), 30000)
-    const ready = await page.eval(`window.example.ready`)
-    const errors = await page.eval(`window.example.errors`)
-    assert(
-      ready === true && errors.length === 0,
-      `ready ${ready ? 'resolved' : 'rejected'}, errors on the map: ${JSON.stringify(errors)}`,
-    )
+  // The map's errors are not looked at here: with no listener, MapLibre logs them, which fails the run (browser.mjs)
+  await run.check(`${name}: ready resolves`, async () => {
+    const ready = await page.eval(`Promise.race([
+      window.example.handwriting.ready.then(() => 'resolved', (e) => 'rejected: ' + e),
+      new Promise((resolve) => setTimeout(() => resolve('not settled after 25 s'), 25000)),
+    ])`)
+    assert(ready === 'resolved', `ready ${ready}`)
   })
 
   await run.check(`${name}: the stroke from the load op is drawn in its color, by the worker`, async () => {
@@ -88,17 +87,17 @@ export async function checkExample(run, { name, origin, path, insecure = false }
     assert(near(on, black) && !near(off, black), `the page shows ${on} on the stroke and ${off} away from it`)
   })
 
-  await run.check(`${name}: the tessellation worker and the WebAssembly module are loaded from the build`, async () => {
+  await run.check(`${name}: the tessellation worker and the WebAssembly module are loaded from the site`, async () => {
     const workers = await page.eval(`window.__workers`)
     const tessellation = workers.filter((w) => w.wasmUrl !== null)
     assert(tessellation.length === 1, `${tessellation.length} tessellation workers: ${JSON.stringify(workers)}`)
     const [{ url, wasmUrl }] = tessellation
-    const build = `${origin}${path}`
+    const site = `${origin}${path}`
     for (const [what, at, type] of [
       ['worker', url, 'text/javascript'],
       ['WebAssembly module', wasmUrl, 'application/wasm'],
     ]) {
-      assert(at.startsWith(build), `the ${what} is loaded from ${at}, not from the build at ${build}`)
+      assert(at.startsWith(site), `the ${what} is loaded from ${at}, not from the site at ${site}`)
       const served = await page.eval(
         `fetch(${JSON.stringify(at)}).then((r) => ({ ok: r.ok, type: r.headers.get('content-type') }))`,
       )

@@ -1,4 +1,4 @@
-// A static file server for the browser checks of built examples (e2e-bundlers.mjs): `node serve.mjs <dir> <port>`.
+// A static file server for the browser check of the example (e2e-example.mjs): `node serve.mjs <dir> <port>`.
 // A directory serves its index.html. .wasm goes as application/wasm, which WebAssembly.instantiateStreaming needs, and
 // .js and .mjs as text/javascript, which module scripts and module workers need. Nothing outside <dir> is served.
 // It listens on 127.0.0.1, for http://localhost:<port> and for http://handwriting.test:<port> (browser.mjs)

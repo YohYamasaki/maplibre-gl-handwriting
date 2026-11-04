@@ -1,9 +1,21 @@
+<!-- To run it: in this directory, `npm install` and `npm install maplibre-gl-handwriting`, then serve the directory -->
+<!-- with any static file server and open it. The import map below finds both packages in node_modules -->
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>maplibre-gl-handwriting: basic</title>
+    <link rel="stylesheet" href="./node_modules/maplibre-gl/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="./node_modules/maplibre-gl-handwriting/dist/style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "maplibre-gl": "./node_modules/maplibre-gl/dist/maplibre-gl.mjs",
+          "maplibre-gl-handwriting": "./node_modules/maplibre-gl-handwriting/dist/index.js"
+        }
+      }
+    </script>
     <style>
       html,
       body,
@@ -15,6 +27,6 @@
   </head>
   <body>
     <div id="map"></div>
-    <script type="module" src="./main.ts"></script>
+    <script type="module" src="./main.js"></script>
   </body>
 </html>

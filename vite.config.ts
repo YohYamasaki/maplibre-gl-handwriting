@@ -34,12 +34,12 @@ function keepWasmAFile(): Plugin {
 // "" + import.meta.url)`, the inner one maybe after a /* @vite-ignore */, with any of the three quotes
 const VITE_ASSET_URL =
   /new URL\(\s*(?:\/\*\s*@vite-ignore\s*\*\/\s*)?new URL\(\s*(["'`])([^"'`]+)\1\s*,\s*import\.meta\.url\s*\)\.href\s*,\s*(["'`])\3\s*\+\s*import\.meta\.url\s*\)/g
-// The form bundlers find: webpack makes an asset of it (and a bundled worker inside new Worker), Rollup's
-// import-meta-assets plugin copies the file
+// The generic form: a browser resolves it against the module's own URL, and tools that handle
+// new URL('<relative path>', import.meta.url) find the file
 const GENERIC_ASSET_URL = /new URL\("(\.\.?\/[^"]+)", import\.meta\.url\)/g
 
 /**
- * Rewrites the asset URLs Vite writes into the form bundlers find, `new URL("./<relative path>", import.meta.url)`, in
+ * Rewrites the asset URLs Vite writes into the generic form, `new URL("./<relative path>", import.meta.url)`, in
  * every JavaScript file of the build, the worker's included. The build fails when import.meta.url is anywhere else
  * than in that form, or when a path does not point at a file of the build
  */

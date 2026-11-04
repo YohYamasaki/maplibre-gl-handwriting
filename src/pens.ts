@@ -21,9 +21,9 @@ export type Pen = {
  * pointer events. Shared by every pen that has pressure on
  */
 export type PressureCurve = {
-  /** The coefficient at no pressure, MIN_PRESSURE_MIN to 1: the thinnest a line gets, as a part of the pen's width */
+  /** The coefficient at no pressure, 0.05 to 1: the thinnest a line gets, as a part of the pen's width */
   min: number
-  /** The curve's exponent, MIN_PRESSURE_GAMMA to MAX_PRESSURE_GAMMA. Below 1 a light touch already draws wide */
+  /** The curve's exponent, 0.2 to 5. Below 1 a light touch already draws wide */
   gamma: number
 }
 
@@ -33,6 +33,7 @@ export type PressureCurve = {
  */
 export type EraserMode = 'stroke' | 'partial'
 
+/** The eraser tool's reach and mode (setEraser) */
 export type EraserSettings = {
   /** How far from the pointer the eraser reaches past a stroke's edge, in CSS px, 1 to 64 */
   radius: number
@@ -60,7 +61,7 @@ export type ToolbarSettings = {
 /** Everything a user of the app can change and may want to keep, e.g. in localStorage */
 export type HandwritingSettings = {
   pens: Record<PenTool, Pen>
-  /** The colors offered for every pen, #rrggbb; always PALETTE_SIZE of them */
+  /** The colors offered for every pen, #rrggbb; always 5 of them */
   palette: string[]
   eraser: EraserSettings
   pressure: PressureCurve

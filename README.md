@@ -1,13 +1,14 @@
 # maplibre-gl-handwriting
 
-Freehand drawing on a [MapLibre GL JS](https://maplibre.org/) map. Strokes are kept in map coordinates, tessellated
-off the main thread by [lyon](https://github.com/nical/lyon) compiled to WebAssembly, and drawn by a custom layer.
-It comes with a pen, a highlighter, an eraser, a lasso to move, scale, rotate, duplicate or delete strokes, a laser
-pointer, undo and redo, keyboard shortcuts and a toolbar control; the `tools` option chooses which tools a map
-offers. `HandwritingLayer` draws the strokes alone, for maps that only show them.
+Freehand drawing on a [MapLibre GL JS](https://maplibre.org/) map: strokes are kept in map coordinates, tessellated
+off the main thread by [lyon](https://github.com/nical/lyon) compiled to WebAssembly, and drawn by a custom layer. It
+draws and edits the strokes of a store you own; saving and sharing them is up to your code.
 
-The package draws and edits the strokes of a store you own. It does not save or share them: keep the store's
-strokes yourself, or connect the store to your own sync layer.
+- A pen and a highlighter with pen pressure, an eraser, a laser pointer, and a lasso to move, scale, rotate,
+  duplicate, delete or export strokes
+- Undo and redo, keyboard shortcuts, and a toolbar control
+- A layer that only shows strokes, and a DOM-free `maplibre-gl-handwriting/core` entry for servers and sync code
+- GeoJSON export
 
 ## Install
 
@@ -17,69 +18,40 @@ npm install maplibre-gl maplibre-gl-handwriting
 
 `maplibre-gl` (^6.16.0) is a peer dependency.
 
-## Usage
+## Quick start
 
-```ts
-import 'maplibre-gl/dist/maplibre-gl.css'
-import 'maplibre-gl-handwriting/style.css'
+```js
 import { Map } from 'maplibre-gl'
 import { createHandwriting, HandwritingToolbar, StrokeStore } from 'maplibre-gl-handwriting'
 
 const map = new Map({ container: 'map', style: 'https://demotiles.maplibre.org/style.json' })
-
 const store = new StrokeStore()
 const handwriting = createHandwriting(map, { store })
 handwriting.setTool('pen')
 map.addControl(new HandwritingToolbar(handwriting))
 ```
 
-`style.css` holds the toolbar's styles. The toolbar floats along an edge of the map, wherever its placement setting
-says, not in the corner given to `addControl`.
+Load the package's `dist/style.css` (`maplibre-gl-handwriting/style.css`), which styles the toolbar, the same way as
+`maplibre-gl/dist/maplibre-gl.css`. Where MapLibre cannot find its own worker, give its URL with MapLibre's
+[`setWorkerUrl`](https://maplibre.org/maplibre-gl-js/docs/API/functions/setWorkerUrl/).
 
-`handwriting.ready` resolves once the WebAssembly module has loaded on the main thread and in the layer's
-tessellation worker, which starts when the layer is added: after the style has loaded, and with `beforeId`, once the
-style has that layer. When the module or the worker fails to load, `ready` rejects and the map fires an `error` event
-with the layer's ID as `layerId` (on the console when nothing listens for it); the layer then draws nothing.
+## Loading the worker and WebAssembly
 
-The package loads its worker and its WebAssembly module with `new URL('./…', import.meta.url)`, which Vite and
-webpack 5 find by themselves; Rollup needs `@web/rollup-plugin-import-meta-assets`, and with esbuild copy the
-package's `dist/assets` next to the bundle ([docs/usage.md](docs/usage.md#bundlers)). With Vite, exclude the package
-from dependency pre-bundling, so that the dev server serves the worker and the module from where the package looks
-for them:
+The package loads its tessellation worker and its WebAssembly module from `dist/assets`, next to its own script, with
+`new URL('./assets/…', import.meta.url)`. When they are served from somewhere else, copy `dist/assets` there and pass
+the files' URLs as `workerUrl` and `wasmUrl` ([Setup](docs/usage.md#setup)). If they fail to load, the map fires an
+`error` event and `handwriting.ready` rejects.
 
-```ts
-// vite.config.ts
-export default defineConfig({
-  optimizeDeps: { exclude: ['maplibre-gl-handwriting'] },
-})
-```
+## Example
 
-[examples/basic](examples/basic) is a complete Vite project; [examples/webpack](examples/webpack),
-[examples/rollup](examples/rollup) and [examples/esbuild](examples/esbuild) are the same with the other bundlers.
-
-To only show strokes, add a `HandwritingLayer` yourself, anywhere among the style's layers:
-
-```ts
-import { HandwritingLayer, StrokeStore } from 'maplibre-gl-handwriting'
-
-const store = new StrokeStore()
-map.on('load', () => map.addLayer(new HandwritingLayer({ store, id: 'strokes' })))
-```
-
-After a `setStyle` that rebuilds the style, add it again; call `destroy()` when it is no longer needed, also after
-`map.remove()`. `createHandwriting` adds its own layer again by itself.
+[examples/basic](examples/basic) is a page with an import map and no build step: install its packages and serve it
+with any static file server.
 
 ## Documentation
 
-[docs/usage.md](docs/usage.md) covers the options, the handle's functions and events, the toolbar, the
-`HandwritingLayer`, the store and its order modes, saving settings, the `maplibre-gl-handwriting/core` entry and
-bundler setup.
-
-## Versioning
-
-The package is at 0.x. A release that changes the public API raises the minor version, any other release the patch
-version ([CHANGELOG.md](CHANGELOG.md)). The features under the `experimental` option are being worked on and are
-outside semantic versioning: they may change or be removed in any release.
+- [docs/usage.md](docs/usage.md): how to draw, save and share strokes, keep settings, and handle errors
+- [docs/api.md](docs/api.md): every export, with its type and description
+- [CHANGELOG.md](CHANGELOG.md): the changes in each version
 
 ## License
 

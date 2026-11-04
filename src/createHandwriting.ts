@@ -41,6 +41,7 @@ export type Tool = 'pen' | 'highlighter' | 'eraser' | 'lasso' | 'laser' | null
 /** Identity of a stroke that is about to start */
 export type StrokeIdentity = { id: string; author: string }
 
+/** The options of createHandwriting: store is required */
 export type HandwritingOptions = {
   /**
    * The strokes to draw and to edit. The handle draws every stroke in it and loads nothing itself: put the strokes
@@ -66,8 +67,8 @@ export type HandwritingOptions = {
   beforeId?: string
   /**
    * Initial pens, palette, eraser, toolbar placement, laser color and pen-only input, e.g. the settings the app
-   * saved from getSettings(). Fields left out keep the defaults: pen black 4px, highlighter yellow 50% 16px, eraser
-   * 6px, toolbar at the bottom center, laser #ff3b30, pen-only input off
+   * saved from getSettings(). Fields left out keep the defaults: pen black 4px with pressure, highlighter yellow 50%
+   * 16px, eraser 6px in mode 'stroke', toolbar at the bottom center, laser #ff3b30, pen-only input off
    */
   defaults?: HandwritingDefaults
   /**
@@ -96,9 +97,15 @@ export type HandwritingOptions = {
    * to share them. When omitted, the handle makes a channel of its own
    */
   laser?: LaserChannel
-  /** Where to fetch the WebAssembly module from, instead of next to this script */
+  /**
+   * Where to fetch the WebAssembly module from, instead of next to this script. The tessellation worker is sent the
+   * URL the main thread loads it from, so the worker script needs no module next to it
+   */
   wasmUrl?: string | URL
-  /** Where to load the tessellation worker script from, instead of next to this script */
+  /**
+   * Where to load the tessellation worker script from, instead of next to this script. It must be of the page's
+   * origin: a browser starts no worker script from another one
+   */
   workerUrl?: string | URL
   /**
    * What Export in the selection's bar does with the selected strokes' GeoJSON (see exportGeoJSON). When omitted,
@@ -111,12 +118,15 @@ export type HandwritingOptions = {
 export type HandwritingEventMap = {
   /** canUndo or canRedo may have changed */
   history: { canUndo: boolean; canRedo: boolean }
+  /** The selected tool changed */
   toolchange: { tool: Tool }
+  /** A field of the pen or the highlighter changed */
   penchange: { tool: PenTool; pen: Pen }
   /** Any setting changed: a pen, the palette, the eraser, the toolbar placement or pen-only input. Save `settings` to restore them as `defaults` */
   settingschange: { settings: HandwritingSettings }
 }
 
+/** A listener of the handle's event K (Handwriting.on and off), called with the event's payload */
 export type HandwritingListener<K extends keyof HandwritingEventMap> = (event: HandwritingEventMap[K]) => void
 
 /** What createHandwriting returns */
@@ -126,9 +136,11 @@ export type Handwriting = {
    * workers to answer. The layer is added once the module has loaded on the main thread and the style has loaded (and
    * holds the beforeId layer), and again after each style.load that leaves it out, such as setStyle without a diff;
    * its worker is made when it is added, so ready waits for the style and the beforeId layer too. Rejects when either
-   * module or the worker fails to load, which is also the map's error event, `{ error, layerId }` (on the console when
-   * nothing listens for it); the layer then draws nothing. A worker that fails after ready has settled is only the
-   * error event. Resolves on destroy when it has not settled yet
+   * module or the worker fails to load, or the worker cannot be made (a worker script of another origin, or a Content
+   * Security Policy that forbids it), which is also the map's error event, `{ error, layerId }` (on the console when
+   * nothing listens for it); the layer then draws nothing and makes no worker again, also after the style is rebuilt.
+   * A worker that fails after ready has settled is only the error event. Resolves on destroy when it has not settled
+   * yet
    */
   readonly ready: Promise<void>
   /** Throws a RangeError for a tool the handle does not offer (HandwritingOptions.tools) */
@@ -144,6 +156,10 @@ export type Handwriting = {
   getPen(tool: PenTool): Pen
   /** Replaces the palette: 5 colors, #rrggbb */
   setPalette(colors: string[]): void
+  /**
+   * Changes the given fields of the eraser; the radius is clamped to its range. Throws a RangeError for an unknown
+   * mode, and for 'partial' unless HandwritingOptions.experimental turns the partial eraser on
+   */
   setEraser(eraser: Partial<EraserSettings>): void
   /**
    * Changes where the toolbar sits. HandwritingToolbar calls it when it is moved or collapsed; the handle only
@@ -155,6 +171,11 @@ export type Handwriting = {
    * HandwritingSettings.penOnly). Turning it on ends a touch that is drawing or erasing at that moment
    */
   setPenOnly(enabled: boolean): void
+  /**
+   * The pens, the palette, the eraser, the pressure curve, the toolbar placement, the laser color and pen-only input.
+   * To keep them, save the settings of settingschange and pass them back as HandwritingOptions.defaults, checked with
+   * parseDefaults
+   */
   getSettings(): HandwritingSettings
   undo(): void
   redo(): void
@@ -178,7 +199,8 @@ export type Handwriting = {
   off<K extends keyof HandwritingEventMap>(type: K, listener: HandwritingListener<K>): void
   /**
    * Removes the layer and every listener, and gives the map back the gestures the tools took. Also frees the layer's
-   * worker and GPU resources when the layer is no longer on the map's style, e.g. after map.remove()
+   * worker and GPU resources when the layer is no longer on the map's style, e.g. after map.remove(). Nothing is
+   * reported on the map's error event after it
    */
   destroy(): void
 }

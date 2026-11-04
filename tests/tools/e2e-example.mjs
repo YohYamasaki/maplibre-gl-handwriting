@@ -1,12 +1,15 @@
-// Browser check of the package as a user gets it (decisions 0091, 0094): packs it, installs the tgz into a copy of
-// examples/basic, builds the example with Vite, serves the build and runs the example's checks in headless Chrome
-// (example-checks.mjs): the stroke of a load op and one drawn by dragging are drawn, ready resolves with no error on
-// the map, and the worker and the WebAssembly module come from the build. No server: the default store gives the order
+// Browser check of the package as a user gets it (decisions 0091, 0094, 0013): packs it, installs the tgz into a copy
+// of examples/basic (a page with an import map and no build), serves the copy as it is (serve.mjs) and runs the
+// example's checks in headless Chrome (example-checks.mjs), once from localhost and once from a host that is not
+// localhost (browser.mjs's INSECURE_HOST), where the page is not a secure context and crypto.randomUUID is missing:
+// the stroke of a load op and one drawn by dragging are drawn, ready resolves, and the worker and the WebAssembly
+// module come from the package next to the page. The page logs no error, the map's errors included (MapLibre logs
+// them when nothing listens). No server: the default store gives the order
 import { spawnSync } from 'node:child_process'
-import { cpSync, mkdtempSync, rmSync } from 'node:fs'
+import { appendFileSync, cpSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import { freePort, startRun } from './browser.mjs'
+import { freePort, INSECURE_HOST, startRun } from './browser.mjs'
 import { checkExample } from './example-checks.mjs'
 
 const root = resolve(dirname(new URL(import.meta.url).pathname), '..', '..')
@@ -32,17 +35,24 @@ cpSync(join(root, 'examples/basic'), example, {
   filter: (path) => !/[/\\](node_modules|dist|package-lock\.json)$/.test(path),
 })
 run('npm', ['install', '--no-audit', '--no-fund', '--prefer-offline', join(work, packed.filename)], example)
-run('npx', ['vite', 'build'], example)
+// What the checks look at, kept out of the example itself: its map, its store and its handle
+appendFileSync(join(example, 'main.js'), '\nwindow.example = { map, store, handwriting }\n')
 
 const port = await freePort()
 const browser = await startRun('e2e-example', {
-  command: 'npx',
-  args: ['vite', 'preview', '--port', String(port), '--strictPort'],
-  cwd: example,
+  command: 'node',
+  args: [join(root, 'tests/tools/serve.mjs'), example, String(port)],
+  cwd: work,
   port,
 })
 
 console.log('e2e-example')
-await checkExample(browser, { name: 'Vite', origin: `http://localhost:${port}`, path: '/' })
+await checkExample(browser, { name: 'localhost', origin: `http://localhost:${port}`, path: '/' })
+await checkExample(browser, {
+  name: 'not a secure context',
+  origin: `http://${INSECURE_HOST}:${port}`,
+  path: '/',
+  insecure: true,
+})
 
 await browser.done()

@@ -28,6 +28,17 @@ export type StrokeData = {
   order?: number
 }
 
+/**
+ * A change to the strokes of a StrokeStore, given to its apply and passed on to its subscribers:
+ * - begin, points and end: a stroke being drawn, its points (and, for a stroke drawn with pressure, their width
+ *   coefficients ps), and its end
+ * - order: the stroke's place in the drawing order, an integer from 1 to MAX_ORDER
+ * - remove: erases a whole stroke; restore brings a removed one back (undo of an erase, redo of a stroke)
+ * - split: the partial eraser's cut of a stroke with an order into pieces, which keep its place in the drawing order
+ * - transform: moves, scales and rotates strokes with an order (see transformStroke)
+ * - replace: sets strokes held here to another copy of them, e.g. a sync layer's, which wins over what was applied here
+ * - load: adds the strokes not in the store yet, e.g. saved ones; reset replaces all the strokes
+ */
 export type StrokeOp =
   | {
       type: 'begin'
@@ -83,6 +94,7 @@ export function validOrder(order: number): boolean {
  */
 export type StrokeOrderMode = 'default' | 'custom'
 
+/** The options of a new StrokeStore */
 export type StrokeStoreOptions = {
   /** Who gives strokes their order; 'default' when omitted */
   order?: StrokeOrderMode
@@ -95,6 +107,11 @@ export type StrokeStoreOptions = {
  */
 export type Origin = 'local' | 'remote' | 'preview'
 
+/**
+ * A subscriber of a StrokeStore (subscribe): called after each op the store applied, with the op as applied (e.g. a
+ * transform with only the IDs that changed, a load with only the strokes added, as the store's own copies) and its
+ * origin. An op the store could not apply reaches no subscriber
+ */
 export type StrokeListener = (op: StrokeOp, origin: Origin) => void
 
 /**
@@ -234,10 +251,12 @@ export class StrokeStore {
     return copy
   }
 
+  /** The stroke with this ID, or undefined */
   get(id: string): StrokeData | undefined {
     return this.strokes.get(id)
   }
 
+  /** Every stroke held. They come in no set order: the drawing order is each stroke's order */
   values(): IterableIterator<StrokeData> {
     return this.strokes.values()
   }
