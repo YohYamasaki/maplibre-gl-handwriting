@@ -1,8 +1,13 @@
 # maplibre-gl-handwriting
 
-Freehand drawing on a [MapLibre GL JS](https://maplibre.org/) map: strokes are kept in map coordinates, tessellated
-off the main thread by [lyon](https://github.com/nical/lyon) compiled to WebAssembly, and drawn by a custom layer. It
-draws and edits the strokes of a store you own; saving and sharing them is up to your code.
+A simple freehand drawing plugin for [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js).
+
+Strokes are kept in map coordinates, tessellated by [lyon](https://github.com/nical/lyon), and drawn by a custom layer.
+The plugin draws and edits the strokes of a store you own; saving and sharing them is up to your code.
+
+![Pen strokes drawn with pressure, two crossing translucent highlighters, a lasso selection with its action bar, and a fading laser pointer trail on a map of Sapporo](docs/images/screenshot.png)
+
+Map: [GSI Tiles (地理院タイル)](https://maps.gsi.go.jp/development/ichiran.html), Geospatial Information Authority of Japan.
 
 - A pen and a highlighter with pen pressure, an eraser, a laser pointer, and a lasso to move, scale, rotate,
   duplicate, delete or export strokes
@@ -57,3 +62,5 @@ with any static file server.
 
 MIT ([LICENSE](LICENSE)). The WebAssembly module includes Rust crates under their own licenses
 ([THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES)).
+
+The map in the screenshot ([docs/images/screenshot.png](docs/images/screenshot.png)) is GSI Tiles, used under the Geospatial Information Authority of Japan's [Terms of Use](https://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html), not MIT.
