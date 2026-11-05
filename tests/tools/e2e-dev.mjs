@@ -2,8 +2,8 @@
 // inside the layer before the library moved here (decision 0094). The scene's meshes after a zoom, the frozen pieces
 // of a stroke being drawn, the selection and what a drag of it tessellates, and the input latency with and without
 // the predicted points. Also a HandwritingLayer whose worker script is missing (an error on the map, ready rejected,
-// nothing drawn) and a handle offering some tools only (?tools=). No server: the default store gives the order
-// (decision 0091)
+// nothing drawn), a handle offering some tools only (?tools=), and the page without ?blank whose map style cannot be
+// loaded (a plain background in its place). No server: the default store gives the order (decision 0091)
 import { dirname, resolve } from 'node:path'
 import { assert, freePort, hexToRgb, line, near, startRun, wait, waitFor } from './browser.mjs'
 
@@ -501,6 +501,31 @@ await check('?tools=pen,eraser: the toolbar has the hand, the pen and the eraser
     `[...document.querySelectorAll('.handwriting-toolbar [data-tool]')].map((b) => b.dataset.tool)`,
   )
   assert(JSON.stringify(buttons) === JSON.stringify(['hand', 'pen', 'eraser']), `the toolbar's tools: ${buttons}`)
+})
+
+// Without ?blank the page loads OpenFreeMap's style (decision 0017); with that host blocked, the style fails to load
+// and the page falls back to the plain background
+const h = await run.openClient()
+await h.send('Network.enable')
+await h.send('Network.setBlockedURLs', { urls: ['*tiles.openfreemap.org*'] })
+await h.navigate('/')
+await check('the map style blocked, the page falls back to a plain background and a pen stroke is drawn', async () => {
+  await waitFor(
+    'the dev page',
+    () => h.eval(`!!window.__handwriting && !!document.querySelector('.handwriting-toolbar')`),
+    60000,
+  )
+  await waitFor(
+    'the layer',
+    () => h.eval(`!!window.__handwriting.scene() && !!window.__handwriting.map.getLayer('handwriting')`),
+    30000,
+  )
+  await h.drag(line([300, 450], [700, 450]))
+  await waitFor('the stroke with an order', () =>
+    h.eval(`[...window.__handwriting.store.values()].some((s) => s.order !== undefined)`),
+  )
+  await waitFor('the stroke on the page', async () => near((await h.pixels([[500, 450]]))[0], black))
+  assert(await h.eval(`!!window.__handwriting.map.getLayer('handwriting')`), "the map has no layer 'handwriting'")
 })
 
 await run.done()

@@ -4,7 +4,7 @@
 // times; window.__handwriting is what the browser checks (tests/tools/e2e-dev.mjs) look at
 import 'maplibre-gl/dist/maplibre-gl.css'
 import '../src/ui/toolbar.css'
-import { Map as MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+import { Map as MapLibreMap, NavigationControl, setWorkerUrl, type StyleSpecification } from 'maplibre-gl'
 // MapLibre finds its worker next to its own module, which Vite's pre-bundling moves: give it the worker's URL
 import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { debugPredictionCounts, debugSceneOf, setDebugPrediction } from '../src/debug'
@@ -19,34 +19,39 @@ import {
 import { mountPanel } from './panel'
 
 setWorkerUrl(mapLibreWorkerUrl)
+// A plain background: the style under ?blank, for checks that compare pixels against it, and the one the page falls
+// back to when the map's style cannot be loaded
+const backgroundStyle: StyleSpecification = {
+  version: 8,
+  sources: {},
+  layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#f2f2f2' } }],
+}
+const blank = new URLSearchParams(location.search).has('blank')
 const map = new MapLibreMap({
   container: 'map',
-  // GSI pale raster tiles: no API key needed, attribution required. Tiles exist from zoom 2 to 18
-  style: {
-    version: 8,
-    sources: {
-      gsi: {
-        type: 'raster',
-        tiles: ['https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        minzoom: 2,
-        maxzoom: 18,
-        attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
-      },
-    },
-    layers: [
-      { id: 'background', type: 'background', paint: { 'background-color': '#f2f2f2' } },
-      // ?blank leaves the tiles out, for checks that compare pixels against a plain background
-      ...(new URLSearchParams(location.search).has('blank')
-        ? []
-        : [{ id: 'gsi', type: 'raster' as const, source: 'gsi' }]),
-    ],
-  },
+  // OpenFreeMap's Positron (decision 0017): OpenStreetMap vector tiles, no API key needed. Its sources carry their
+  // attribution, which MapLibre shows; the tiles go up to zoom 14
+  style: blank ? backgroundStyle : 'https://tiles.openfreemap.org/styles/positron',
   center: [141.3545, 43.0618],
   zoom: 12,
   minZoom: 2,
   canvasContextAttributes: { antialias: true, desynchronized: true },
 })
+if (!blank) {
+  // The style not loaded, there is no style.load, and the handle adds no layer: an error before style.load puts the
+  // plain background in its place, so the page still draws. Failures after style.load (tiles) only leave the map short
+  const onError = (event: { error?: unknown }): void => {
+    stopListening()
+    console.warn('The map style could not be loaded; drawing on a plain background', event.error)
+    map.setStyle(backgroundStyle, { diff: false })
+  }
+  const stopListening = (): void => {
+    map.off('error', onError)
+    map.off('style.load', stopListening)
+  }
+  map.on('error', onError)
+  map.on('style.load', stopListening)
+}
 map.addControl(new NavigationControl())
 
 const store = new StrokeStore()
