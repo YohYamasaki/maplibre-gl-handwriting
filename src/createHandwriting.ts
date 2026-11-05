@@ -216,9 +216,6 @@ const DUPLICATE_OFFSET = 16
 /**
  * Adds a layer that draws the strokes of `options.store` to the map and turns pointer input on the map into
  * stroke ops for the selected tool. The store is the caller's: the sync layer connects to it, not to the handle.
- *
- * The tip of a stroke being drawn reaches the screen sooner on a map made with
- * `canvasContextAttributes: { desynchronized: true }`, where the browser supports it
  */
 export function createHandwriting(map: MapLibreMap, options: HandwritingOptions): Handwriting {
   const { store } = options

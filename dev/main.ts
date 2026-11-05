@@ -35,7 +35,8 @@ const map = new MapLibreMap({
   center: [141.3545, 43.0618],
   zoom: 12,
   minZoom: 2,
-  canvasContextAttributes: { antialias: true, desynchronized: true },
+  // desynchronized: true can make the whole map flicker at each repaint, as in Chrome on Android (decision 0027)
+  canvasContextAttributes: { antialias: true, desynchronized: false },
 })
 if (!blank) {
   // The style not loaded, there is no style.load, and the handle adds no layer: an error before style.load puts the
