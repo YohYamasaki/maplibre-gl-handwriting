@@ -109,8 +109,8 @@ export type HandwritingOptions = {
    */
   workerUrl?: string | URL
   /**
-   * What Export in the selection's bar does with the selected strokes' GeoJSON (see exportGeoJSON). When omitted,
-   * it downloads strokes.geojson; null leaves Export out of the bar
+   * What Export in the selection's bar does with the selected strokes' GeoJSON (see exportGeoJSON), called once their
+   * spilled points are read back. When omitted, it downloads strokes.geojson; null leaves Export out of the bar
    */
   onExport?: ((geojson: string) => void) | null
 }
@@ -184,10 +184,11 @@ export type Handwriting = {
   canRedo(): boolean
   /**
    * The strokes with these IDs, or the selected ones when omitted, as a GeoJSON (RFC 7946) FeatureCollection
-   * string: one LineString (or Point) per stroke, in WGS84 [lng, lat], in drawing order. IDs not in the store and
-   * strokes without an order yet are skipped
+   * string: one LineString (or Point) per stroke, in WGS84 [lng, lat], in drawing order, once their spilled points are
+   * read back (see StrokeStore). IDs not in the store, strokes without an order yet and strokes whose points could not
+   * be read back are skipped
    */
-  exportGeoJSON(ids?: Iterable<string>): string
+  exportGeoJSON(ids?: Iterable<string>): Promise<string>
   /** Forgets the undo history, e.g. when a new connection can no longer undo the previous one's erases */
   clearHistory(): void
   /**
@@ -200,7 +201,8 @@ export type Handwriting = {
   off<K extends keyof HandwritingEventMap>(type: K, listener: HandwritingListener<K>): void
   /**
    * Removes the layer and every listener, and gives the map back the gestures the tools took. Also frees the layer's
-   * worker and GPU resources when the layer is no longer on the map's style, e.g. after map.remove(). Nothing is
+   * worker and GPU resources when the layer is no longer on the map's style, e.g. after map.remove(). The last layer of
+   * the store to go reads its spilled points back and deletes their records in IndexedDB (see StrokeStore). Nothing is
    * reported on the map's error event after it
    */
   destroy(): void
@@ -309,7 +311,13 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
     onDuplicate: duplicateSelection,
     ...(options.onExport === null
       ? {}
-      : { onExport: (): void => (options.onExport ?? downloadGeoJSON)(exportGeoJSON(store, selection.ids)) }),
+      : {
+          onExport: (): void => {
+            void exportGeoJSON(store, selection.ids).then((geojson) => {
+              if (!destroyed) (options.onExport ?? downloadGeoJSON)(geojson)
+            })
+          },
+        }),
   })
   const updateFrame = (): void => {
     frame.update()
@@ -574,6 +582,7 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
       frame.destroy()
       map.off('move', updateFrame)
       selection.destroy()
+      history.destroy()
       index.destroy()
       map.off('style.load', addLayer)
       map.off('styledata', addLayer)
@@ -582,6 +591,8 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
       // same ID stays
       if (layer && holdsLayer(map, layer)) map.removeLayer(layerId)
       else layer?.dispose()
+      // The last layer of the store to go reads the spilled points back and deletes their records
+      layer?.detachSpill()
       if (__HANDWRITING_DEBUG__) registerDebugLayer(handle, null)
       listeners.clear()
       settleReady?.(null)

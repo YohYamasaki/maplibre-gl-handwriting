@@ -22,12 +22,15 @@ function insideAt(x: number, y: number, polygon: Point[]): boolean {
   return inside
 }
 
-/** IDs of the strokes with an order and at least half of their points inside the lasso */
+/**
+ * IDs of the strokes with an order and at least half of their points inside the lasso. A stroke whose points are
+ * spilled (null) is never inside
+ */
 export function strokesInLasso(index: StrokeIndex, store: StrokeStore, polygon: Point[]): string[] {
   if (polygon.length < 3) return []
   return index.search(boundsOf(polygon)).filter((id) => {
     const stroke = store.get(id)
-    if (!stroke || stroke.order === undefined) return false
+    if (!stroke?.points || stroke.order === undefined) return false
     const { points } = stroke
     let inside = 0
     for (let i = 0; i + 1 < points.length; i += 2) if (insideAt(points[i], points[i + 1], polygon)) inside++

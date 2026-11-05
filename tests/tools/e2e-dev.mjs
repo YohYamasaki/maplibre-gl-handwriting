@@ -2,9 +2,9 @@
 // inside the layer before the library moved here (decision 0094). The scene's meshes after a zoom, the frozen pieces
 // of a stroke being drawn, the selection and what a drag of it tessellates, and the input latency with and without
 // the predicted points. Also a HandwritingLayer whose worker script is missing (an error on the map, ready rejected,
-// nothing drawn), a handle offering some tools only (?tools=), the toolbar's padding on each edge, and the page
-// without ?blank whose map style cannot be
-// loaded (a plain background in its place). No server: the default store gives the order (decision 0091)
+// nothing drawn), a handle offering some tools only (?tools=), the toolbar's padding on each edge, the page without
+// ?blank whose map style cannot be loaded (a plain background in its place), and the IndexedDB records of strokes far
+// from the view (decisions 0023 to 0025). No server: the default store gives the order (decision 0091)
 import { dirname, resolve } from 'node:path'
 import { assert, freePort, hexToRgb, line, near, startRun, wait, waitFor } from './browser.mjs'
 
@@ -33,7 +33,8 @@ const jumpTo = (at, zoom) =>
   a.eval(`window.__handwriting.map.jumpTo({ center: ${JSON.stringify(at)}, zoom: ${zoom} }), true`)
 const strokes = () =>
   a.eval(
-    `[...window.__handwriting.store.values()].map((s) => ({ id: s.id, order: s.order ?? null, first: [s.points[0], s.points[1]], points: s.points.length / 2 }))`,
+    // From the store's extent, which stays while a stroke's points are spilled to IndexedDB (decision 0023)
+    `[...window.__handwriting.store.values()].map((s) => ({ id: s.id, order: s.order ?? null, first: window.__handwriting.store.extent(s.id)?.start ?? null, points: s.points ? s.points.length / 2 : null }))`,
   )
 await jumpTo(center, 12)
 
@@ -538,6 +539,108 @@ await check(
     const top = await barOn('top')
     assert(top.orientation === 'horizontal' && top.padding === '4px 16px', `on the top: ${JSON.stringify(top)}`)
     await barOn('bottom')
+  },
+)
+
+// The points of strokes far from the view go to IndexedDB and come back (decisions 0023 to 0025)
+const sp = await run.openClient()
+await sp.navigate('/?blank')
+await waitFor('the dev page', () => sp.eval(`!!window.__handwriting && !!window.__handwriting.scene()`), 60000)
+await sp.eval(`(() => {
+  const h = window.__handwriting
+  h.map.jumpTo({ center: ${JSON.stringify(center)}, zoom: 12 })
+  // A line of the page's own, 400 px long at zoom 12, from [lng, lat]
+  h.lineAt = ([lng, lat]) => {
+    const toMercator = (lng, lat) => {
+      const s = Math.sin((lat * Math.PI) / 180)
+      return [(lng + 180) / 360, 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)]
+    }
+    const [x, y] = toMercator(lng, lat)
+    const px = 1 / (512 * 2 ** 12)
+    return new Float64Array(Array.from({ length: 41 }, (_, i) => [x + i * 10 * px, y]).flat())
+  }
+  const database = () =>
+    new Promise((resolve, reject) => {
+      const request = indexedDB.open('maplibre-gl-handwriting-spill', 1)
+      request.onupgradeneeded = () => request.result.createObjectStore('points', { keyPath: ['store', 'id'] })
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  const run = (mode, work) =>
+    database().then(
+      (db) =>
+        new Promise((resolve, reject) => {
+          const transaction = db.transaction('points', mode)
+          const result = work(transaction.objectStore('points'))
+          transaction.oncomplete = () => {
+            db.close()
+            resolve(result.result)
+          }
+          transaction.onabort = () => reject(transaction.error)
+        }),
+    )
+  // [store, id] of every record
+  h.records = () => run('readonly', (records) => records.getAllKeys())
+  h.putRecord = (store, id) => run('readwrite', (records) => records.put({ store, id, points: Float64Array.of(0.5, 0.5) }))
+  return true
+})()`)
+const recordIds = async (page) => (await page.eval(`window.__handwriting.records()`)).map(([, id]) => id)
+
+await check(
+  'a stroke far from the view is written to IndexedDB, and read back and drawn as the view comes to it',
+  async () => {
+    const far = [146.3545, 43.0618]
+    await sp.eval(`(() => {
+    const h = window.__handwriting
+    h.store.apply({ type: 'load', strokes: [{ id: 'far-1', author: 'e2e', color: '#0000ff', width: 6, zoom: 12, points: h.lineAt(${JSON.stringify(far)}) }] }, 'remote')
+    return true
+  })()`)
+    await waitFor('the far stroke spilled', () => sp.eval(`window.__handwriting.store.get('far-1').points === null`))
+    assert((await recordIds(sp)).includes('far-1'), `the records are ${JSON.stringify(await recordIds(sp))}`)
+    // Frames are drawn for the screenshots, which bring the page to the front: the layer holds the strokes near the
+    // view in them, reads their points back and draws them
+    await sp.eval(`window.__handwriting.map.jumpTo({ center: ${JSON.stringify(far)}, zoom: 12 }), true`)
+    const blue = hexToRgb('#0000ff')
+    // The line runs 400 px to the right from the center of the 1000 × 700 px map
+    await waitFor('the stroke on the page', async () => near((await sp.pixels([[600, 350]]))[0], blue), 30000)
+    assert(
+      await sp.eval(`window.__handwriting.store.get('far-1').points?.length === 82`),
+      'the points were not read back',
+    )
+  },
+)
+
+await check(
+  "attaching deletes the records of stores whose lock no page holds, and the last layer's destroy deletes its own",
+  async () => {
+    await sp.eval(`(() => {
+    const h = window.__handwriting
+    // A record left by a closed tab, and one of a store whose lock is held
+    navigator.locks.request('maplibre-gl-handwriting-spill:held-e2e', () => new Promise(() => {}))
+    return Promise.all([h.putRecord('abandoned-e2e', 'old-1'), h.putRecord('held-e2e', 'kept-1')]).then(() => true)
+  })()`)
+    await sp.eval(`(() => {
+    const h = window.__handwriting
+    const store = new h.store.constructor()
+    h.own = { store, layer: new h.HandwritingLayer({ store, id: 'own' }) }
+    h.map.addLayer(h.own.layer)
+    return h.own.layer.ready.then(() => true)
+  })()`)
+    await waitFor('the abandoned record deleted', async () => !(await recordIds(sp)).includes('old-1'))
+    assert((await recordIds(sp)).includes('kept-1'), 'the record of a store whose lock is held was deleted')
+    await sp.eval(`(() => {
+    const h = window.__handwriting
+    h.own.store.apply({ type: 'load', strokes: [{ id: 'own-1', author: 'e2e', color: '#ff0000', width: 6, zoom: 12, points: h.lineAt([150, 43]) }] }, 'remote')
+    return true
+  })()`)
+    await waitFor("the layer's stroke spilled", async () => (await recordIds(sp)).includes('own-1'))
+    await sp.eval(`window.__handwriting.own.layer.destroy(), true`)
+    await waitFor('its record deleted', async () => !(await recordIds(sp)).includes('own-1'))
+    assert(
+      await sp.eval(`window.__handwriting.own.store.get('own-1').points?.length === 82`),
+      'the points did not come back',
+    )
+    assert((await recordIds(sp)).includes('far-1'), "the handle's records went with the layer's")
   },
 )
 

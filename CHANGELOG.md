@@ -21,6 +21,19 @@ raises the minor version while the package is at 0.x, any other release the patc
   does both); the `pts` of a laser op stay `[x, y]` pairs. Points saved as `[x, y]` pairs by an earlier version are
   `new Float64Array(points.flat())`, and their coefficients `new Float32Array(pressure)`. A client of an earlier
   version and one of this version cannot share strokes.
+- A layer that draws a store (`createHandwriting`, `HandwritingLayer`) writes the points of the strokes far from its
+  view to IndexedDB, in a browser with IndexedDB and Web Locks, and reads them back as the view comes near (see
+  docs/usage.md). While they are out, a stroke's `points`, and `pressure` for one drawn with pressure, are `null`
+  (`StrokeData`). New in `StrokeStore`: `read(ids)` gives strokes with their points read back, `hold(ids)` and
+  `release(ids)` keep points in memory, `extent(id)` gives where a stroke is, and `new StrokeStore({ spill: false })`
+  keeps every point in memory. Ops that need spilled points wait for them; `apply` returns true for them. A database
+  that cannot be opened or written is the map's `error` event. `strokesToGeoJSON` leaves out strokes without their
+  points, and `transformStroke` gives null for them.
+- `handwriting.exportGeoJSON()` returns a `Promise<string>`, once the points are read back; Export in the selection's
+  bar waits for them too.
+- Migrating: an app that saves or sends the strokes of `store.values()` or `store.get()` would save spilled ones with
+  `points: null`, which a `load` leaves out. Read them with `await store.read(ids)` first, or make the store with
+  `new StrokeStore({ spill: false })`. Code that reads `points` handles `null`.
 - A slowly drawn stroke keeps fewer points: the input is recorded once the pointer has moved min(pen width, 4 px) on
   screen, at corners and turns (no skipped input farther than 0.5 px from the recorded line), and when the pen's
   pressure changes, so its mesh and the ops sent and kept are a fraction of what they were.

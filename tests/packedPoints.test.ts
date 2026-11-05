@@ -29,29 +29,29 @@ describe('a stroke being drawn', () => {
     store.apply({ type: 'points', id: 'a', pts: run(1), ps: Float32Array.of(0.5) }, 'local')
     const stroke = store.get('a')!
     expect(stroke.points).toHaveLength(2)
-    expect(stroke.points.buffer.byteLength).toBe(16 * 32)
+    expect(stroke.points!.buffer.byteLength).toBe(16 * 32)
     expect(stroke.pressure!.buffer.byteLength).toBe(4 * 32)
-    const buffer = stroke.points.buffer
+    const buffer = stroke.points!.buffer
     for (let i = 1; i < 32; i++) {
       store.apply({ type: 'points', id: 'a', pts: run(1, 0.5 + i * 1e-6), ps: Float32Array.of(0.5) }, 'local')
     }
     expect(stroke.points).toHaveLength(2 * 32)
-    expect(stroke.points.buffer).toBe(buffer)
+    expect(stroke.points!.buffer).toBe(buffer)
     store.apply({ type: 'points', id: 'a', pts: run(1, 0.6), ps: Float32Array.of(0.25) }, 'local')
-    expect(stroke.points.buffer.byteLength).toBe(16 * 64)
+    expect(stroke.points!.buffer.byteLength).toBe(16 * 64)
     expect(stroke.pressure!.buffer.byteLength).toBe(4 * 64)
     // 33 points and 100 more: room for 160 at once
     store.apply({ type: 'points', id: 'a', pts: run(100, 0.7), ps: new Float32Array(100).fill(1) }, 'local')
     expect(stroke.points).toHaveLength(2 * 133)
-    expect(stroke.points.buffer.byteLength).toBe(16 * 160)
+    expect(stroke.points!.buffer.byteLength).toBe(16 * 160)
     expect(stroke.pressure!.buffer.byteLength).toBe(4 * 160)
     const drawn = [...run(32), ...run(1, 0.6), ...run(100, 0.7)]
-    expect([...stroke.points]).toEqual(drawn)
+    expect([...stroke.points!]).toEqual(drawn)
 
     store.apply({ type: 'end', id: 'a' }, 'local')
-    expect(stroke.points.buffer.byteLength).toBe(16 * 133)
+    expect(stroke.points!.buffer.byteLength).toBe(16 * 133)
     expect(stroke.pressure!.buffer.byteLength).toBe(4 * 133)
-    expect([...stroke.points]).toEqual(drawn)
+    expect([...stroke.points!]).toEqual(drawn)
     expect([...stroke.pressure!]).toEqual([...new Array(32).fill(0.5), 0.25, ...new Array(100).fill(1)])
   })
 
@@ -68,7 +68,7 @@ describe('a stroke being drawn', () => {
       [0.500001 + 0.1, 0.5],
       [0.7, 0.5],
     ])
-    expect(store.get('a')!.points.buffer.byteLength).toBe(16 * 3)
+    expect(store.get('a')!.points!.buffer.byteLength).toBe(16 * 3)
   })
 })
 
@@ -84,7 +84,7 @@ describe('a stroke that stops growing before its end', () => {
 
   /** Whether both arrays of the stroke are of their exact length: 16 bytes a point and 4 bytes a coefficient */
   function expectExact(stroke: StrokeData, count: number): void {
-    expect(stroke.points.buffer.byteLength).toBe(16 * count)
+    expect(stroke.points!.buffer.byteLength).toBe(16 * count)
     expect(stroke.pressure!.buffer.byteLength).toBe(4 * count)
     expect([...stroke.pressure!]).toEqual([0.5, 0.25])
   }
@@ -127,14 +127,14 @@ describe('strokes handed to the store', () => {
     store.apply({ type: 'restore', stroke: saved('b', points) }, 'remote')
     for (const id of ['a', 'b']) {
       const stroke = store.get(id)!
-      expect(stroke.points.buffer.byteLength).toBe(16 * 5)
-      expect([...stroke.points]).toEqual([...run(5)])
+      expect(stroke.points!.buffer.byteLength).toBe(16 * 5)
+      expect([...stroke.points!]).toEqual([...run(5)])
     }
     expect(store.get('a')!.pressure!.buffer.byteLength).toBe(4 * 5)
     points[0] = 0
-    expect(store.get('a')!.points[0]).toBe(0.5)
+    expect(store.get('a')!.points![0]).toBe(0.5)
     store.apply({ type: 'reset', strokes: [saved('c', points)] }, 'remote')
-    expect(store.get('c')!.points.buffer.byteLength).toBe(16 * 5)
+    expect(store.get('c')!.points!.buffer.byteLength).toBe(16 * 5)
   })
 
   it('leave out points of another type or an odd length, and coefficients of another type or length', () => {
@@ -190,7 +190,7 @@ describe('appendPoints', () => {
     const stroke = saved('a', run(2), { pressure: Float32Array.of(1, 0.5) })
     expect(appendPoints(stroke, Float64Array.of(0.7, 0.5), Float32Array.of(0.25))).toBe(true)
     expect(pairs(stroke.points)).toEqual([...pairs(run(2)), [0.7, 0.5]])
-    expect(stroke.points.buffer.byteLength).toBe(16 * 3)
+    expect(stroke.points!.buffer.byteLength).toBe(16 * 3)
     expect(stroke.pressure).toEqual(Float32Array.of(1, 0.5, 0.25))
     expect(appendPoints(stroke, Float64Array.of(0.7, 0.5), undefined)).toBe(false)
     expect(appendPoints(stroke, Float64Array.of(0.7), Float32Array.of(1))).toBe(false)
@@ -346,7 +346,7 @@ describe('the numbers of a cut, a transform and GeoJSON', () => {
       { from: [walk[3][0], walk[3][1] - 5e-5], to: [walk[3][0], walk[3][1] + 5e-5], radius: 3e-5 },
       { from: walk[8], to: [walk[9][0], walk[9][1] + 1e-5], radius: 2e-5 },
     ]
-    const ranges = cutStroke(a.points, sweeps, 1e-5)
+    const ranges = cutStroke(a.points!, sweeps, 1e-5)
     expect(ranges).toEqual(GOLDEN.ranges)
     GOLDEN.pieces.forEach((golden, k) => {
       const piece = piecePoints(a, ranges![k])

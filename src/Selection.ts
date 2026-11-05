@@ -1,6 +1,6 @@
 import type { Point, StrokeOp, StrokeStore } from './core/stroke'
 import { applyToPoint, compose, IDENTITY, type Matrix } from './core/transform'
-import { boundsOfFlat, grow, union, type Bounds } from './bounds'
+import { grow, union, type Bounds } from './bounds'
 import { mercatorPerPixelAt } from './mercator'
 
 /** What changed: the selected strokes, or the transform of the drag in progress */
@@ -12,7 +12,8 @@ export type SelectionListener = (change: SelectionChange) => void
  * The strokes the lasso tool selected (only strokes with an order), and the transform of the drag in progress, which is
  * shown but not applied to the strokes until the drag ends. Shared by the select controller, the scene (which draws
  * the selected strokes apart from their buckets) and the frame around them.
- * A selected stroke that is removed, cut or reset away leaves the selection
+ * A selected stroke that is removed, cut or reset away leaves the selection. The selected strokes are held in the store
+ * (StrokeStore.hold), so their points are never spilled
  */
 export class Selection {
   private selected = new Set<string>()
@@ -35,6 +36,8 @@ export class Selection {
   destroy(): void {
     this.unsubscribe()
     this.listeners.clear()
+    this.store.release(this.selected)
+    this.selected = new Set()
   }
 
   get ids(): ReadonlySet<string> {
@@ -60,6 +63,8 @@ export class Selection {
     const same = next.size === this.selected.size && [...next].every((id) => this.selected.has(id))
     this.dragMatrix = IDENTITY
     if (same) return
+    void this.store.hold([...next].filter((id) => !this.selected.has(id)))
+    this.store.release([...this.selected].filter((id) => !next.has(id)))
     this.selected = next
     this.bounds.clear()
     this.refit(this.selected)
@@ -115,11 +120,13 @@ export class Selection {
       case 'remove':
       case 'split':
         if (!this.selected.delete(op.id)) break
+        this.store.release([op.id])
         this.bounds.delete(op.id)
         this.refit([])
         this.emit('ids')
         break
       case 'reset':
+        this.store.release(this.selected)
         this.selected.clear()
         this.bounds.clear()
         this.dragMatrix = IDENTITY
@@ -155,11 +162,17 @@ export class Selection {
     const measure = this.placed === IDENTITY ? changed : this.selected
     for (const id of measure) {
       const stroke = this.store.get(id)
-      if (stroke)
-        this.bounds.set(id, grow(boundsOfFlat(stroke.points), (stroke.width * mercatorPerPixelAt(stroke.zoom)) / 2))
+      const extent = this.store.extent(id)
+      if (stroke && extent)
+        this.bounds.set(id, grow(boundsOfExtent(extent), (stroke.width * mercatorPerPixelAt(stroke.zoom)) / 2))
       else this.bounds.delete(id)
     }
     this.placed = IDENTITY
     this.stale = true
   }
+}
+
+/** The bounds part of a stroke's extent in the store */
+function boundsOfExtent({ minX, minY, maxX, maxY }: Bounds): Bounds {
+  return { minX, minY, maxX, maxY }
 }

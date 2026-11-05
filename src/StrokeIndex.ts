@@ -1,5 +1,5 @@
 import type { StrokeData, StrokeOp, StrokeStore } from './core/stroke'
-import { boundsOfFlat, intersects, union, type Bounds } from './bounds'
+import { intersects, type Bounds } from './bounds'
 import { mercatorPerPixelAt } from './mercator'
 import { RunningMax } from './RunningMax'
 
@@ -77,7 +77,7 @@ export class StrokeIndex {
       case 'points': {
         // A stroke being drawn grows, so it may need a larger cell
         const stroke = this.store.get(op.id)
-        if (stroke) this.add(stroke, boundsOfFlat(op.pts))
+        if (stroke) this.add(stroke)
         break
       }
       case 'remove':
@@ -116,12 +116,12 @@ export class StrokeIndex {
     }
   }
 
-  /** Files a stroke, or refiles it with its bounds grown by `grownBy` */
-  private add(stroke: StrokeData, grownBy?: Bounds): void {
-    if (stroke.points.length === 0) return
-    const previous = this.entries.get(stroke.id)
-    const bounds = previous && grownBy ? union(previous.bounds, grownBy) : boundsOfFlat(stroke.points)
-    if (previous) this.remove(stroke.id)
+  /** Files a stroke, or refiles it, by its extent in the store, which stays while its points are spilled */
+  private add(stroke: StrokeData): void {
+    const extent = this.store.extent(stroke.id)
+    if (!extent) return
+    const bounds: Bounds = { minX: extent.minX, minY: extent.minY, maxX: extent.maxX, maxY: extent.maxY }
+    if (this.entries.has(stroke.id)) this.remove(stroke.id)
     const { level, cell } = cellOf(bounds)
     let ids = this.levels[level].get(cell)
     if (!ids) this.levels[level].set(cell, (ids = new Set()))

@@ -21,7 +21,9 @@ export type Cut = { removed: StrokeData; pieces: StrokeData[] }
  * piece cut again in the same gesture comes back before its own stroke does, and undoing a transform applies its
  * inverse. All through the store as local ops like any other edit.
  * An undo can fail quietly: a stroke someone else has erased in the meantime cannot be restored, and a sync layer
- * that knows of that erase may take it away again
+ * that knows of that erase may take it away again.
+ * The IDs of the strokes the actions in the history refer to are held in the store (StrokeStore.hold), so their points
+ * are never spilled, until the action leaves the history
  */
 export class UndoHistory {
   private undoStack: HistoryAction[] = []
@@ -44,8 +46,10 @@ export class UndoHistory {
 
   /** Records a finished action. A new action makes the undone ones unreachable, so they are dropped */
   record(action: HistoryAction): void {
+    void this.store.hold(idsOf(action))
     this.undoStack.push(action)
-    if (this.undoStack.length > this.limit) this.undoStack.shift()
+    if (this.undoStack.length > this.limit) this.forget([this.undoStack.shift()!])
+    this.forget(this.redoStack)
     this.redoStack = []
     this.onChange()
   }
@@ -57,8 +61,9 @@ export class UndoHistory {
     if (action.type === 'split') this.uncut(action.cuts)
     else if (action.type === 'transform') done = this.transform(action, inverse(action.matrix))
     else this.apply(action.strokes, action.type === 'draw' ? 'remove' : 'restore')
-    if (done) this.redoStack.push(done)
+    if (done) this.redoStack.push(this.replaced(action, done))
     else if (this.holdsAny(action)) this.undoStack.push(action)
+    else this.forget([action])
     this.onChange()
   }
 
@@ -69,16 +74,40 @@ export class UndoHistory {
     if (action.type === 'split') this.recut(action.cuts)
     else if (action.type === 'transform') done = this.transform(action, action.matrix)
     else this.apply(action.strokes, action.type === 'draw' ? 'restore' : 'remove')
-    if (done) this.undoStack.push(done)
+    if (done) this.undoStack.push(this.replaced(action, done))
     else if (this.holdsAny(action)) this.redoStack.push(action)
+    else this.forget([action])
     this.onChange()
   }
 
   /** Forgets everything, e.g. when the sync layer's connection that could undo the removes elsewhere is gone */
   clear(): void {
+    this.forget(this.undoStack)
+    this.forget(this.redoStack)
     this.undoStack = []
     this.redoStack = []
     this.onChange()
+  }
+
+  /** Forgets everything without telling, and lets go of the strokes, for a handle destroyed */
+  destroy(): void {
+    this.forget(this.undoStack)
+    this.forget(this.redoStack)
+    this.undoStack = []
+    this.redoStack = []
+  }
+
+  /** Lets go of the strokes of actions that leave the history */
+  private forget(actions: HistoryAction[]): void {
+    for (const action of actions) this.store.release(idsOf(action))
+  }
+
+  /** `done`, which takes the place of `action` in the history, holding its strokes instead */
+  private replaced(action: HistoryAction, done: HistoryAction): HistoryAction {
+    if (done === action) return done
+    void this.store.hold(idsOf(done))
+    this.forget([action])
+    return done
   }
 
   private apply(strokes: StrokeData[], change: 'remove' | 'restore'): void {
@@ -124,5 +153,18 @@ export class UndoHistory {
       this.apply([cut.removed], 'remove')
       this.apply(cut.pieces, 'restore')
     }
+  }
+}
+
+/** The IDs of the strokes an action refers to */
+function idsOf(action: HistoryAction): string[] {
+  switch (action.type) {
+    case 'draw':
+    case 'erase':
+      return action.strokes.map((stroke) => stroke.id)
+    case 'split':
+      return action.cuts.flatMap((cut) => [cut.removed.id, ...cut.pieces.map((piece) => piece.id)])
+    case 'transform':
+      return action.ids
   }
 }

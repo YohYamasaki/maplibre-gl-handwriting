@@ -112,7 +112,7 @@ describe('a default store', () => {
     expect(orders(store)).toEqual({ c: 3, b: 2 })
   })
 
-  it('lets a selection, a transform, Duplicate, Delete and Export act on strokes drawn with no server', () => {
+  it('lets a selection, a transform, Duplicate, Delete and Export act on strokes drawn with no server', async () => {
     const store = new StrokeStore()
     draw(store, 'a', [0.5, 0.5], 10)
     draw(store, 'b', [0.5, 0.5], 10)
@@ -130,10 +130,10 @@ describe('a default store', () => {
     selection.set(['a'])
     expect(selection.size).toBe(1)
     expect(store.apply({ type: 'transform', ids: ['a'], matrix: [1, 0, 0, 1, 10 * PX, 0] }, 'local')).toBe(true)
-    expect(store.get('a')!.points[0]).toBeCloseTo(0.5 + 10 * PX, 15)
+    expect(store.get('a')!.points![0]).toBeCloseTo(0.5 + 10 * PX, 15)
     const copies = duplicateSelected(store, selection, () => ({ id: 'copy', author: 'me' }), 16 * PX)
     expect(copies.map((s) => [s.id, s.order])).toEqual([['copy', 3]])
-    const geojson = JSON.parse(exportGeoJSON(store, ['a', 'b', 'copy'])) as {
+    const geojson = JSON.parse(await exportGeoJSON(store, ['a', 'b', 'copy'])) as {
       features: { properties: { id: string } }[]
     }
     expect(geojson.features.map((f) => f.properties.id)).toEqual(['a', 'b', 'copy'])

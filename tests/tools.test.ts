@@ -226,7 +226,7 @@ describe('the IDs of a handle without startStroke, where crypto.randomUUID is mi
     expect(crypto.randomUUID).toBeUndefined()
     const id = drawLine(handle, drag, store)
     expect(id).toMatch(UUID_V4)
-    expect(store.get(id)!.points.length / 2).toBeGreaterThan(1)
+    expect(store.get(id)!.points!.length / 2).toBeGreaterThan(1)
     handle.destroy()
   })
 

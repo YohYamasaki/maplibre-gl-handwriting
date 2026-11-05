@@ -88,7 +88,8 @@ export function similarityAbout(center: Point, scale: number, angle: number, off
  * The points (x and y in turn, in a new array) and zoom a stroke has after `m`. Its width in pixels stays the same, so the zoom it was drawn at
  * changes by the scale: a stroke twice as large is the size it was at one zoom level further out.
  * Returns null when a point would leave the map (0 to 1) or the zoom would leave MIN/MAX_STROKE_ZOOM, by more than
- * rounding (within it, the value is clamped); such a stroke is left as it is
+ * rounding (within it, the value is clamped); such a stroke is left as it is. Returns null too for a stroke whose
+ * points are spilled (null)
  */
 export function transformStroke(
   stroke: Pick<StrokeData, 'points' | 'zoom'>,
@@ -97,6 +98,7 @@ export function transformStroke(
   const zoom = clampWithin(stroke.zoom - Math.log2(scaleOf(m)), MIN_STROKE_ZOOM, MAX_STROKE_ZOOM, ZOOM_TOLERANCE)
   if (zoom === null) return null
   const from = stroke.points
+  if (!from) return null
   const points = new Float64Array(from.length)
   for (let i = 0; i + 1 < from.length; i += 2) {
     // As applyToPoint

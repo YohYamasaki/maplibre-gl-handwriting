@@ -32,7 +32,7 @@ export type StrokeFeatureProperties = {
  * A FeatureCollection, as a JSON string, with one Feature per stroke that has points: a LineString of the
  * stroke's sample points in WGS84 [lng, lat] rounded to 9 decimals, without the points that rounding made equal to
  * the one before, or a Point when one is left. Features are in drawing order (strokes without an order last),
- * then by id
+ * then by id. A stroke whose points are spilled (null) is left out: StrokeStore.read gives them back
  */
 export function strokesToGeoJSON(strokes: Iterable<StrokeData>): string {
   const sorted = [...strokes].sort(byDrawingOrder)
@@ -55,6 +55,7 @@ function strokeFeature(stroke: StrokeData): unknown {
   const coordinates: Position[] = []
   const pressure: number[] = []
   const { points } = stroke
+  if (!points) return null
   for (let i = 0; 2 * i + 1 < points.length; i++) {
     const position = toPosition(points[2 * i], points[2 * i + 1])
     const last = coordinates[coordinates.length - 1]
@@ -109,7 +110,7 @@ function opacityOf(color: string): number {
 }
 
 function widthInMetres(stroke: StrokeData): number {
-  const y = stroke.points[1]
+  const y = stroke.points![1]
   const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * y)))
   return stroke.width * mercatorPerPixelAt(stroke.zoom) * EQUATOR_METRES * Math.cos(lat)
 }

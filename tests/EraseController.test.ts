@@ -107,7 +107,7 @@ describe('EraseController partial', () => {
     // Redo brings back the stroke whole
     erase.cancelCuts()
     history.redo()
-    expect([...store.values()].map((stroke) => stroke.points.length / 2)).toEqual([101])
+    expect([...store.values()].map((stroke) => stroke.points!.length / 2)).toEqual([101])
   })
 
   it('hides a stroke being cut again when it comes back during the press, and shows its pieces again after a reset', async () => {
@@ -136,7 +136,7 @@ describe('EraseController partial', () => {
     pointer('pointerdown', 30, -20)
     pointer('pointermove', 30, 20)
     // The server's copy after someone moved it arrives while it is hidden (the sync layer loads it)
-    const moved = { ...line('a:1'), points: line('a:1').points.map((v, i) => (i % 2 === 0 ? v + 0.01 : v)) }
+    const moved = { ...line('a:1'), points: line('a:1').points!.map((v, i) => (i % 2 === 0 ? v + 0.01 : v)) }
     store.apply({ type: 'load', strokes: [moved] }, 'remote')
     await Promise.resolve()
     pointer('pointerup', 30, 20)

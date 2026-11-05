@@ -3,7 +3,8 @@ import { grow } from './bounds'
 import type { StrokeIndex } from './StrokeIndex'
 
 /**
- * IDs of the strokes whose center line comes within radiusOf(stroke) of p.
+ * IDs of the strokes whose center line comes within radiusOf(stroke) of p. A stroke whose points are spilled (null)
+ * is never hit.
  * The index narrows the strokes down to those near p; `maxRadius` must be at least radiusOf of any stroke.
  * All coordinates and distances are in normalized Web Mercator units
  */
@@ -17,7 +18,7 @@ export function findStrokesNear(
   const near = index.search(grow({ minX: p[0], minY: p[1], maxX: p[0], maxY: p[1] }, maxRadius))
   return near.filter((id) => {
     const stroke = store.get(id)
-    return stroke !== undefined && distanceToPolyline(p, stroke.points) <= radiusOf(stroke)
+    return stroke?.points != null && distanceToPolyline(p, stroke.points) <= radiusOf(stroke)
   })
 }
 

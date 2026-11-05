@@ -61,12 +61,14 @@ function pressureAt(pressure: Float32Array, s: number): number {
 
 /**
  * The points of one piece of a stroke (x and y in turn), and their width coefficients when the stroke has pressure:
- * the cut at `from`, the stroke's own points strictly between the cuts, and the cut at `to`
+ * the cut at `from`, the stroke's own points strictly between the cuts, and the cut at `to`. Throws a TypeError for a
+ * stroke whose points are spilled (null): StrokeStore.read gives them back
  */
 export function piecePoints(
   stroke: StrokeData,
   { from, to }: PieceRange,
 ): { points: Float64Array; pressure?: Float32Array } {
+  if (!stroke.points) throw new TypeError(`The points of stroke ${stroke.id} are spilled`)
   const points = rangePoints(stroke.points, from, to)
   if (!stroke.pressure) return { points }
   const first = Math.floor(from) + 1

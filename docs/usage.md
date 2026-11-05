@@ -88,7 +88,7 @@ const float32 = (a) => new Float32Array(a)
 const toJSON = (op) => JSON.stringify(convertOp(op, plain, plain))
 const fromJSON = (text) => convertOp(JSON.parse(text), float64, float32)
 
-// Strokes saved as toJSON({ type: 'load', strokes: [...store.values()] })
+// Strokes saved as toJSON({ type: 'load', strokes: await store.read([...store.values()].map((s) => s.id)) })
 store.apply(fromJSON(saved), 'remote')
 
 const socket = new WebSocket('wss://example.com/strokes')
@@ -101,8 +101,29 @@ socket.addEventListener('message', ({ data }) => store.apply(fromJSON(data), 're
 `new StrokeStore()` gives each finished stroke its place in the drawing order. When several clients draw together, use
 `new StrokeStore({ order: 'custom' })` and have a server send `order` ops, so that every client draws the strokes in
 the same order ([`StrokeOrderMode`](api.md#strokeordermode)). The laser pointer is shared the same way through a
-[`LaserChannel`](api.md#laserchannel), given as the `laser` option. `handwriting.exportGeoJSON()` and
+[`LaserChannel`](api.md#laserchannel), given as the `laser` option. `await handwriting.exportGeoJSON()` and
 [`strokesToGeoJSON`](api.md#strokestogeojson) give strokes as GeoJSON.
+
+## Strokes far from the view
+
+A layer that draws a store (`createHandwriting` or `HandwritingLayer`) writes the points of the strokes far from its
+view to IndexedDB, and reads them back as the view comes near, so the points of strokes drawn or loaded elsewhere on the
+map do not stay in memory. It does so in a browser with IndexedDB and Web Locks (a secure context, e.g. HTTPS);
+elsewhere every point stays in memory, as do the points of a stroke being drawn and of a stroke of more than 131,072
+points. While a stroke's points are written out, its `points`, and its `pressure` when it
+was drawn with pressure, are `null` in `store.get` and `store.values()`; its other fields stay, and `store.extent(id)`
+still gives where it is. So an app that saves or sends the strokes of `values()` reads them first:
+`await store.read(ids)` gives the store's strokes once their points are back. `store.hold(ids)` keeps the points of
+strokes in memory until as many `store.release(ids)`, and `new StrokeStore({ spill: false })` keeps every point in
+memory.
+
+Ops that need a stroke's points (`points`, `split`, `transform`, `replace`) wait for them to be read back, and so do
+the later ops on the same strokes: `apply` returns true, and subscribers get them once applied. Only the strokes that
+wait wait: the part of a `load`, a `transform` or a `replace` on the other strokes applies at once, and each stroke that
+waits comes to the subscribers later as an op of its own. A `remove` or an `order` applies at once. The records of a store go when the last layer that draws it is destroyed (`handwriting.destroy()`,
+`layer.destroy()`), and those of a tab closed meanwhile when a page of the same origin draws next. A database that cannot
+be opened or written is the map's `error` event, and the points then stay in memory; a stroke whose points cannot be
+read back is not drawn.
 
 ## Settings
 

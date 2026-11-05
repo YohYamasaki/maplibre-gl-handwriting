@@ -45,8 +45,8 @@ function line(id: string, from: Point, n: number, order: number, color = '#00000
 }
 
 /** Whether two lists of points, as [x, y] pairs or x and y in turn, are the same within `tolerance` */
-function closeTo(first: Point[] | Float64Array, second: Point[] | Float64Array, tolerance: number): void {
-  const [a, b] = [first, second].map((points) => (points instanceof Float64Array ? pairs(points) : points))
+function closeTo(first: Point[] | Float64Array | null, second: Point[] | Float64Array | null, tolerance: number): void {
+  const [a, b] = [first, second].map((points) => (Array.isArray(points) ? points : pairs(points)))
   expect(a).toHaveLength(b.length)
   a.forEach((p, i) => {
     expect(Math.abs(p[0] - b[i][0])).toBeLessThan(tolerance)
@@ -99,7 +99,7 @@ describe('StrokeStore transform op', () => {
     expect(seen).toEqual([['a']])
     expect(store.get('draft')!.points).toEqual(Float64Array.of(0.5, 0.5))
     store.apply({ type: 'transform', ids: ['a'], matrix: inverse(m) }, 'local')
-    closeTo(store.get('a')!.points, before, 1e-12)
+    closeTo(store.get('a')!.points!, before, 1e-12)
     expect(store.apply({ type: 'transform', ids: ['a'], matrix: [2, 0, 0, 1, 0, 0] }, 'local')).toBe(false)
   })
 
@@ -112,7 +112,7 @@ describe('StrokeStore transform op', () => {
     store.apply({ type: 'transform', ids: ['a'], matrix: m }, 'local')
     history.record({ type: 'transform', ids: ['a'], matrix: m })
     history.undo()
-    closeTo(store.get('a')!.points, before.points, 1e-12)
+    closeTo(store.get('a')!.points!, before.points, 1e-12)
     expect(store.get('a')!.zoom).toBeCloseTo(before.zoom, 12)
     history.redo()
     expect(store.get('a')!.zoom).toBeCloseTo(before.zoom - 1, 12)
@@ -155,18 +155,18 @@ describe('transforms at the edges of the range', () => {
     // Someone else moves it to x = 0.05, where the inverse would leave the map
     store.apply({ type: 'replace', strokes: [line('a', [0.05, 0.5], 1, 1)] }, 'remote')
     history.undo()
-    expect(store.get('a')!.points[0]).toBe(0.05)
+    expect(store.get('a')!.points![0]).toBe(0.05)
     expect(history.canUndo).toBe(true)
     expect(history.canRedo).toBe(false)
     // Moved back within reach, the undo applies
     store.apply({ type: 'replace', strokes: [line('a', [0.6, 0.5], 1, 1)] }, 'remote')
     history.undo()
-    expect(store.get('a')!.points[0]).toBeCloseTo(0.5, 12)
+    expect(store.get('a')!.points![0]).toBeCloseTo(0.5, 12)
     expect(history.canRedo).toBe(true)
     // Same for redo
     store.apply({ type: 'replace', strokes: [line('a', [0.95, 0.5], 1, 1)] }, 'remote')
     history.redo()
-    expect(store.get('a')!.points[0]).toBe(0.95)
+    expect(store.get('a')!.points![0]).toBe(0.95)
     expect(history.canRedo).toBe(true)
     expect(history.canUndo).toBe(false)
     // A transform none of whose strokes is held any more is dropped
@@ -187,8 +187,8 @@ describe('transforms at the edges of the range', () => {
     history.undo()
     store.apply({ type: 'load', strokes: [line('b', [0.7, 0.5], 2, 2)] }, 'remote')
     history.redo()
-    expect(store.get('b')!.points[0]).toBe(0.7)
-    expect(store.get('a')!.points[0]).toBeCloseTo(0.51, 12)
+    expect(store.get('b')!.points![0]).toBe(0.7)
+    expect(store.get('a')!.points![0]).toBeCloseTo(0.51, 12)
   })
 })
 
@@ -232,7 +232,7 @@ describe('Selection frame', () => {
     selection.set(['a', 'b'])
     // b would leave the map, so it stays
     store.apply({ type: 'transform', ids: ['a', 'b'], matrix: [1, 0, 0, 1, 0.45, 0] }, 'local')
-    expect(store.get('b')!.points[0]).toBe(0.9)
+    expect(store.get('b')!.points![0]).toBe(0.9)
     const xs = selection.frame()!.map(([x]) => x)
     expect(Math.min(...xs)).toBeLessThan(0.951)
     expect(Math.max(...xs)).toBeLessThan(0.96)
@@ -441,11 +441,11 @@ describe('SelectController', () => {
     expect(store.get('a')!.points).toEqual(before)
     expect(selection.drag[4]).toBeCloseTo(10 * PX, 15)
     pointer('pointerup', 40, 15)
-    expect(store.get('a')!.points[0]).toBeCloseTo(before[0] + 10 * PX, 15)
+    expect(store.get('a')!.points![0]).toBeCloseTo(before![0] + 10 * PX, 15)
     expect(selection.drag).toEqual([1, 0, 0, 1, 0, 0])
     expect(history.canUndo).toBe(true)
     history.undo()
-    closeTo(store.get('a')!.points, before, 1e-12)
+    closeTo(store.get('a')!.points!, before, 1e-12)
   })
 
   it('a tap on a stroke selects it, and a tap on nothing clears the selection', () => {
@@ -493,9 +493,9 @@ describe('selection bar actions', () => {
     let next = 0
     const copies = duplicateSelected(store, selection, () => ({ id: `new:${++next}`, author: 'me' }), 16 * PX)
     expect(copies.map((s) => s.id)).toEqual(['new:1', 'new:2'])
-    expect(copies[0].points[0]).toBeCloseTo(0.5 + 16 * PX, 15)
+    expect(copies[0].points![0]).toBeCloseTo(0.5 + 16 * PX, 15)
     expect(copies[0].author).toBe('me')
-    expect(store.get('new:2')!.points[1]).toBeCloseTo(0.5 + 16 * PX, 15)
+    expect(store.get('new:2')!.points![1]).toBeCloseTo(0.5 + 16 * PX, 15)
     const removed = deleteSelected(store, selection)
     expect(removed.map((s) => s.id)).toEqual(['a', 'b'])
     expect(store.get('a')).toBeUndefined()
@@ -506,17 +506,17 @@ describe('selection bar actions', () => {
 describe('Export of the selection (decision 0077)', () => {
   type Collection = { features: { geometry: { coordinates: number[][] }; properties: { id: string } }[] }
 
-  it('exports only the selected strokes', () => {
+  it('exports only the selected strokes', async () => {
     const store = new StrokeStore({ order: 'custom' })
     const strokes = [line('a', [0.5, 0.5], 3, 1), line('b', [0.5, 0.6], 3, 2), line('c', [0.5, 0.7], 3, 3)]
     store.apply({ type: 'load', strokes }, 'remote')
     const selection = new Selection(store)
     selection.set(['c', 'a'])
-    const out = JSON.parse(exportGeoJSON(store, selection.ids)) as Collection
+    const out = JSON.parse(await exportGeoJSON(store, selection.ids)) as Collection
     expect(out.features.map((f) => f.properties.id)).toEqual(['a', 'c'])
   })
 
-  it('skips IDs not in the store and strokes not saved yet', () => {
+  it('skips IDs not in the store and strokes not saved yet', async () => {
     const store = new StrokeStore({ order: 'custom' })
     store.apply({ type: 'load', strokes: [line('a', [0.5, 0.5], 3, 1)] }, 'remote')
     store.apply({ type: 'begin', id: 'draft', author: 'a', color: '#000000', width: 2, zoom: 12 }, 'local')
@@ -529,18 +529,18 @@ describe('Export of the selection (decision 0077)', () => {
       'local',
     )
     store.apply({ type: 'end', id: 'draft' }, 'local')
-    const out = JSON.parse(exportGeoJSON(store, ['missing', 'draft', 'a'])) as Collection
+    const out = JSON.parse(await exportGeoJSON(store, ['missing', 'draft', 'a'])) as Collection
     expect(out.features.map((f) => f.properties.id)).toEqual(['a'])
   })
 
-  it('exports the coordinates after a transform', () => {
+  it('exports the coordinates after a transform', async () => {
     const store = new StrokeStore({ order: 'custom' })
     store.apply({ type: 'load', strokes: [line('a', [0.5, 0.5], 3, 1)] }, 'remote')
     const selection = new Selection(store)
     selection.set(['a'])
     // Moves the stroke by 1/360 of the world to the east: 1 degree of longitude
     store.apply({ type: 'transform', ids: ['a'], matrix: [1, 0, 0, 1, 1 / 360, 0] }, 'local')
-    const out = JSON.parse(exportGeoJSON(store, selection.ids)) as Collection
+    const out = JSON.parse(await exportGeoJSON(store, selection.ids)) as Collection
     const [lng, lat] = out.features[0].geometry.coordinates[0]
     expect(lng).toBeCloseTo(1, 9)
     expect(lat).toBeCloseTo(0, 9)
@@ -604,7 +604,7 @@ describe('StrokeScene with a selection', () => {
     selection.clear()
     expectConsistentScene(store, scene, new Set())
     const a = store.get('a')!
-    expect(scene.inspect().strokeBuckets.get('a')).toBe(tileKey(bucketOf([a.points[0], a.points[1]], a.zoom)))
+    expect(scene.inspect().strokeBuckets.get('a')).toBe(tileKey(bucketOf([a.points![0], a.points![1]], a.zoom)))
     const moved = { minX: view.minX + 0.3, maxX: view.maxX + 0.3, minY: view.minY + 0.1, maxY: view.maxY + 0.1 }
     scene.frame(moved, zoom)
     while (builds.pending.length > 0) scene.onBuilt(builds.deliver())

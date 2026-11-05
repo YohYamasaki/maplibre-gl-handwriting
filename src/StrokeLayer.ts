@@ -14,7 +14,8 @@ import type { Prediction } from './Prediction'
 import type { Selection } from './Selection'
 import { StrokeScene, type DrawRange } from './StrokeScene'
 import type { StrokeTessellator } from './StrokeTessellator'
-import { asError } from './reportError'
+import { attachIndexedDBSpill } from './IndexedDBSpill'
+import { asError, reportError } from './reportError'
 import { TessellationWorker, type WorkerLocation } from './TessellationWorker'
 import { compositeFragmentSource, compositeVertexSource, fragmentSource, vertexSource } from './shaders'
 
@@ -137,6 +138,9 @@ export class StrokeLayer implements CustomLayerInterface {
   private wireframe = false
   // A worker failed to load (options.onLoad): the layer stays empty from then on
   private failed = false
+  // The store's IndexedDB spill target, attached by the first onAdd (decision 0023), until detachSpill
+  private spillAttached = false
+  private leaveSpill: (() => void) | null = null
 
   constructor(
     private store: StrokeStore,
@@ -147,6 +151,11 @@ export class StrokeLayer implements CustomLayerInterface {
   }
 
   onAdd(map: MapLibreMap, gl: WebGL2RenderingContext): void {
+    if (!this.spillAttached) {
+      this.spillAttached = true
+      // What fails is told on the map the layer is on, or else on the map of this first onAdd
+      this.leaveSpill = attachIndexedDBSpill(this.store, (error) => reportError(this.map ?? map, error, this.id))
+    }
     // Added again without onRemove (a style rebuilt): the last scene, worker and GPU resources go first
     this.release()
     if (this.failed) return
@@ -201,6 +210,17 @@ export class StrokeLayer implements CustomLayerInterface {
 
   onRemove(): void {
     this.release()
+  }
+
+  /**
+   * Lets go of the store's IndexedDB spill target that the first onAdd attached: the last layer of the store to let go
+   * reads the spilled points back and deletes their records. Called once, when the layer is destroyed (createHandwriting
+   * or HandwritingLayer); the layer attaches none again after it
+   */
+  detachSpill(): void {
+    this.spillAttached = true
+    this.leaveSpill?.()
+    this.leaveSpill = null
   }
 
   /**

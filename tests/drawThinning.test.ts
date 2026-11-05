@@ -338,7 +338,7 @@ describe('DrawController thinning with pressure', () => {
     const expected = new Map([[0, filter.next(0.5)]])
     for (const p of inputs) expected.set(Math.round(p.x * 1000), filter.next(p.pressure))
     const stroke = d.store.get('s:1')!
-    expect(stroke.points.length / 2).toBeLessThan(inputs.length / 4)
+    expect(stroke.points!.length / 2).toBeLessThan(inputs.length / 4)
     pairs(stroke.points).forEach((point, i) => {
       expect(stroke.pressure![i]).toBe(Math.fround(expected.get(Math.round(toClient(point)[0] * 1000))!))
     })
@@ -438,7 +438,7 @@ describe('DrawController thinning with lyon', () => {
   })
 
   const vertices = (stroke: StrokeData): number => {
-    const mesh = new MeshBuffer(bucketOf([stroke.points[0], stroke.points[1]], stroke.zoom))
+    const mesh = new MeshBuffer(bucketOf([stroke.points![0], stroke.points![1]], stroke.zoom))
     tessellator.appendStroke(mesh, stroke, stroke.zoom)
     return mesh.vertexCount
   }

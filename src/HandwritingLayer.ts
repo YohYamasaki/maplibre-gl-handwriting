@@ -134,8 +134,9 @@ export class HandwritingLayer implements CustomLayerInterface {
 
   /**
    * Removes the layer from the map when it is on the map's style, and frees its worker, its store subscription and its
-   * GPU resources also when it is not (the style was rebuilt without it, or the map removed). The layer draws nothing
-   * after this, even when added again
+   * GPU resources also when it is not (the style was rebuilt without it, or the map removed). The last layer of the
+   * store to go reads its spilled points back and deletes their records in IndexedDB (see StrokeStore). The layer draws
+   * nothing after this, even when added again
    */
   destroy(): void {
     if (this.destroyed) return
@@ -147,6 +148,8 @@ export class HandwritingLayer implements CustomLayerInterface {
     // (added after a style rebuilt without this one) stays
     if (map && holdsLayer(map, this)) map.removeLayer(this.id)
     this.inner?.dispose()
+    // The last layer of the store to go reads the spilled points back and deletes their records
+    this.inner?.detachSpill()
     this.inner = null
     this.added = null
   }

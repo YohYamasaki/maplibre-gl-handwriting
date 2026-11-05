@@ -58,7 +58,8 @@ type PendingCut = {
  * mode, cut: the part within reach of the pointer's path goes, and the rest stays as new strokes (pieces).
  * Like DrawController, it only applies ops to the store as local; the sync layer does the sending.
  * The partial eraser shows its cuts as preview ops while the pointer is down, and makes one cut of each stroke
- * when it is lifted
+ * when it is lifted. The strokes it cuts are held in the store (StrokeStore.hold) until then, so their points are never
+ * spilled; a stroke whose points are spilled is neither erased nor cut, as hit tests miss it
  */
 export class EraseController {
   // Pointer that is currently erasing
@@ -111,6 +112,12 @@ export class EraseController {
       this.hide(pending)
       this.store.apply({ type: 'restore', stroke: pending.original }, 'preview')
     }
+    this.clearPending()
+  }
+
+  /** Forgets the strokes being cut, and lets go of them in the store */
+  private clearPending(): void {
+    this.store.release([...this.pending.keys()])
     this.pending.clear()
     this.previewOf.clear()
   }
@@ -132,16 +139,13 @@ export class EraseController {
         return false
       })
       const back = this.store.get(pending.original.id)
-      if (!back) continue
+      if (!back?.points) continue
       // The stroke as it came back may have moved meanwhile (a transform or a replace from the sync layer). The parts
       // erased are positions along it, which a transform keeps, so they are cut from where it is now, as every other
       // store the split reaches cuts it
       pending.original = back
       const { original } = pending
-      this.show(
-        pending,
-        keptRanges(original.points, pending.erased, original.width * mercatorPerPixelAt(original.zoom)),
-      )
+      this.show(pending, keptRanges(back.points, pending.erased, original.width * mercatorPerPixelAt(original.zoom)))
     }
   }
 
@@ -234,20 +238,24 @@ export class EraseController {
       let pending = this.pending.get(originalId)
       if (!pending) {
         const stroke = this.store.get(originalId)
-        if (!stroke || stroke.order === undefined) continue
+        // A stroke whose points are spilled is not near the view
+        if (!stroke?.points || stroke.order === undefined) continue
         pending = { original: stroke, erased: [], shown: [] }
       }
       const { original } = pending
+      // Held while it is cut (see pending), so its points stay
+      const points = original.points!
       const widthMercator = original.width * mercatorPerPixelAt(original.zoom)
       const sweeps: EraserSweep[] = steps.map(([a, b]) => ({ from: a, to: b, radius: radius + widthMercator / 2 }))
-      const hit = erasedIntervals(original.points, sweeps)
+      const hit = erasedIntervals(points, sweeps)
       if (hit === null) continue
       const erased = mergeIntervals(pending.erased, hit)
       if (sameIntervals(erased, pending.erased)) continue
       // Pieces shorter than the stroke is wide would only leave dots
-      const ranges = keptRanges(original.points, erased, widthMercator)
+      const ranges = keptRanges(points, erased, widthMercator)
       if (ranges.length > MAX_PIECES_PER_SPLIT) continue
       pending.erased = erased
+      if (!this.pending.has(originalId)) void this.store.hold([originalId])
       this.pending.set(originalId, pending)
       this.show(pending, ranges)
     }
@@ -287,7 +295,7 @@ export class EraseController {
       const stroke = this.store.get(original.id)
       if (!stroke) continue
       const widthMercator = original.width * mercatorPerPixelAt(original.zoom)
-      const ranges = keptRanges(original.points, pending.erased, widthMercator)
+      const ranges = keptRanges(original.points!, pending.erased, widthMercator)
       if (ranges.length === 0) {
         if (this.store.apply({ type: 'remove', id: stroke.id }, 'local'))
           this.cuts.push({ removed: stroke, pieces: [] })
@@ -301,10 +309,13 @@ export class EraseController {
       }
       if (pieces.length < ranges.length) continue
       if (!this.store.apply({ type: 'split', id: stroke.id, pieces }, 'local')) continue
-      this.cuts.push({ removed: stroke, pieces: pieces.map((piece) => this.store.get(piece.id)!) })
+      // A split that waits for spilled points (see StrokeStore.apply) is not applied yet, and is not recorded. The
+      // stroke is held while it is cut, so this does not happen unless the store is used otherwise
+      const made = pieces.map((piece) => this.store.get(piece.id))
+      if (made.some((piece) => piece === undefined)) continue
+      this.cuts.push({ removed: stroke, pieces: made as StrokeData[] })
     }
-    this.pending.clear()
-    this.previewOf.clear()
+    this.clearPending()
   }
 }
 

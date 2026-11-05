@@ -23,7 +23,7 @@ export type CanvasTransform = [number, number, number, number, number, number]
  * The transform from a stroke's path coordinates (px at the stroke's zoom, from its first point) to device px on
  * the canvas. The path stays small numbers so that the float32 math of Canvas2D keeps its precision
  */
-export function strokeTransform(stroke: Pick<StrokeData, 'points' | 'zoom'>, view: StrokeView): CanvasTransform {
+export function strokeTransform(stroke: { points: Float64Array; zoom: number }, view: StrokeView): CanvasTransform {
   const { pixelRatio } = view
   const scale = 2 ** (view.zoom - stroke.zoom) * pixelRatio
   // MapLibre's bearing turns the map counterclockwise on screen
@@ -48,6 +48,8 @@ export function strokeTransform(stroke: Pick<StrokeData, 'points' | 'zoom'>, vie
 type CachedPath = {
   stroke: StrokeData
   count: number
+  // The first point, which the path is drawn from
+  first: Float64Array
   path: Path2D
   minX: number
   minY: number
@@ -141,8 +143,10 @@ export class Canvas2DStrokes {
       const visible: CachedPath[] = []
       let sorted = true
       for (const stroke of store.values()) {
-        if (stroke.points.length === 0) continue
-        const entry = this.pathOf(this.caches[i], stroke)
+        // Strokes whose points are spilled are far from the view, and not drawn
+        const { points } = stroke
+        if (!points || points.length === 0) continue
+        const entry = this.pathOf(this.caches[i], stroke, points)
         if (
           entry.maxX < cx - radius ||
           entry.minX > cx + radius ||
@@ -156,8 +160,8 @@ export class Canvas2DStrokes {
       }
       // Later strokes over earlier ones; strokes not saved yet on top
       if (!sorted) visible.sort((a, b) => compareOrder(a.stroke, b.stroke))
-      for (const { stroke, path } of visible) {
-        context.setTransform(...strokeTransform(stroke, view))
+      for (const { stroke, first, path } of visible) {
+        context.setTransform(...strokeTransform({ points: first, zoom: stroke.zoom }, view))
         context.lineWidth = stroke.width
         context.strokeStyle = stroke.color
         context.stroke(path)
@@ -188,11 +192,10 @@ export class Canvas2DStrokes {
     }
   }
 
-  private pathOf(cache: Map<string, CachedPath>, stroke: StrokeData): CachedPath {
+  private pathOf(cache: Map<string, CachedPath>, stroke: StrokeData, points: Float64Array): CachedPath {
     const cached = cache.get(stroke.id)
-    if (cached && cached.stroke === stroke && cached.count === stroke.points.length / 2) return cached
+    if (cached && cached.stroke === stroke && cached.count === points.length / 2) return cached
     const unit = mercatorPerPixelAt(stroke.zoom)
-    const { points } = stroke
     const [x0, y0] = points
     const path = new Path2D()
     let minX = Infinity
@@ -214,7 +217,8 @@ export class Canvas2DStrokes {
     const half = (stroke.width * unit) / 2
     const entry = {
       stroke,
-      count: stroke.points.length / 2,
+      count: points.length / 2,
+      first: points.slice(0, 2),
       path,
       minX: minX - half,
       minY: minY - half,

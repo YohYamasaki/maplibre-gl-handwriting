@@ -34,7 +34,7 @@ Checks settings the caller kept, e.g. getSettings() output saved in localStorage
 function strokesToGeoJSON(strokes: Iterable<StrokeData>): string;
 ```
 
-A FeatureCollection, as a JSON string, with one Feature per stroke that has points: a LineString of the stroke's sample points in WGS84 [lng, lat] rounded to 9 decimals, without the points that rounding made equal to the one before, or a Point when one is left. Features are in drawing order (strokes without an order last), then by id
+A FeatureCollection, as a JSON string, with one Feature per stroke that has points: a LineString of the stroke's sample points in WGS84 [lng, lat] rounded to 9 decimals, without the points that rounding made equal to the one before, or a Point when one is left. Features are in drawing order (strokes without an order last), then by id. A stroke whose points are spilled (null) is left out: StrokeStore.read gives them back
 
 ### Classes
 
@@ -61,7 +61,7 @@ The WebAssembly module starts loading on the first onAdd; nothing is drawn until
 A store given to both a HandwritingLayer and createHandwriting is drawn, and tessellated, twice
 
 - `ready`: Resolves once the WebAssembly module has loaded on the main thread and in the first of the layer's tessellation workers to answer; the loading starts on the first onAdd and the worker is made by an onAdd, so it never resolves for a layer never added to a map. Rejects when either fails to load, and the layer then draws nothing. A worker that fails after it has settled (one made after a style was rebuilt) is only the map's error event. Resolves on destroy when it has not settled yet
-- `destroy()`: Removes the layer from the map when it is on the map's style, and frees its worker, its store subscription and its GPU resources also when it is not (the style was rebuilt without it, or the map removed). The layer draws nothing after this, even when added again
+- `destroy()`: Removes the layer from the map when it is on the map's style, and frees its worker, its store subscription and its GPU resources also when it is not (the style was rebuilt without it, or the map removed). The last layer of the store to go reads its spilled points back and deletes their records in IndexedDB (see StrokeStore). The layer draws nothing after this, even when added again
 
 #### HandwritingToolbar
 
@@ -101,15 +101,31 @@ class StrokeStore {
     get(id: string): StrokeData | undefined;
     values(): IterableIterator<StrokeData>;
     subscribe(listener: StrokeListener): () => void;
+    extent(id: string): {
+        minX: number;
+        minY: number;
+        maxX: number;
+        maxY: number;
+        start: Point;
+    } | undefined;
+    hold(ids: Iterable<string>): Promise<void>;
+    release(ids: Iterable<string>): void;
+    read(ids: Iterable<string>): Promise<StrokeData[]>;
 }
 ```
 
-Holds the list of strokes, applies ops and notifies subscribers. Both our own ops and others' ops go through apply, so the render layer does not care where an op came from. The store keeps its own copies of the points it is given. Points that are not a Float64Array of x and y in turn, and width coefficients that are not a Float32Array of one per point, are not taken: a points op or a restore with them is not applied, and a load, a reset or a replace leaves out the strokes with them
+Holds the list of strokes, applies ops and notifies subscribers. Both our own ops and others' ops go through apply, so the render layer does not care where an op came from. The store keeps its own copies of the points it is given. Points that are not a Float64Array of x and y in turn, and width coefficients that are not a Float32Array of one per point, are not taken: a points op or a restore with them is not applied, and a load, a reset or a replace leaves out the strokes with them.
 
-- `apply()`: Ignores ops that cannot be applied (e.g. points for an unknown ID) and returns false
-- `get()`: The stroke with this ID, or undefined
-- `values()`: Every stroke held. They come in no set order: the drawing order is each stroke's order
+A layer that draws the store (createHandwriting, HandwritingLayer) spills the points of strokes far from the view to IndexedDB, in a browser that has it and Web Locks, unless the store was made with spill: false. A stroke with an order, finished (a stroke of a load, a reset or a restore is), of at most 131,072 points, and that nothing holds (hold) for a second is written there, and its points (and pressure) are null until they are read back; its other fields, and its extent, stay. The layer holds the strokes near its view, the selection, the undo history and the stroke being cut. hold and read bring points back. A remove or an order applies to a spilled stroke at once; ops that need its points (points, split, transform, replace) wait until they are read back, as do the later ops on the same strokes, and are then applied in the order they came: apply returns true for them, and subscribers get them once applied. A load, a transform or a replace waits only for its strokes that wait: its part on the others applies at once, and each stroke that waits comes later as an op of its own (a stroke a load brings takes its order, in the default mode, when the load comes). A reset drops the ops waiting. Points that cannot be read back stay null: such a stroke is not drawn and an op that needs its points is dropped
+
+- `apply()`: Ignores ops that cannot be applied (e.g. points for an unknown ID) and returns false. An op that waits for spilled points to be read back returns true (see StrokeStore)
+- `get()`: The stroke with this ID, or undefined. Its points are null while they are spilled (see StrokeStore)
+- `values()`: Every stroke held. They come in no set order: the drawing order is each stroke's order. The points of spilled ones are null (see StrokeStore): read gives every point
 - `subscribe()`: Call the returned function to unsubscribe
+- `extent()`: The bounds of a stroke's center line and its first point, in normalized Web Mercator coordinates, also while its points are spilled. Undefined for an ID not in the store and for a stroke without points yet
+- `hold()`: Keeps the points of these strokes in memory until as many release calls: reads back the ones spilled, and none of them is spilled meanwhile. Holds are counted per ID, also for IDs not in the store yet. Resolves once the points are back, also when some could not be read (their points stay null)
+- `release()`: Takes back one hold of each of these IDs (see hold); a stroke no longer held may be spilled again
+- `read()`: The store's strokes with these IDs (IDs not in the store are left out), once their spilled points are read back. Resolves also when some could not be read: their points stay null. The strokes are not held, so their points may be spilled again a second later: use them, e.g. to save them, when this resolves
 
 ### Types
 
@@ -167,7 +183,7 @@ type Handwriting = {
     redo(): void;
     canUndo(): boolean;
     canRedo(): boolean;
-    exportGeoJSON(ids?: Iterable<string>): string;
+    exportGeoJSON(ids?: Iterable<string>): Promise<string>;
     clearHistory(): void;
     setKeyboard(enabled: boolean): void;
     isKeyboardEnabled(): boolean;
@@ -188,10 +204,10 @@ What createHandwriting returns
 - `setToolbar()`: Changes where the toolbar sits. HandwritingToolbar calls it when it is moved or collapsed; the handle only keeps the value and reports it in settingschange. Throws a RangeError for an unknown edge
 - `setPenOnly()`: Turns pen-only input on or off: while it is on, touch moves the map instead of drawing or erasing (see HandwritingSettings.penOnly). Turning it on ends a touch that is drawing or erasing at that moment
 - `getSettings()`: The pens, the palette, the eraser, the pressure curve, the toolbar placement, the laser color and pen-only input. To keep them, save the settings of settingschange and pass them back as HandwritingOptions.defaults, checked with parseDefaults
-- `exportGeoJSON()`: The strokes with these IDs, or the selected ones when omitted, as a GeoJSON (RFC 7946) FeatureCollection string: one LineString (or Point) per stroke, in WGS84 [lng, lat], in drawing order. IDs not in the store and strokes without an order yet are skipped
+- `exportGeoJSON()`: The strokes with these IDs, or the selected ones when omitted, as a GeoJSON (RFC 7946) FeatureCollection string: one LineString (or Point) per stroke, in WGS84 [lng, lat], in drawing order, once their spilled points are read back (see StrokeStore). IDs not in the store, strokes without an order yet and strokes whose points could not be read back are skipped
 - `clearHistory()`: Forgets the undo history, e.g. when a new connection can no longer undo the previous one's erases
 - `setKeyboard()`: Turns the keyboard shortcuts (HandwritingOptions.keyboard) on or off. They listen on the window, so with two handles on a page, turn them on for one only
-- `destroy()`: Removes the layer and every listener, and gives the map back the gestures the tools took. Also frees the layer's worker and GPU resources when the layer is no longer on the map's style, e.g. after map.remove(). Nothing is reported on the map's error event after it
+- `destroy()`: Removes the layer and every listener, and gives the map back the gestures the tools took. Also frees the layer's worker and GPU resources when the layer is no longer on the map's style, e.g. after map.remove(). The last layer of the store to go reads its spilled points back and deletes their records in IndexedDB (see StrokeStore). Nothing is reported on the map's error event after it
 
 #### HandwritingDefaults
 
@@ -297,7 +313,7 @@ The options of createHandwriting: store is required
 - `laser`: Where the laser pointer's lines go and come from: the lines drawn with the laser tool are emitted on it as local, and every line on it is shown for a moment. Connect the sync layer to the same channel to share them. When omitted, the handle makes a channel of its own
 - `wasmUrl`: Where to fetch the WebAssembly module from, instead of next to this script. The tessellation worker is sent the URL the main thread loads it from, so the worker script needs no module next to it
 - `workerUrl`: Where to load the tessellation worker script from, instead of next to this script. It must be of the page's origin: a browser starts no worker script from another one
-- `onExport`: What Export in the selection's bar does with the selected strokes' GeoJSON (see exportGeoJSON). When omitted, it downloads strokes.geojson; null leaves Export out of the bar
+- `onExport`: What Export in the selection's bar does with the selected strokes' GeoJSON (see exportGeoJSON), called once their spilled points are read back. When omitted, it downloads strokes.geojson; null leaves Export out of the bar
 
 #### HandwritingSettings
 
@@ -443,13 +459,13 @@ type StrokeData = {
     color: string;
     width: number;
     zoom: number;
-    points: Float64Array;
-    pressure?: Float32Array;
+    points: Float64Array | null;
+    pressure?: Float32Array | null;
     order?: number;
 };
 ```
 
-A stroke, finished or still being drawn. JSON.stringify writes a typed array as an object, so an app that sends or saves strokes as JSON turns points and pressure into arrays of numbers (Array.from) and back (new Float64Array, new Float32Array)
+A stroke, finished or still being drawn. JSON.stringify writes a typed array as an object, so an app that sends or saves strokes as JSON turns points and pressure into arrays of numbers (Array.from) and back (new Float64Array, new Float32Array). A store's stroke whose points are spilled (see StrokeStore) has points null, and pressure null when it has pressure; a stroke handed to the store must have its points
 
 - `points`: The center line's points in normalized Web Mercator coordinates (0 to 1), x and y in turn: x0, y0, x1, y1, … Point i is points[2i], points[2i + 1]
 - `pressure`: Width coefficient at each point, 0 to 1 (one per point, half the length of points): the stroke is `width * pressure[i]` wide there. Missing for a stroke drawn without pressure, which is `width` wide everywhere
@@ -555,12 +571,14 @@ A piece of a stroke with the ID it is saved under
 ```ts
 type StrokeStoreOptions = {
     order?: StrokeOrderMode;
+    spill?: boolean;
 };
 ```
 
 The options of a new StrokeStore
 
 - `order`: Who gives strokes their order; 'default' when omitted
+- `spill`: Whether a layer that draws the store may spill the points of strokes far from the view to IndexedDB (see StrokeStore); true when omitted. With false every point stays in memory, e.g. for an app that saves values()
 
 #### Tool
 
@@ -605,7 +623,7 @@ Also exported by `maplibre-gl-handwriting`: [`LaserChannel`](#laserchannel), [`L
 function appendPoints(stroke: StrokeData, pts: Float64Array, ps: Float32Array | undefined): boolean;
 ```
 
-Appends points (x and y in turn), and their width coefficients, to a stroke, into new arrays of the exact length. Returns false, changing nothing, when pts is not a Float64Array of x and y in turn, when ps is not a Float32Array of one coefficient per point, or when the op disagrees with the stroke's earlier points about having pressure
+Appends points (x and y in turn), and their width coefficients, to a stroke, into new arrays of the exact length. Returns false, changing nothing, when pts is not a Float64Array of x and y in turn, when ps is not a Float32Array of one coefficient per point, when the op disagrees with the stroke's earlier points about having pressure, or when the stroke's points are spilled (null)
 
 #### applyToPoint
 
@@ -688,7 +706,7 @@ function piecePoints(stroke: StrokeData, { from, to }: PieceRange): {
 };
 ```
 
-The points of one piece of a stroke (x and y in turn), and their width coefficients when the stroke has pressure: the cut at `from`, the stroke's own points strictly between the cuts, and the cut at `to`
+The points of one piece of a stroke (x and y in turn), and their width coefficients when the stroke has pressure: the cut at `from`, the stroke's own points strictly between the cuts, and the cut at `to`. Throws a TypeError for a stroke whose points are spilled (null): StrokeStore.read gives them back
 
 #### pieceStroke
 
@@ -723,7 +741,7 @@ function transformStroke(stroke: Pick<StrokeData, 'points' | 'zoom'>, m: Matrix)
 } | null;
 ```
 
-The points (x and y in turn, in a new array) and zoom a stroke has after `m`. Its width in pixels stays the same, so the zoom it was drawn at changes by the scale: a stroke twice as large is the size it was at one zoom level further out. Returns null when a point would leave the map (0 to 1) or the zoom would leave MIN/MAX_STROKE_ZOOM, by more than rounding (within it, the value is clamped); such a stroke is left as it is
+The points (x and y in turn, in a new array) and zoom a stroke has after `m`. Its width in pixels stays the same, so the zoom it was drawn at changes by the scale: a stroke twice as large is the size it was at one zoom level further out. Returns null when a point would leave the map (0 to 1) or the zoom would leave MIN/MAX_STROKE_ZOOM, by more than rounding (within it, the value is clamped); such a stroke is left as it is. Returns null too for a stroke whose points are spilled (null)
 
 #### validOrder
 

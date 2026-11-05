@@ -71,8 +71,9 @@ export function xy(points: readonly Point[]): Float64Array<ArrayBuffer> {
   return flat
 }
 
-/** A stroke's points (x and y in turn) as [x, y] pairs */
-export function pairs(points: Float64Array): Point[] {
+/** A stroke's points (x and y in turn) as [x, y] pairs. Throws for points that are spilled (null) */
+export function pairs(points: Float64Array | null): Point[] {
+  if (!points) throw new Error('the points are spilled')
   const out: Point[] = []
   for (let i = 0; i + 1 < points.length; i += 2) out.push([points[i], points[i + 1]])
   return out

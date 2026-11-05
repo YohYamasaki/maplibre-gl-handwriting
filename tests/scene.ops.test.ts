@@ -33,6 +33,8 @@ function run(seed: number, mode: StrokeOrderMode): void {
 
   // What the test knows independently of the scene
   const drawing = new Set<string>()
+  // The strokes the scene draws as being drawn: a stroke of a reset is a finished one until its next points (decision 0026)
+  const active = new Set<string>()
   const unsaved: string[] = []
   const erased: StrokeData[] = []
   let nextOrder = 1
@@ -88,6 +90,7 @@ function run(seed: number, mode: StrokeOrderMode): void {
         )
         store.apply({ type: 'points', id, pts: xy([pointNear(center, 1)]) }, 'local')
         drawing.add(id)
+        active.add(id)
       },
     ],
     [
@@ -99,6 +102,7 @@ function run(seed: number, mode: StrokeOrderMode): void {
         const last = pairs(store.get(id)!.points).at(-1)!
         const pts = Array.from({ length: 1 + Math.floor(rand() * 40) }, () => pointNear(last, 0.1))
         store.apply({ type: 'points', id, pts: xy(pts) }, 'local')
+        active.add(id)
       },
     ],
     [
@@ -109,6 +113,7 @@ function run(seed: number, mode: StrokeOrderMode): void {
         if (!id) return
         store.apply({ type: 'end', id }, 'local')
         drawing.delete(id)
+        active.delete(id)
         if (mode === 'custom') unsaved.push(id)
         else expect(store.get(id)?.order).toBeDefined()
       },
@@ -130,6 +135,7 @@ function run(seed: number, mode: StrokeOrderMode): void {
         const stroke = pick([...store.values()])
         if (!stroke) return
         store.apply({ type: 'remove', id: stroke.id }, 'local')
+        active.delete(stroke.id)
         if (drawing.delete(stroke.id)) return
         if (stroke.order !== undefined) erased.push(structuredClone(stroke))
       },
@@ -139,9 +145,9 @@ function run(seed: number, mode: StrokeOrderMode): void {
       'split',
       () => {
         // The partial eraser: a saved stroke, possibly just drawn here, is cut into one or two pieces
-        const stroke = pick([...store.values()].filter((s) => s.order !== undefined && s.points.length / 2 >= 2))
+        const stroke = pick([...store.values()].filter((s) => s.order !== undefined && s.points!.length / 2 >= 2))
         if (!stroke) return
-        const last = stroke.points.length / 2 - 1
+        const last = stroke.points!.length / 2 - 1
         const cut = rand() * last
         const pieces = [
           { id: `piece:${nextId++}`, from: 0, to: cut },
@@ -150,6 +156,7 @@ function run(seed: number, mode: StrokeOrderMode): void {
         if (pieces.length === 0) return
         const original = structuredClone(stroke)
         if (!store.apply({ type: 'split', id: stroke.id, pieces }, rand() < 0.5 ? 'local' : 'remote')) return
+        active.delete(stroke.id)
         // A default store's reset gives strokes still being drawn an order, so they can be cut too
         if (!drawing.delete(stroke.id)) erased.push(original)
       },
@@ -181,6 +188,7 @@ function run(seed: number, mode: StrokeOrderMode): void {
         const drafts = [...drawing].map((id) => structuredClone(store.get(id)!))
         store.apply({ type: 'reset', strokes: drafts }, 'remote')
         unsaved.length = 0
+        active.clear()
       },
     ],
     [
@@ -214,7 +222,7 @@ function run(seed: number, mode: StrokeOrderMode): void {
     const [, name, apply] = steps.find(([weight]) => (r -= weight) < 0)!
     try {
       apply()
-      expectConsistentScene(store, scene, drawing)
+      expectConsistentScene(store, scene, active)
     } catch (e) {
       throw new Error(`seed ${seed}, step ${step} (${name}): ${(e as Error).message}`, { cause: e })
     }

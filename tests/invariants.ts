@@ -35,7 +35,7 @@ export function expectValidMesh(mesh: MeshBuffer): void {
   expect(mesh.indexCount % 3).toBe(0)
 }
 
-/** `drawing`: the IDs of the strokes begun and neither ended nor removed */
+/** `drawing`: the IDs of the strokes the scene takes as being drawn: begun or given points, and neither ended nor removed */
 export function expectConsistentScene(store: StrokeStore, scene: StrokeScene, drawing: ReadonlySet<string>): void {
   const { buckets, strokeBuckets, active } = scene.inspect()
   expect(new Set(active.keys())).toEqual(drawing)
@@ -46,7 +46,7 @@ export function expectConsistentScene(store: StrokeStore, scene: StrokeScene, dr
       expect(strokeBuckets.has(stroke.id)).toBe(false)
       continue
     }
-    const key = tileKey(bucketOf([stroke.points[0], stroke.points[1]], stroke.zoom))
+    const key = tileKey(bucketOf([stroke.points![0], stroke.points![1]], stroke.zoom))
     expect(strokeBuckets.get(stroke.id)).toBe(key)
     expect(buckets.get(key)?.strokes.get(stroke.id)).toBe(stroke)
   }
@@ -170,7 +170,7 @@ export function expectValidDraws(
     if (stroke.order === undefined) continue
     const half = (stroke.width * mercatorPerPixelAt(stroke.zoom)) / 2
     const bounds = buckets
-      .get(tileKey(bucketOf([stroke.points[0], stroke.points[1]], stroke.zoom)))!
+      .get(tileKey(bucketOf([stroke.points![0], stroke.points![1]], stroke.zoom)))!
       .strokeBounds.get(id)!
     drawn.push({ stroke, area: grow(bounds, half), at })
   }

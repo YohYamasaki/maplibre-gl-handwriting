@@ -154,7 +154,7 @@ it('scale benchmark', async () => {
 
   const end = scene.stats()
   const result = {
-    room: { strokes: strokes.length, points: strokes.reduce((sum, s) => sum + s.points.length / 2, 0) },
+    room: { strokes: strokes.length, points: strokes.reduce((sum, s) => sum + s.points!.length / 2, 0) },
     frames,
     perFrameMax: perFrame,
     total: {

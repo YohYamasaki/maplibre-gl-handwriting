@@ -221,7 +221,7 @@ export class DrawController {
     // The store drops a stroke that was erased or reset away while it was drawn, and then nothing is finished
     if (!this.store.apply({ type: 'end', id }, 'local')) return
     const stroke = this.store.get(id)
-    if (stroke && stroke.points.length > 0) this.options.onStroke(stroke)
+    if (stroke?.points && stroke.points.length > 0) this.options.onStroke(stroke)
   }
 }
 

@@ -28,15 +28,18 @@ export function duplicateSelected(
 ): StrokeData[] {
   const copies: StrokeData[] = []
   for (const stroke of selectedInOrder(store, selection)) {
+    // The selection holds its strokes, so their points are in memory
+    const points = stroke.points
+    if (!points) continue
     const identity = newIdentity()
     if (!identity) continue
     const { id, author } = identity
-    const dx = shiftOf(stroke.points, 0, offset)
-    const dy = shiftOf(stroke.points, 1, offset)
-    const pts = new Float64Array(stroke.points.length)
+    const dx = shiftOf(points, 0, offset)
+    const dy = shiftOf(points, 1, offset)
+    const pts = new Float64Array(points.length)
     for (let i = 0; i + 1 < pts.length; i += 2) {
-      pts[i] = stroke.points[i] + dx
-      pts[i + 1] = stroke.points[i + 1] + dy
+      pts[i] = points[i] + dx
+      pts[i + 1] = points[i + 1] + dy
     }
     store.apply({ type: 'begin', id, author, color: stroke.color, width: stroke.width, zoom: stroke.zoom }, 'local')
     store.apply({ type: 'points', id, pts, ...(stroke.pressure ? { ps: stroke.pressure.slice() } : {}) }, 'local')
@@ -48,16 +51,12 @@ export function duplicateSelected(
 }
 
 /**
- * The strokes with these IDs as a GeoJSON FeatureCollection string. IDs not in the store and
- * strokes without an order yet are skipped
+ * The strokes with these IDs as a GeoJSON FeatureCollection string, once their spilled points are read back. IDs not
+ * in the store, strokes without an order yet and strokes whose points could not be read back are skipped
  */
-export function exportGeoJSON(store: StrokeStore, ids: Iterable<string>): string {
-  const strokes: StrokeData[] = []
-  for (const id of ids) {
-    const stroke = store.get(id)
-    if (stroke && stroke.order !== undefined) strokes.push(stroke)
-  }
-  return strokesToGeoJSON(strokes)
+export async function exportGeoJSON(store: StrokeStore, ids: Iterable<string>): Promise<string> {
+  const strokes = await store.read(ids)
+  return strokesToGeoJSON(strokes.filter((stroke) => stroke.order !== undefined))
 }
 
 function selectedInOrder(store: StrokeStore, selection: Selection): StrokeData[] {

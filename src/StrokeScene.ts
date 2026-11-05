@@ -10,6 +10,14 @@ import { IDENTITY, compose, scaleOf, type Matrix } from './core/transform'
 import type { Selection, SelectionChange } from './Selection'
 import type { Prediction } from './Prediction'
 
+/**
+ * A bucket within this many screens of the view has its strokes held in the store, and one more than RELEASE_SCREENS
+ * away lets go of them (decision 0023): between the two it keeps what it had, so a view moving to and fro at the edge
+ * does not hold and release them over and over
+ */
+export const HOLD_SCREENS = 2
+export const RELEASE_SCREENS = 3
+
 // How many final segments of a stroke being drawn pile up behind its tail before they are tessellated
 // into its fixed mesh. Bounds the work per frame: the tail never has more segments than this plus two
 const FREEZE_SEGMENTS = 32
@@ -103,6 +111,11 @@ export type Bucket = Extent & {
   meshArea: Bounds | null
   // While the worker is building a mesh for the bucket, the area that build covers
   building: Bounds | null
+  // The IDs of its strokes the scene holds in the store, so their points are not spilled, while it is near the view
+  // (decision 0023); null while it is not held
+  held: Set<string> | null
+  // Holds whose spilled points are being read back: the bucket is not built until they are back
+  holding: number
 }
 
 /**
@@ -185,7 +198,10 @@ export type SceneStats = {
  * (opaque and translucent strokes, see FrameDraws) in that tile's local coordinates. A bucket's mesh is made for one zoom and kept while the view stays within
  * RETESSELLATE_ZOOMS of it; after that the old mesh stays on screen while the build queue makes a new one.
  * Buckets near the view get meshes, and far ones drop theirs. A single finished or erased stroke changes
- * its bucket's mesh right away. Strokes being drawn are tessellated here, only their newest part each frame
+ * its bucket's mesh right away. Strokes being drawn are tessellated here, only their newest part each frame.
+ * The scene holds in the store (StrokeStore.hold) the strokes of the buckets within HOLD_SCREENS of the view, until
+ * they are more than RELEASE_SCREENS away, so the store spills only the points of strokes far from the view (it never
+ * spills a stroke being drawn); a bucket is built once the points of its strokes are back
  */
 export class StrokeScene {
   private buckets = new Map<string, Bucket>()
@@ -217,6 +233,8 @@ export class StrokeScene {
     orderRevision: -1,
   }
   private unsubscribe: () => void
+  // After destroy: the holds still being read back change nothing
+  private destroyed = false
   private unsubscribeSelection: () => void = () => {}
   private unsubscribePrediction: () => void = () => {}
   private selected: SelectionMeshes = {
@@ -264,9 +282,11 @@ export class StrokeScene {
   }
 
   destroy(): void {
+    this.destroyed = true
     this.unsubscribe()
     this.unsubscribeSelection()
     this.unsubscribePrediction()
+    for (const bucket of this.buckets.values()) this.releaseBucket(bucket)
   }
 
   private onSelection = (change: SelectionChange): void => {
@@ -315,7 +335,10 @@ export class StrokeScene {
     const byTile = new Map<string, BucketMesh & { tile: TileID }>()
     const strokes = [...selected.strokes.values()].sort((a, b) => a.order! - b.order!)
     for (const stroke of strokes) {
-      const tile = bucketOf(firstPoint(stroke), stroke.zoom)
+      // The selection holds its strokes; one whose points could not be read back is not drawn
+      const extent = this.store.extent(stroke.id)
+      if (!stroke.points || !extent) continue
+      const tile = bucketOf(extent.start, stroke.zoom)
       const key = tileKey(tile)
       let pair = byTile.get(key)
       if (!pair) {
@@ -543,14 +566,14 @@ export class StrokeScene {
   private onOp = (op: StrokeOp): void => {
     switch (op.type) {
       case 'begin':
-        this.active.set(op.id, null)
+        this.activate(op.id)
         this.hotStale = true
         break
       case 'points':
         // A stroke that was taken for finished is still being drawn
         if (!this.active.has(op.id)) {
           this.removeFromBucket(op.id)
-          this.active.set(op.id, null)
+          this.activate(op.id)
         }
         this.hotStale = true
         break
@@ -628,13 +651,16 @@ export class StrokeScene {
         break
       }
       case 'reset':
-        // The snapshot holds only strokes still being drawn
-        for (const bucket of this.buckets.values()) this.dropMesh(bucket)
+        for (const bucket of this.buckets.values()) {
+          this.dropMesh(bucket)
+          this.releaseBucket(bucket)
+        }
         for (const id of [...this.active.keys()]) this.retireHot(id)
         this.buckets.clear()
         this.strokeBuckets.clear()
-        for (const stroke of op.strokes) this.active.set(stroke.id, null)
-        this.hotStale = true
+        // Finished strokes, as the store takes them (decision 0026): one still being drawn elsewhere moves over to the
+        // strokes being drawn on its next points, as in the constructor
+        for (const stroke of op.strokes) this.addToBucket(stroke, false)
         this.selected.strokes.clear()
         this.selected.stale = true
         break
@@ -654,8 +680,10 @@ export class StrokeScene {
    * here, so it shows at once; otherwise it waits for the bucket's next build
    */
   private addToBucket(stroke: StrokeData, appendNow: boolean): void {
-    if (stroke.points.length === 0) return
-    const tile = bucketOf(firstPoint(stroke), stroke.zoom)
+    // From the store's extent, which stays while the stroke's points are spilled
+    const extent = this.store.extent(stroke.id)
+    if (!extent) return
+    const tile = bucketOf(extent.start, stroke.zoom)
     const key = tileKey(tile)
     // A stroke filed again (the same ID twice in one load) replaces the earlier copy, so its extent is counted once.
     // In the same bucket only the extent is taken back: the mesh is left alone, as a load leaves it
@@ -682,13 +710,15 @@ export class StrokeScene {
         meshZoom: this.hotZoom,
         meshArea: null,
         building: null,
+        held: null,
+        holding: 0,
       }
       this.buckets.set(key, bucket)
     }
     const meshUpToDate = bucket.meshVersion === bucket.version
     const earlier = filedIn === key ? bucket.strokes.get(stroke.id) : undefined
     if (earlier) track(bucket, bucket.strokeBounds.get(stroke.id)!, bucket.strokeWidths.get(stroke.id)!, -1)
-    const bounds = boundsOfFlat(stroke.points)
+    const bounds: Bounds = { minX: extent.minX, minY: extent.minY, maxX: extent.maxX, maxY: extent.maxY }
     const width = widthMercator(stroke)
     this.noteOrder(stroke.order)
     bucket.strokes.set(stroke.id, stroke)
@@ -697,7 +727,12 @@ export class StrokeScene {
     bucket.version = this.nextVersion++
     track(bucket, bounds, width, 1)
     this.strokeBuckets.set(stroke.id, key)
-    if (!appendNow) return
+    // A stroke that comes into a held bucket is held as it comes in
+    if (bucket.held && !bucket.held.has(stroke.id)) {
+      bucket.held.add(stroke.id)
+      this.holdFor(bucket, [stroke.id])
+    }
+    if (!appendNow || !stroke.points) return
 
     // A new bucket gets its first mesh here, made for the zoom the stroke was just drawn at
     if (!bucket.mesh && bucket.strokes.size === 1) {
@@ -718,6 +753,7 @@ export class StrokeScene {
     if (!key) return
     this.strokeBuckets.delete(id)
     const bucket = this.buckets.get(key)!
+    if (bucket.held?.delete(id)) this.store.release([id])
     const meshUpToDate = bucket.meshVersion === bucket.version
     // The extent decides how far from the view the mesh is kept, so it must not outlive the stroke
     track(bucket, bucket.strokeBounds.get(id)!, bucket.strokeWidths.get(id)!, -1)
@@ -752,13 +788,17 @@ export class StrokeScene {
     const height = view.maxY - view.minY
     const near = grow(view, width, height)
     const far = grow(view, 2 * width, 2 * height)
+    const holdArea = grow(view, HOLD_SCREENS * width, HOLD_SCREENS * height)
+    const keepArea = grow(view, RELEASE_SCREENS * width, RELEASE_SCREENS * height)
     for (const [key, bucket] of this.buckets) {
       const area = grow(bucket.bounds, halfWidth(bucket))
+      if (!bucket.held && intersects(area, holdArea)) this.holdBucket(bucket)
+      else if (bucket.held && !intersects(area, keepArea)) this.releaseBucket(bucket)
       if (!intersects(area, far)) {
         this.dropMesh(bucket)
         continue
       }
-      if (bucket.building || !intersects(area, near)) continue
+      if (bucket.building || bucket.holding > 0 || !intersects(area, near)) continue
       // The mesh has every stroke the view can reach: the view is inside its area, or all strokes are
       const covered =
         bucket.meshArea !== null && (contains(bucket.meshArea, view) || contains(bucket.meshArea, bucket.bounds))
@@ -770,12 +810,17 @@ export class StrokeScene {
       if (fresh) continue
       bucket.building = near
       // In drawing order, so the mesh's ranges come out in that order and draw as one run
+      // Without the strokes whose points could not be read back
       const strokes = [...bucket.strokes.values()]
-        .filter((stroke) => intersects(grow(bucket.strokeBounds.get(stroke.id)!, strokeHalfWidth(stroke)), near))
+        .filter(
+          (stroke) =>
+            stroke.points !== null &&
+            intersects(grow(bucket.strokeBounds.get(stroke.id)!, strokeHalfWidth(stroke)), near),
+        )
         .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || 0)
       this.counters.builds++
       for (const stroke of strokes) {
-        this.counters.buildPoints += stroke.points.length / 2
+        this.counters.buildPoints += stroke.points!.length / 2
       }
       this.builds.build({
         key,
@@ -794,6 +839,36 @@ export class StrokeScene {
     bucket.meshArea = null
   }
 
+  /** Holds the strokes of a bucket that came near the view, as the IDs the bucket holds */
+  private holdBucket(bucket: Bucket): void {
+    bucket.held = new Set(bucket.strokes.keys())
+    this.holdFor(bucket, [...bucket.held])
+  }
+
+  /**
+   * Holds strokes of a bucket in the store. When some have their points spilled, the bucket waits for them to be read
+   * back, and is built again then (also when some could not be read: those are left out)
+   */
+  private holdFor(bucket: Bucket, ids: string[]): void {
+    const spilled = ids.some((id) => bucket.strokes.get(id)?.points === null)
+    const back = this.store.hold(ids)
+    if (!spilled) return
+    bucket.holding++
+    void back.then(() => {
+      bucket.holding--
+      if (this.destroyed) return
+      bucket.version = this.nextVersion++
+      this.onChange()
+    })
+  }
+
+  /** Lets go of the strokes a bucket holds */
+  private releaseBucket(bucket: Bucket): void {
+    if (!bucket.held) return
+    this.store.release(bucket.held)
+    bucket.held = null
+  }
+
   /** Brings the strokes being drawn up to date, tessellating only what their new points changed */
   private updateHot(viewZoom: number): void {
     if (viewZoom !== this.hotZoom) {
@@ -803,19 +878,21 @@ export class StrokeScene {
     if (!this.hotStale) return
     for (const [id, previous] of this.active) {
       const stroke = this.store.get(id)
-      if (stroke && stroke.points.length > 0) {
-        this.active.set(id, this.updateHotStroke(stroke, previous))
+      // The store never spills a stroke being drawn, and reads back the points of one that is drawn again before the
+      // points op reaches here: only points that could not be read back are missing
+      if (stroke?.points && stroke.points.length > 0) {
+        this.active.set(id, this.updateHotStroke(stroke, stroke.points, previous))
       }
     }
     this.hotStale = false
   }
 
-  private updateHotStroke(stroke: StrokeData, previous: HotStroke | null): HotStroke {
+  private updateHotStroke(stroke: StrokeData, points: Float64Array, previous: HotStroke | null): HotStroke {
     const zoom = detailZoom(stroke, this.hotZoom)
     let hot = previous
     if (hot?.zoom !== zoom) {
       if (hot) this.retired.push(hot.frozen, hot.tail)
-      const tile = bucketOf(firstPoint(stroke), stroke.zoom)
+      const tile = bucketOf([points[0], points[1]], stroke.zoom)
       hot = {
         ...emptyExtent(),
         zoom,
@@ -829,9 +906,9 @@ export class StrokeScene {
         tailPredicted: undefined,
       }
     }
-    const count = stroke.points.length / 2
+    const count = points.length / 2
     if (hot.sampled < count) {
-      extend(hot, stroke, boundsOfFlat(stroke.points, hot.sampled))
+      extend(hot, stroke, boundsOfFlat(points, hot.sampled))
       appendSamples(hot.samples, stroke, hot.sampled, zoom)
       hot.sampled = count
     }
@@ -861,6 +938,11 @@ export class StrokeScene {
       hot.tailPredicted = predicted
     }
     return hot
+  }
+
+  /** Takes a stroke as being drawn */
+  private activate(id: string): void {
+    if (!this.active.has(id)) this.active.set(id, null)
   }
 
   private retireHot(id: string): void {
@@ -952,11 +1034,6 @@ function withPrediction(
     zoom,
   )
   return { samples: tip, from: from - start }
-}
-
-/** The first point of a stroke with points */
-function firstPoint(stroke: StrokeData): Point {
-  return [stroke.points[0], stroke.points[1]]
 }
 
 function emptyExtent(): Extent {

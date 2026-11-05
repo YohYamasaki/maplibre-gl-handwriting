@@ -67,8 +67,9 @@ export class StrokeTessellator {
     return new StrokeTessellator(new Tessellator())
   }
 
-  /** Appends the whole stroke, tessellated for `zoom`, with round caps at both ends */
+  /** Appends the whole stroke, tessellated for `zoom`, with round caps at both ends; nothing while it is spilled */
   appendStroke(mesh: MeshBuffer, stroke: StrokeData, zoom: number): void {
+    if (!stroke.points) return
     const samples: Samples = { points: [] }
     appendSamples(samples, stroke, 0, zoom)
     this.appendPiece(mesh, stroke, samples, 0, samples.points.length - 1, zoom)
@@ -119,7 +120,8 @@ export class StrokeTessellator {
  * Appends to `samples` the stroke's points from point `start` on that are far enough from the last sample to matter
  * at `zoom` (TOLERANCE_PX), or, at PRESSURE_MIN_DISTANCE of that, whose width coefficient differs enough from the last
  * sample's (PRESSURE_STEP), with their coefficients. The spline also needs neighbors at distinct positions.
- * Points are only ever appended to a stroke, so its earlier samples never change as it grows
+ * Points are only ever appended to a stroke, so its earlier samples never change as it grows. Appends nothing for a
+ * stroke whose points are spilled (null)
  */
 export function appendSamples(
   samples: Samples,
@@ -129,6 +131,7 @@ export function appendSamples(
 ): void {
   const minDistance = TOLERANCE_PX * mercatorPerPixelAt(zoom)
   const { points, pressure } = stroke
+  if (!points) return
   if (pressure) samples.pressure ??= []
   for (let i = start; 2 * i + 1 < points.length; i++) {
     const last = samples.points.at(-1)
@@ -137,7 +140,7 @@ export function appendSamples(
     const distance = last ? Math.hypot(x - last[0], y - last[1]) : Infinity
     const lastPressure = samples.pressure?.at(-1)
     const pressureChanged =
-      pressure !== undefined && lastPressure !== undefined && Math.abs(pressure[i] - lastPressure) >= PRESSURE_STEP
+      pressure != null && lastPressure !== undefined && Math.abs(pressure[i] - lastPressure) >= PRESSURE_STEP
     if (distance >= minDistance || (pressureChanged && distance >= PRESSURE_MIN_DISTANCE * minDistance)) {
       samples.points.push([x, y])
       if (pressure) samples.pressure!.push(pressure[i])
