@@ -1,6 +1,7 @@
 import type { Point, StrokeData } from './core/stroke'
 import { mercatorPerPixelAt } from './mercator'
 import type { MeshBuffer } from './MeshBuffer'
+import { PRESSURE_STEP } from './pressure'
 import init, { Tessellator } from '../tessellator/pkg/handwriting_tessellator'
 
 /**
@@ -18,12 +19,6 @@ const TOLERANCE_PX = 2 ** -RETESSELLATE_ZOOMS
 // How many zoom levels past its drawing zoom a stroke is ever tessellated for. Beyond that its curves
 // stay as fine as at this limit, which caps the vertex count and the size of lyon's f32 coordinates
 const MAX_DETAIL_ZOOMS = 8
-
-/**
- * A sample closer to the last one than the tolerance is still kept when its width coefficient differs from the last
- * one's by this much or more, so a quick change of pressure is not thinned away
- */
-const PRESSURE_STEP = 0.1
 
 /**
  * Such a point is kept only this far from the last sample, as a share of the tolerance. lyon merges a point closer to

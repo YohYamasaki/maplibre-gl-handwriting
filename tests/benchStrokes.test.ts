@@ -3,6 +3,7 @@ import type { Bounds } from '../src/bounds'
 import { generateBenchStrokes } from '../dev/benchStrokes'
 import { mercatorPerPixelAt } from '../src/core/mercator'
 import type { Point } from '../src/core/stroke'
+import { isTranslucent } from '../src/MeshBuffer'
 
 /** A deterministic stand-in for Math.random (mulberry32) */
 function seeded(seed: number): () => number {
@@ -49,8 +50,10 @@ describe('generateBenchStrokes', () => {
   })
 
   it('uses the opaque pen and the translucent highlighter', () => {
-    const colors = new Set(generateBenchStrokes(1000, bounds, 12, seeded(4)).map((s) => s.color))
-    expect([...colors].sort()).toEqual(['#000000', '#ffeb3b80'])
+    // Two colors, one opaque and one translucent, whatever their values
+    const colors = [...new Set(generateBenchStrokes(1000, bounds, 12, seeded(4)).map((s) => s.color))]
+    expect(colors).toHaveLength(2)
+    expect(colors.map(isTranslucent).sort()).toEqual([false, true])
   })
 
   // Mirrors of the generator's constants (dev/benchStrokes.ts)

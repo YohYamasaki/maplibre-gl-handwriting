@@ -6,52 +6,72 @@ export const MAX_PREDICTED_POINTS = 2
 /** Predicted points are kept within this distance of the last real point, in CSS px */
 export const MAX_PREDICTED_PX = 24
 
-/**
- * The points the browser predicts after the real input of each stroke being drawn (PointerEvent.getPredictedEvents).
- * They are never applied to the store, so they are never sent or kept: DrawController sets them on every
- * pointermove, replacing the previous ones, and StrokeScene draws them after the stroke's tail only
- */
 /** How many of the browser's 1st and 2nd predicted points were kept and dropped by the limit */
 export type PredictionCounts = { kept: [number, number]; dropped: [number, number] }
 
 /** The development tools' state of a Prediction (debug.ts): the switch for the latency comparison, and the counts */
 export type PredictionDebug = { on: boolean; counts: PredictionCounts }
 
+/** What is drawn after the recorded points of one stroke being drawn, and the array `get` returns for it */
+type Tip = { pending: Point | null; predicted: Point[]; points: Point[] }
+
+/**
+ * The points drawn after the tip of each stroke being drawn that are not in the store, so they are never sent or kept:
+ * the latest input DrawController has not recorded yet (the pending point), then the points the browser predicts
+ * after the input (PointerEvent.getPredictedEvents). DrawController replaces both on every pointermove, and
+ * StrokeScene draws them after the stroke's tail only
+ */
 export class Prediction {
-  private byStroke = new Map<string, Point[]>()
+  private tips = new Map<string, Tip>()
   private listeners = new Set<() => void>()
   /** Only in a build with __HANDWRITING_DEBUG__; null in the package */
   readonly debug: PredictionDebug | null = __HANDWRITING_DEBUG__
     ? { on: true, counts: { kept: [0, 0], dropped: [0, 0] } }
     : null
 
-  /** The predicted points after stroke `id`'s tip; a new array whenever they change */
+  /** The pending point, then the predicted points, after stroke `id`'s tip; a new array whenever either changes */
   get(id: string): Point[] | undefined {
-    return this.byStroke.get(id)
+    return this.tips.get(id)?.points
   }
 
-  /** Replaces the predicted points of stroke `id`; none drops them */
+  /**
+   * Replaces the predicted points of stroke `id`; none drops them. While the debug switch is off it only drops them.
+   * The pending point stays
+   */
   set(id: string, points: Point[]): void {
-    const next = this.debug?.on !== false && points.length > 0 ? points : undefined
-    if (next === undefined && !this.byStroke.has(id)) return
-    if (next) this.byStroke.set(id, next)
-    else this.byStroke.delete(id)
-    for (const listener of [...this.listeners]) listener()
+    const predicted = this.debug?.on !== false ? points : []
+    const tip = this.tips.get(id)
+    if (predicted.length === 0 && !tip?.predicted.length) return
+    this.update(id, tip?.pending ?? null, predicted)
   }
 
-  /** Drops the predicted points of every stroke */
+  /** Replaces the pending point of stroke `id`, the latest input not recorded yet; null drops it */
+  setPending(id: string, point: Point | null): void {
+    const tip = this.tips.get(id)
+    const pending = tip?.pending ?? null
+    if (point === pending || (point && pending && point[0] === pending[0] && point[1] === pending[1])) return
+    this.update(id, point, tip?.predicted ?? [])
+  }
+
+  /** Drops the predicted points of every stroke; their pending points stay */
   clear(): void {
-    for (const id of [...this.byStroke.keys()]) this.set(id, [])
+    for (const id of [...this.tips.keys()]) this.set(id, [])
   }
 
-  /** Strokes holding predicted points now */
+  /** Strokes holding a pending point or predicted points now */
   get size(): number {
-    return this.byStroke.size
+    return this.tips.size
   }
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  private update(id: string, pending: Point | null, predicted: Point[]): void {
+    if (pending === null && predicted.length === 0) this.tips.delete(id)
+    else this.tips.set(id, { pending, predicted, points: pending ? [pending, ...predicted] : predicted })
+    for (const listener of [...this.listeners]) listener()
   }
 }
 

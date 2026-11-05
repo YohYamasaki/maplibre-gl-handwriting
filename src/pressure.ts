@@ -3,6 +3,13 @@ import type { PressureCurve } from './pens'
 /** Weight of the newest pressure reading in the running average that smooths a pen's pressure */
 export const PRESSURE_SMOOTHING = 0.5
 
+/**
+ * A point whose width coefficient differs from the last kept point's by this much or more is kept though it is closer
+ * than the spacing, so a quick change of pressure is not thinned away: by DrawController, which records the input,
+ * and by appendSamples, which samples a stroke's points
+ */
+export const PRESSURE_STEP = 0.1
+
 /** Steps a width coefficient is rounded to: 1/255 */
 const PRESSURE_LEVELS = 255
 

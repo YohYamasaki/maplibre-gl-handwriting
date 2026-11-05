@@ -10,7 +10,7 @@ const MIN_STEPS = 30
 const MAX_STEPS = 150
 /** Share of the strokes drawn with the translucent color */
 const TRANSLUCENT_SHARE = 0.3
-/** The library's default pen and highlighter */
+/** An opaque pen and a translucent highlighter, at the default widths (the colors are not the library's defaults) */
 const OPAQUE = { color: '#48ff00', width: 4 }
 const TRANSLUCENT = { color: '#413bff80', width: 16 }
 /** Width of the band along each edge of a wide axis where a stroke turns back inward, in px */
