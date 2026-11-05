@@ -372,7 +372,7 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
   for (const [type, listener] of pointerListeners) element.addEventListener(type, listener as EventListener)
   /**
    * Keeps iOS from selecting the page's text or showing the loupe for a touch a tool takes: only a non-passive
-   * touchstart's preventDefault stops them (ADR 0011). The pointer events come before it and are left as they are;
+   * touchstart's preventDefault stops them. The pointer events come before it and are left as they are;
    * the compatibility mouse events, the click and the focus change of that touch do not happen, so the focus is let
    * go of here as a tap would
    */

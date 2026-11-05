@@ -20,7 +20,7 @@ const SCREEN = { width: 1000, height: 700 }
 
 /**
  * custom: the test plays the server, giving ended strokes their order late and out of order. default: the store
- * gives each ended stroke the next order at once, and numbers loaded and reset strokes anew (decision 0091)
+ * gives each ended stroke the next order at once, and numbers loaded and reset strokes anew
  */
 function run(seed: number, mode: StrokeOrderMode): void {
   const rand = random(seed)
@@ -33,7 +33,7 @@ function run(seed: number, mode: StrokeOrderMode): void {
 
   // What the test knows independently of the scene
   const drawing = new Set<string>()
-  // The strokes the scene draws as being drawn: a stroke of a reset is a finished one until its next points (decision 0026)
+  // The strokes the scene draws as being drawn: a stroke of a reset is a finished one until its next points
   const active = new Set<string>()
   const unsaved: string[] = []
   const erased: StrokeData[] = []

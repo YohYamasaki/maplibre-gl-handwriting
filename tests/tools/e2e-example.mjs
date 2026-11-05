@@ -1,4 +1,4 @@
-// Browser check of the package as a user gets it (decisions 0091, 0094, 0013): packs it, installs the tgz into a copy
+// Browser check of the package as a user gets it: packs it, installs the tgz into a copy
 // of examples/basic (a page with an import map and no build), serves the copy as it is (serve.mjs) and runs the
 // example's checks in headless Chrome (example-checks.mjs), once from localhost and once from a host that is not
 // localhost (browser.mjs's INSECURE_HOST), where the page is not a secure context and crypto.randomUUID is missing:

@@ -1,4 +1,4 @@
-// Generated strokes for load tests (decision 0089): a store of their own, drawn by a second handle without tools, so
+// Generated strokes for load tests: a store of their own, drawn by a second handle without tools, so
 // sync, selection, the eraser and undo never touch them
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { setDebugWireframe } from '../src/debug'
@@ -46,7 +46,7 @@ export class BenchLayer {
       })
     }
     const strokes = generateBenchStrokes(count, benchBounds(this.map), this.map.getZoom(), Math.random)
-    // Saved strokes reach the app by load, which puts them in buckets tessellated by the worker (decision 0090);
+    // Saved strokes reach the app by load, which puts them in buckets tessellated by the worker;
     // the reset first drops the last show's strokes, whose IDs load would skip
     this.store.apply({ type: 'reset', strokes: [] }, 'remote')
     this.store.apply({ type: 'load', strokes }, 'remote')

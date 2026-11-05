@@ -1,6 +1,6 @@
 // A stroke drawn at one zoom and tessellated for a closer one: its round caps and joins must be as smooth on screen as
-// its centerline. The width is a map scale (ADR 0030), so lyon has to shape the arcs for the width on screen at the
-// zoom the mesh is made for, not the width at the drawing zoom (ADR 0044)
+// its centerline. The width is a map scale, so lyon has to shape the arcs for the width on screen at the
+// zoom the mesh is made for, not the width at the drawing zoom
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeAll, expect, it } from 'vitest'

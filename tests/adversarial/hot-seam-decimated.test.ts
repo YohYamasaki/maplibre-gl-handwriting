@@ -1,6 +1,6 @@
 // lyon drops points that lie too close together. When it dropped the whole last curve of the frozen piece, the
-// tessellator once threw (when pieces ended flat at a seam, plan 0038) and the scene stopped drawing until the input
-// changed. Pieces now end in round caps (ADR 0043); this draws such a stroke through the real scene and lyon and
+// tessellator once threw (when pieces ended flat at a seam) and the scene stopped drawing until the input
+// changed. Pieces now end in round caps; this draws such a stroke through the real scene and lyon and
 // checks every frame still succeeds
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'

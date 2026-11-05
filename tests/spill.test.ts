@@ -1,4 +1,4 @@
-// Decisions 0023 to 0025: the store spills the points of the strokes nothing holds to a target (here one in memory),
+// The store spills the points of the strokes nothing holds to a target (here one in memory),
 // the scene holds the strokes of the buckets near the view, and ops that need spilled points wait for them
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -526,7 +526,7 @@ describe('ops on spilled strokes', () => {
     expect(seen).toEqual([])
     target.resume()
     await settle()
-    // Each stroke waits alone (decision 0026): a's ops, read back first, in the order they came, then b's
+    // Each stroke waits alone: a's ops, read back first, in the order they came, then b's
     expect(seen.map(([op]) => [op.type, ...touched(op)])).toEqual([
       ['transform', 'a'],
       ['split', 'a', 'a1', 'a2'],
@@ -700,7 +700,7 @@ describe('what holds strokes', () => {
   })
 })
 
-describe('waiting per stroke (decision 0026)', () => {
+describe('waiting per stroke', () => {
   it('applies a local split on a stroke in memory at once while another stroke of a load waits', async () => {
     const { store, target, advance, tick } = spilling()
     store.apply({ type: 'load', strokes: [line('R', FAR)] }, 'remote')
@@ -805,7 +805,7 @@ describe('waiting per stroke (decision 0026)', () => {
   }
 })
 
-describe('the strokes of a reset, and the strokes being drawn (decision 0026)', () => {
+describe('the strokes of a reset, and the strokes being drawn', () => {
   it('files a reset stroke in its bucket, spills it far away, and draws it as being drawn on its next points', async () => {
     const { store, advance, tick } = spilling()
     const scene = new StrokeScene(store, fakeWriter, new DeferredBuilds(), ZOOM)

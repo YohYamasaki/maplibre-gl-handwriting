@@ -1,4 +1,4 @@
-// Decision 0091: who gives strokes their place in the drawing order. A default store numbers the strokes itself, so
+// Who gives strokes their place in the drawing order. A default store numbers the strokes itself, so
 // selection, transforms, cuts and Export work with no server; a custom store leaves it to the caller
 import { describe, expect, it } from 'vitest'
 import { MAX_ORDER, StrokeStore, type Origin, type Point, type StrokeData, type StrokeOp } from '../src/core/stroke'

@@ -1,5 +1,5 @@
 // Writes docs/api.md, the API reference of the package's two entries, from their type declarations and TSDoc
-// (decision 0014): `npm run docs:api`. The declarations are those of a declaration emit (.d.ts) done in memory, as
+// (`npm run docs:api`). The declarations are those of a declaration emit (.d.ts) done in memory, as
 // written there, without the private members; the checker's printing of types is not used. Per entry: the functions,
 // the classes, the types and the constants, each by name, with its declaration and TSDoc, and the TSDoc of each
 // member of an object type or a class. The core entry lists only its own names, and links to the ones it shares.

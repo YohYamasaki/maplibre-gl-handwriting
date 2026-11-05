@@ -23,7 +23,7 @@ function forEntry(source: string): { status: number | null; stdout: string; stde
   }
 }
 
-// docs/api.md is written from the declarations and their TSDoc by tests/tools/api-docs.mjs (decision 0014)
+// docs/api.md is written from the declarations and their TSDoc by tests/tools/api-docs.mjs
 describe('the API reference', () => {
   it('is up to date with the TSDoc', { timeout: 30_000 }, () => {
     const check = apiDocs('--check')

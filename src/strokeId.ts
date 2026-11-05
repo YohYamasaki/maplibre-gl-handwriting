@@ -1,4 +1,4 @@
-// The IDs of the strokes a handle makes when HandwritingOptions.startStroke is omitted (decision 0008)
+// The IDs of the strokes a handle makes when HandwritingOptions.startStroke is omitted
 
 /**
  * A random UUID v4 (lowercase 8-4-4-4-12), made from crypto.getRandomValues. crypto.randomUUID would give the same

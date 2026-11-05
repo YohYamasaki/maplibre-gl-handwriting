@@ -1,4 +1,4 @@
-// The spill target of a store in a browser (decisions 0023 and 0025): one IndexedDB database for the origin, a record per
+// The spill target of a store in a browser: one IndexedDB database for the origin, a record per
 // spilled stroke keyed by [store ID, stroke ID], and a Web Lock per store held while it is attached. A page that attaches
 // a target deletes the records of the stores no page holds the lock of any more (e.g. a tab closed while it had spilled
 // points), and the last layer of a store to be destroyed reads its points back and deletes its records
@@ -186,7 +186,7 @@ function openDatabase(): Promise<IDBDatabase> {
   })
 }
 
-/** Deletes the records of the stores whose lock no page holds (decision 0025) */
+/** Deletes the records of the stores whose lock no page holds */
 async function deleteAbandoned(database: IDBDatabase): Promise<void> {
   const stores: string[] = []
   await run(database, 'readonly', 'look for the records of closed pages', (store) => {

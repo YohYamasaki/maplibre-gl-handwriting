@@ -1,5 +1,5 @@
 // Frames per second from requestAnimationFrame, and the average CPU and GPU times of the strokes' drawing, over the
-// last second (decision 0089)
+// last second
 
 const WINDOW_MS = 1000
 /** How often the numbers are reported */

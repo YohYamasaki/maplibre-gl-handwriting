@@ -138,7 +138,7 @@ export class StrokeLayer implements CustomLayerInterface {
   private wireframe = false
   // A worker failed to load (options.onLoad): the layer stays empty from then on
   private failed = false
-  // The store's IndexedDB spill target, attached by the first onAdd (decision 0023), until detachSpill
+  // The store's IndexedDB spill target, attached by the first onAdd, until detachSpill
   private spillAttached = false
   private leaveSpill: (() => void) | null = null
 

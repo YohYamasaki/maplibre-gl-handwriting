@@ -1,5 +1,5 @@
-// The development page (decision 0096): the layer from the source, with the debug code in (__HANDWRITING_DEBUG__ is
-// true under `vite`), and no server. The default store gives the strokes their order (decision 0091). The panel has
+// The development page: the layer from the source, with the debug code in (__HANDWRITING_DEBUG__ is
+// true under `vite`), and no server. The default store gives the strokes their order. The panel has
 // the wireframe, the predicted points, the scene's stats, the load test strokes, the Canvas2D comparison and the frame
 // times; window.__handwriting is what the browser checks (tests/tools/e2e-dev.mjs) look at
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -29,13 +29,13 @@ const backgroundStyle: StyleSpecification = {
 const blank = new URLSearchParams(location.search).has('blank')
 const map = new MapLibreMap({
   container: 'map',
-  // OpenFreeMap's Positron (decision 0017): OpenStreetMap vector tiles, no API key needed. Its sources carry their
+  // OpenFreeMap's Positron: OpenStreetMap vector tiles, no API key needed. Its sources carry their
   // attribution, which MapLibre shows; the tiles go up to zoom 14
   style: blank ? backgroundStyle : 'https://tiles.openfreemap.org/styles/positron',
   center: [141.3545, 43.0618],
   zoom: 12,
   minZoom: 2,
-  // desynchronized: true can make the whole map flicker at each repaint, as in Chrome on Android (decision 0027)
+  // desynchronized: true can make the whole map flicker at each repaint, as in Chrome on Android
   canvasContextAttributes: { antialias: true, desynchronized: false },
 })
 if (!blank) {
@@ -85,10 +85,10 @@ const debug = {
   HandwritingLayer,
   addOverlay: overlay,
   scene: () => debugSceneOf(handle),
-  // How far ahead the predicted points are drawn, in ms; 0 draws none (decision 0021)
+  // How far ahead the predicted points are drawn, in ms; 0 draws none
   setPredictionMs: (ms: number): void => setDebugPredictionMs(handle, ms),
   // The predicted points offered, kept and dropped by time and by distance, and the time ahead of the latest ones, to
-  // tune the time ahead on a real pen (decisions 0020, 0021)
+  // tune the time ahead on a real pen
   predictionCounts: () => debugPredictionCounts(handle),
 }
 ;(window as unknown as { __handwriting?: unknown }).__handwriting = debug

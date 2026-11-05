@@ -1,4 +1,4 @@
-// Review finding on 0044: lyon was given the width on screen at the mesh's zoom also below the drawing zoom. A dot
+// Found by a review: lyon was given the width on screen at the mesh's zoom also below the drawing zoom. A dot
 // made for a zoom far out became narrower than lyon draws (about 0.25 px) and got no triangles, and that mesh was kept
 // for about 3 zoom levels in, so the dot stayed invisible even once it was over 1 px wide on screen again
 import { readFileSync } from 'node:fs'

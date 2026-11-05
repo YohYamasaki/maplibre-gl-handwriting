@@ -9,12 +9,12 @@
 //! so separately tessellated pieces of one stroke meet without a kink.
 //!
 //! Every piece ends in round caps, so neighboring pieces overlap where they meet. A translucent stroke is still painted once there: all its vertices share one depth, and the render layer draws translucent
-//! strokes with depth writes and a strictly-less depth test (ADR 0043).
+//! strokes with depth writes and a strictly-less depth test.
 //!
 //! With pen pressure, each sample carries a width coefficient (0 to 1). lyon then varies the line width along the
 //! path, and each vertex's normal is scaled by the ratio of its width to the stroke's width, so the vertex shader
 //! extrudes it that much less. Neighboring pieces both end in a round cap at the sample where they meet, sized by that
-//! sample's coefficient (decision 0037, P3). Without pressure the ratio is 1 and lyon draws the fixed width.
+//! sample's coefficient. Without pressure the ratio is 1 and lyon draws the fixed width.
 //!
 //! Positions are in the local coordinates of a map tile rather than in absolute Web Mercator coordinates.
 //! The GPU works in f32, which cannot tell apart absolute coordinates a few px apart at high zoom.
@@ -116,7 +116,7 @@ impl Tessellator {
     /// `zoom` is the map zoom the geometry is made for: curves are flattened to within `tolerance` px there, and
     /// joins and round caps are shaped as they look there. `width` is the line width lyon splits the arcs of round
     /// caps and joins for, in CSS px; it is used as given. The caller passes the larger of the width on screen at
-    /// `zoom` and the width the stroke was drawn with (ADR 0044, 0051). The drawn width does not depend on it: the
+    /// `zoom` and the width the stroke was drawn with. The drawn width does not depend on it: the
     /// shader extrudes by the stroke's width, and each normal carries only the coefficient.
     /// The output positions are in the local coordinates of tile `tile_z/tile_x/tile_y` (0 to EXTENT across the tile).
     #[allow(clippy::too_many_arguments)]
@@ -393,7 +393,7 @@ mod tests {
 
     #[test]
     fn both_pieces_at_a_seam_end_in_a_cap_of_the_coefficient_there() {
-        // Decision 0037 P3-4: the pieces on either side of a seam size its round caps by the seam sample's
+        // The pieces on either side of a seam size its round caps by the seam sample's
         // coefficient, so the two caps are the same circle
         let samples = wavy_samples(12);
         let pressure: Vec<f32> = (0..12).map(|i| 0.3 + 0.05 * i as f32).collect();

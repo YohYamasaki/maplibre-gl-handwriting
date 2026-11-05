@@ -1,4 +1,4 @@
-// Decision 0076: strokes as GeoJSON
+// Strokes as GeoJSON
 import { describe, expect, it } from 'vitest'
 import { strokesToGeoJSON } from '../src/core/geojson'
 import { mercatorPerPixelAt } from '../src/core/mercator'

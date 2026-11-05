@@ -1,4 +1,4 @@
-// Measures the stroke layers (decision 0089): two custom layers that draw nothing, one under the generated strokes'
+// Measures the stroke layers: two custom layers that draw nothing, one under the generated strokes'
 // layer and one over the app's, time what MapLibre does between them, on the CPU with performance.now() and on the
 // GPU with EXT_disjoint_timer_query_webgl2 where the browser has it
 import type { CustomLayerInterface, Map as MapLibreMap } from 'maplibre-gl'

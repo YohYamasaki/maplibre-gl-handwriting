@@ -210,7 +210,7 @@ export class StrokeStore {
       return this.applyNow(op, origin)
     }
     if (this.waiting.length === 0 && this.spilled.size === 0) return this.applyNow(op, origin)
-    // Each stroke that waits waits alone (decision 0026): the part of a load, a transform or a replace on strokes that
+    // Each stroke that waits waits alone: the part of a load, a transform or a replace on strokes that
     // need not wait applies now, and the rest is one waiting op per stroke
     switch (op.type) {
       case 'transform': {
@@ -241,7 +241,7 @@ export class StrokeStore {
       }
       case 'load': {
         // In the default mode the strokes take their orders now, in the order the load lists them, the ones that wait
-        // included (decision 0026)
+        // included
         const ordered = this.orderMode === 'default'
         const now: StrokeData[] = []
         const orders: (number | undefined)[] = []
@@ -622,7 +622,7 @@ export class StrokeStore {
     if (this.holds.has(id) || this.open.has(id) || this.busy.has(id) || this.growing.has(id)) return
     const stroke = this.strokes.get(id)
     if (!stroke || stroke.points === null || stroke.points.length === 0 || stroke.order === undefined) return
-    // A stroke of more points than one write takes stays in memory (decision 0026)
+    // A stroke of more points than one write takes stays in memory
     if (pointCount(stroke.points) > MAX_SPILL_POINTS) return
     // Always added last, so the candidates stay in the order they became ones
     state.candidates.set(id, state.options.now())

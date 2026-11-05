@@ -1,4 +1,4 @@
-// Spilling (decisions 0023 to 0025): a StrokeStore writes the points of the strokes nothing holds to a target elsewhere
+// Spilling: a StrokeStore writes the points of the strokes nothing holds to a target elsewhere
 // (IndexedDB in a browser, src/IndexedDBSpill.ts) and reads them back when they are needed. The target interface and
 // the entry points that attach one, spill and detach are the package's own: core/index.ts does not export this module.
 // Used by the store, so it must not depend on the DOM, MapLibre or any platform's APIs

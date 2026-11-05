@@ -124,9 +124,9 @@ function emitLicenses(): Plugin {
 // src/core bundled in and also its own entry (./core), maplibre-gl left to the user as a peer dependency, the
 // tessellation worker (assets/tessellation.worker.js) and the WebAssembly module as files next to it, found through
 // new URL("./<path>", import.meta.url) (genericAssetUrls). HANDWRITING_DEBUG=1 builds it with the debug
-// code in, for the pack check only (decision 0096). The .d.ts files come from tsconfig.build.json (npm run build).
+// code in, for the pack check only. The .d.ts files come from tsconfig.build.json (npm run build).
 // With --mode demo (vite build and vite preview alike), the dev page as a static site in dist/demo, debug code and
-// panel in, maplibre-gl bundled, files named with Vite's default hashes (decision 0016)
+// panel in, maplibre-gl bundled, files named with Vite's default hashes
 export default defineConfig(({ command, mode }) => {
   if (mode === 'demo') {
     return {

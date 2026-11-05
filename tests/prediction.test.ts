@@ -1,4 +1,4 @@
-// Decisions 0037 P7-1, 0080, 0020: the browser's predicted points are drawn after the tip of the stroke being drawn only,
+// The browser's predicted points are drawn after the tip of the stroke being drawn only,
 // up to the time ahead (Prediction.ms) after their pointermove and within how far the pointer goes in that time at its
 // speed since the previous pointermove (at most 24 px). They never reach the store (so the sync layer, which sends the
 // store's ops, never sends them) and never the frozen part
@@ -94,7 +94,7 @@ describe('predictedPositions', () => {
     })
   })
 
-  // Decision 0080: a point beyond the limit is not pulled back; it and every point after it are dropped
+  // A point beyond the limit is not pulled back; it and every point after it are dropped
   it('drops a point farther than the limit and every point after it, even one within the limit', () => {
     expect(predictedPositions([0, 0], 0, [at([3, 4, 5]), at([6, 8, 10])], 5, 20)).toEqual({
       positions: [[3, 4]],

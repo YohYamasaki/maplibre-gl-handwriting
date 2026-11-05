@@ -1,8 +1,7 @@
 // Scale benchmark: a room of a few thousand strokes drawn at many zooms, viewed through a fixed sequence of
 // zooms, pans, a long new stroke and erases, with the real lyon tessellator. Records counters that grow with
 // the structure of the code rather than with the machine (vertices, copied points, draw calls, kept bytes),
-// writes them to bench-result.json in the harness state (decision 0049), and checks them against limits.json here once
-// the user has
+// writes them to bench-result.json in the harness state, and checks them against limits.json here once the user has
 // approved the limits there. Wall-clock times are recorded for reference only
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -56,7 +55,7 @@ function makeStrokes(
       p = [p[0] + Math.cos(heading) * 3 * px, p[1] + Math.sin(heading) * 3 * px]
       points.push(p)
     }
-    // Some are marker strokes, which are drawn in order rather than by depth (ADR 0024)
+    // Some are marker strokes, which are drawn in order rather than by depth
     const color = rand() < MARKER_SHARE ? '#33669980' : '#336699'
     return { id: `s${start + i}`, author: 'bench', color, width: 8, zoom, points: xy(points), order: start + i + 1 }
   })

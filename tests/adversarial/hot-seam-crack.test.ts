@@ -1,9 +1,9 @@
 // A stroke being drawn is tessellated in pieces (frozen + tail). With butt ends lyon squared each end against the
 // piece's last flattened edge rather than the curve's tangent, so on a curve a wedge-shaped crack opened on the outer
 // side of the bend at every seam (the background showed through, for opaque strokes too). Every piece now ends in
-// round caps, which overlap where pieces meet; a translucent stroke is still painted once there by its single depth
-// (ADR 0043). This checks, through the real scene and lyon, that every point of the first seam's circle is covered
-// by a triangle of one of the two pieces, on the shapes that broke earlier seam schemes (ADR 0036, 0039, 0041, 0042)
+// round caps, which overlap where pieces meet; a translucent stroke is still painted once there by its single depth.
+// This checks, through the real scene and lyon, that every point of the first seam's circle is covered by a triangle
+// of one of the two pieces, on the shapes that broke earlier seam schemes
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -113,7 +113,7 @@ const bend = (i: number): Px => [20 * Math.cos((i * 3) / 20), 20 * Math.sin((i *
 const bendBack = (i: number): Px => [20 * Math.cos((i * 3) / 20), -20 * Math.sin((i * 3) / 20)]
 // Straight out, then straight back at sample 33, the first seam (FREEZE_SEGMENTS + 1 samples in, minus 1)
 const turnBack = (i: number): Px => (i <= 32 ? [3 * i, 0] : [3 * 32 - 3 * (i - 32), 0.3 * (i - 32)])
-// Review finding 1 on ADR 0036: lyon dropped the earlier piece's last point (width 0.5 px)
+// Found by a review of an earlier seam scheme: lyon dropped the earlier piece's last point (width 0.5 px)
 const droppedEnd: Px[] = [
   ...Array.from({ length: 31 }, (_, i): Px => [-0.817513706 - (30 - i), 0.894033885 + (30 - i)]),
   [0, 0],
@@ -121,15 +121,16 @@ const droppedEnd: Px[] = [
   [2.903939123, 0.158846715],
   [1.722899832, 2.609555218],
 ]
-// Codex review round 1 on ADR 0041: the whole tail was closer to the earlier piece's end than lyon's point removal
-// distance (width 0.5 px, at 0.5, 0.5)
+// Found by a Codex review of an earlier seam scheme: the whole tail was closer to the earlier piece's end than
+// lyon's point removal distance (width 0.5 px, at 0.5, 0.5)
 const collapsedTail: Px[] = [
   ...Array.from({ length: 31 }, (_, i): Px => [0.17 - (30 - i), 0.15]),
   [0.15, -0.1],
   [0, 0],
   [0.1, -0.13],
 ]
-// Plan 0038 (Codex review on ADR 0042): lyon dropped the whole last curve of the frozen piece (width 8 px, at 0.5, 0.5)
+// Found by a Codex review of an earlier seam scheme: lyon dropped the whole last curve of the frozen piece
+// (width 8 px, at 0.5, 0.5)
 const decimatedEnd: Px[] = [
   ...Array.from({ length: 31 }, (_, i): Px => [i, 0]),
   [29.855, 0.106],
@@ -166,7 +167,7 @@ describe('the frozen part and the tail of a stroke being drawn cover the whole c
   ] as const) {
     it(name, async () => {
       const { frozen, tail } = await drawUntilSeam(path, width, origin)
-      // Each piece ends in a round cap there, so each covers the whole circle on its own (ADR 0043)
+      // Each piece ends in a round cap there, so each covers the whole circle on its own
       const pieces: [string, Px[][]][] = alone
         ? [
             ['frozen part', frozen],
@@ -183,7 +184,7 @@ describe('the frozen part and the tail of a stroke being drawn cover the whole c
     })
   }
 
-  // Decision 0037 P3-4: with pen pressure both pieces end in a cap of the seam sample's coefficient times the width,
+  // With pen pressure both pieces end in a cap of the seam sample's coefficient times the width,
   // so each covers that smaller circle on its own
   for (const [name, path] of [
     ['straight', straight],

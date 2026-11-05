@@ -1,4 +1,4 @@
-// Decision 0037 P5: lasso and tap selection, and moving, scaling and rotating the selection
+// Lasso and tap selection, and moving, scaling and rotating the selection
 import { describe, expect, it } from 'vitest'
 import { bucketOf, tileKey } from '../src/core/bucket'
 import { StrokeStore, type Point, type StrokeData } from '../src/core/stroke'
@@ -503,7 +503,7 @@ describe('selection bar actions', () => {
   })
 })
 
-describe('Export of the selection (decision 0077)', () => {
+describe('Export of the selection', () => {
   type Collection = { features: { geometry: { coordinates: number[][] }; properties: { id: string } }[] }
 
   it('exports only the selected strokes', async () => {

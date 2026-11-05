@@ -1,7 +1,8 @@
-// Decision 0022: a stroke's points are a Float64Array of x and y in turn and its width coefficients a Float32Array.
+// A stroke's points are a Float64Array of x and y in turn and its width coefficients a Float32Array.
 // The store grows the arrays of a stroke being drawn 32 points at a time and copies them to their exact length at its
 // end, keeps copies of the arrays it is given, and leaves out points and coefficients of another type or length. The
-// split, transform and GeoJSON numbers are those the [x, y] pairs gave (GOLDEN, written by version 0.1.0)
+// split, transform and GeoJSON numbers are those of the version that kept the points as [x, y] pairs (GOLDEN, written
+// by it)
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -261,7 +262,7 @@ describe('strokes as JSON (docs/usage.md)', () => {
   })
 })
 
-// Written by version 0.1.0 (src/core with [x, y] pairs) for the stroke and sweeps below
+// Written by the version of src/core that kept the points as [x, y] pairs, for the stroke and sweeps below
 const GOLDEN = {
   ranges: [
     { from: 0, to: 2.7779055554752015 },
@@ -341,7 +342,7 @@ describe('the numbers of a cut, a transform and GeoJSON', () => {
     order: 1,
   }
 
-  it('are those of version 0.1.0, with the coefficients rounded to float32', () => {
+  it('are those of the version with [x, y] pairs, with the coefficients rounded to float32', () => {
     const sweeps: EraserSweep[] = [
       { from: [walk[3][0], walk[3][1] - 5e-5], to: [walk[3][0], walk[3][1] + 5e-5], radius: 3e-5 },
       { from: walk[8], to: [walk[9][0], walk[9][1] + 1e-5], radius: 2e-5 },

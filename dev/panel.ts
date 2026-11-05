@@ -1,5 +1,5 @@
-// The dev page's panel (decision 0096), in plain DOM: what the app's debug panel had (decision 0089), the time ahead
-// the predicted points are drawn (decision 0021) and their counts, and the scene's stats
+// The dev page's panel, in plain DOM: what the app's debug panel had, the time ahead the predicted points are drawn
+// and their counts, and the scene's stats
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import {
   debugPredictionCounts,

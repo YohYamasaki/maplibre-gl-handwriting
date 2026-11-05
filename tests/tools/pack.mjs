@@ -1,4 +1,4 @@
-// Checks what `npm pack` ships (decision 0096): the entries, the worker, the WebAssembly module as a file, the
+// Checks what `npm pack` ships: the entries, the worker, the WebAssembly module as a file, the
 // stylesheet, the declarations with every relative import in them resolving inside the package, and the third-party
 // licenses. The JavaScript uses import.meta.url only in new URL("./<path>", import.meta.url), the generic form,
 // with the path pointing at a file of the package. The debug code must be out of the package: its marker (DEBUG_BUILD_NOTICE in src/debug.ts) is absent from

@@ -12,7 +12,7 @@ tessellator/pkg
 examples/*/node_modules
 examples/*/package-lock.json
 
-# Kept out of the repository (decision 0094): the decision records, the Claude Code settings and instructions
+# Kept out of the repository: the decision records, the Claude Code settings and instructions
 docs/adr/
 .claude/
 CLAUDE.md

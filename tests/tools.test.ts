@@ -1,7 +1,7 @@
 // The tools a handle offers (HandwritingOptions.tools), without a browser: setTool, getTools, the keyboard shortcuts
 // on the window and the tools given to the shortcut list; the IDs the tools give the strokes they make when
 // startStroke is omitted, where crypto.randomUUID is missing; and the time ahead of the predicted points
-// (experimental.predictionMs, decision 0021). createHandwriting's DOM parts are stand-ins here
+// (experimental.predictionMs). createHandwriting's DOM parts are stand-ins here
 import { MercatorCoordinate, type LngLat } from 'maplibre-gl'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StrokeStore } from '../src/core/stroke'

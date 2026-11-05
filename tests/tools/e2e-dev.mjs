@@ -1,10 +1,10 @@
-// Browser checks on the dev page (decision 0096), which has the debug code in: what the app's e2e checks looked at
-// inside the layer before the library moved here (decision 0094). The scene's meshes after a zoom, the frozen pieces
+// Browser checks on the dev page, which has the debug code in: what the app's e2e checks looked at
+// inside the layer before the library moved here. The scene's meshes after a zoom, the frozen pieces
 // of a stroke being drawn, the selection and what a drag of it tessellates, and the input latency with and without
 // the predicted points. Also a HandwritingLayer whose worker script is missing (an error on the map, ready rejected,
 // nothing drawn), a handle offering some tools only (?tools=), the toolbar's padding on each edge, the page without
 // ?blank whose map style cannot be loaded (a plain background in its place), and the IndexedDB records of strokes far
-// from the view (decisions 0023 to 0025). No server: the default store gives the order (decision 0091)
+// from the view. No server: the default store gives the order
 import { dirname, resolve } from 'node:path'
 import { assert, freePort, hexToRgb, line, near, startRun, wait, waitFor } from './browser.mjs'
 
@@ -33,7 +33,7 @@ const jumpTo = (at, zoom) =>
   a.eval(`window.__handwriting.map.jumpTo({ center: ${JSON.stringify(at)}, zoom: ${zoom} }), true`)
 const strokes = () =>
   a.eval(
-    // From the store's extent, which stays while a stroke's points are spilled to IndexedDB (decision 0023)
+    // From the store's extent, which stays while a stroke's points are spilled to IndexedDB
     `[...window.__handwriting.store.values()].map((s) => ({ id: s.id, order: s.order ?? null, first: window.__handwriting.store.extent(s.id)?.start ?? null, points: s.points ? s.points.length / 2 : null }))`,
   )
 await jumpTo(center, 12)
@@ -179,7 +179,7 @@ await check(
   },
 )
 
-// Decision 0037 P7-3: the time from a pointermove's timeStamp to the next animation frame, with the browser's predicted
+// The time from a pointermove's timeStamp to the next animation frame, with the browser's predicted
 // points drawn and without them. Only reported: no target, and not in the benchmark (it needs a browser)
 await check('input latency with and without predicted points; predicted points never reach the store', async () => {
   await jumpTo([141.8, 43.3], 12)
@@ -542,7 +542,7 @@ await check(
   },
 )
 
-// The points of strokes far from the view go to IndexedDB and come back (decisions 0023 to 0025)
+// The points of strokes far from the view go to IndexedDB and come back
 const sp = await run.openClient()
 await sp.navigate('/?blank')
 await waitFor('the dev page', () => sp.eval(`!!window.__handwriting && !!window.__handwriting.scene()`), 60000)
@@ -644,7 +644,7 @@ await check(
   },
 )
 
-// Without ?blank the page loads OpenFreeMap's style (decision 0017); with that host blocked, the style fails to load
+// Without ?blank the page loads OpenFreeMap's style; with that host blocked, the style fails to load
 // and the page falls back to the plain background
 const h = await run.openClient()
 await h.send('Network.enable')

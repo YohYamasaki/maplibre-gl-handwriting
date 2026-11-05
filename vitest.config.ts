@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  // The tests see the debug code (decision 0096), as the dev page does
+  // The tests see the debug code, as the dev page does
   define: { __HANDWRITING_DEBUG__: 'true' },
   test: {
     environment: 'node',

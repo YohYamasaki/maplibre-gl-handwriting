@@ -1,6 +1,6 @@
-// Draws the strokes with Canvas2D on a canvas over the map instead of the WebGL layers, to compare the two (decision
-// 0089). Pressure and pitch are not drawn; the map's rotation is. Debug only: every frame tests the bounding box of
-// every stroke of the stores
+// Draws the strokes with Canvas2D on a canvas over the map instead of the WebGL layers, to compare the two.
+// Pressure and pitch are not drawn; the map's rotation is. Debug only: every frame tests the bounding box of every
+// stroke of the stores
 import { MercatorCoordinate, type Map as MapLibreMap } from 'maplibre-gl'
 import type { Point, StrokeData, StrokeOp, StrokeStore } from '../src/core/stroke'
 import { mercatorPerPixelAt } from '../src/mercator'

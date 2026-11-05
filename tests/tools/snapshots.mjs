@@ -2,7 +2,7 @@
 // to and from the tessellation worker. A difference in public-api.txt is a minor release (CHANGELOG.md); it exits
 // with 1 until the snapshots are accepted with --accept.
 // The members of every union are written in the code point order of their text, null and undefined last, so the
-// order in which the checker created the types does not show (decision 0003). --print writes the snapshots to the
+// order in which the checker created the types does not show. --print writes the snapshots to the
 // standard output without comparing or writing them; --check-first <file> adds that file to the program and checks
 // it before the snapshots are written (tests/snapshotOrder.test.ts)
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'

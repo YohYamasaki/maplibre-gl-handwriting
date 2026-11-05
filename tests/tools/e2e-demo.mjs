@@ -1,4 +1,4 @@
-// Browser check of the demo (decision 0016): builds the dev page as the static site npm run deploy:demo uploads
+// Browser check of the demo: builds the dev page as the static site npm run deploy:demo uploads
 // (npm run build:demo, dist/demo), serves the build with vite preview --mode demo and checks it in headless Chrome:
 // the toolbar and the layer are there and ready resolves, a stroke put in the store with a load op (which only the
 // layer's worker tessellates) is drawn in its color, a stroke drawn with the pen goes into the store and is drawn,

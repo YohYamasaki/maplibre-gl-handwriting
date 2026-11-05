@@ -14,7 +14,7 @@ function snapshots(...args: string[]): { status: number | null; stdout: string; 
   return { status: run.status, stdout: run.stdout, stderr: run.stderr }
 }
 
-// The snapshots do not depend on the order in which the checker created the types (decision 0003)
+// The snapshots do not depend on the order in which the checker created the types
 describe('snapshot text', () => {
   it(
     'is the same when another file creates the string literal types first, in the reverse order',

@@ -1,4 +1,4 @@
-// Strokes generated for load tests (decision 0089): never saved, never sent, drawn by a second handle of their own
+// Strokes generated for load tests: never saved, never sent, drawn by a second handle of their own
 import { MercatorCoordinate, type Map as MapLibreMap } from 'maplibre-gl'
 import type { StrokeData } from '../src/core/stroke'
 import type { Bounds } from '../src/bounds'

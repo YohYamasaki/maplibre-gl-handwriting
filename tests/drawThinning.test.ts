@@ -1,4 +1,4 @@
-// Decision 0019: DrawController records the input only once it is min(width, 4) px from the last recorded point on
+// DrawController records the input only once it is min(width, 4) px from the last recorded point on
 // screen, at corners (a skipped point more than 0.5 px off the line) and at changes of width coefficient. The points
 // in between never reach the store; the latest of them is drawn after the tip (Prediction's pending point) and is
 // recorded when the stroke ends
@@ -455,7 +455,7 @@ describe('DrawController thinning with lyon', () => {
     const d = drawing({ width: 4 })
     drawPath(d, { x: 0, y: 0 }, inputs)
     expect(vertices(d.store.get('s:1')!)).toBeLessThan(1000)
-    // Every input recorded, as before decision 0019, is many times that
+    // Every input recorded, as before the thinning, is many times that
     const raw = { ...d.store.get('s:1')!, points: xy([project(0, 0), ...inputs.map((p) => project(p.x, p.y))]) }
     expect(vertices(raw)).toBeGreaterThan(4000)
   })

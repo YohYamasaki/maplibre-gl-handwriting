@@ -11,7 +11,7 @@ const RULES = [
   {
     files: 'src/core/',
     allow: ['src/core/'],
-    why: 'the ./core entry is the stroke model alone: no DOM, no MapLibre, no rendering (decision 0096)',
+    why: 'the ./core entry is the stroke model alone: no DOM, no MapLibre, no rendering',
   },
   {
     files: 'src/',

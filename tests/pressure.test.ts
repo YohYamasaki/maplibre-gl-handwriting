@@ -1,5 +1,4 @@
-// Pen pressure (decision 0037 P3): the width coefficients from pressure, how they are thinned with the points, and kept with a
-// stroke
+// Pen pressure: the width coefficients from pressure, how they are thinned with the points, and kept with a stroke
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -76,7 +75,7 @@ describe('appendSamples with pressure', () => {
   })
 
   it('thins a point whose coefficient changed when it is closer than 3/4 of the tolerance', () => {
-    // lyon would merge it into the sample before (review 1 of P3)
+    // lyon would merge it into the sample before (found by a review)
     const points = [at(0), at(0.09), at(0.095)]
     const pressure = Float32Array.of(0.5, 1, 0.25)
     const samples: Samples = { points: [] }
@@ -129,7 +128,7 @@ describe('StrokeStore with pressure', () => {
 })
 
 describe('a stroke being drawn with pressure', () => {
-  // Review 1 of P3: points 0.001 px apart whose coefficients alternate were all kept, lyon merged the whole frozen
+  // Found by a review: points 0.001 px apart whose coefficients alternate were all kept, lyon merged the whole frozen
   // piece into one point, and every frame after it threw ("no triangle has the flat end's edge")
   it('draws points far closer than the tolerance whose coefficients alternate', async () => {
     const tessellator = await StrokeTessellator.load(

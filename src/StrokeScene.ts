@@ -12,7 +12,7 @@ import type { Prediction } from './Prediction'
 
 /**
  * A bucket within this many screens of the view has its strokes held in the store, and one more than RELEASE_SCREENS
- * away lets go of them (decision 0023): between the two it keeps what it had, so a view moving to and fro at the edge
+ * away lets go of them: between the two it keeps what it had, so a view moving to and fro at the edge
  * does not hold and release them over and over
  */
 export const HOLD_SCREENS = 2
@@ -111,8 +111,8 @@ export type Bucket = Extent & {
   meshArea: Bounds | null
   // While the worker is building a mesh for the bucket, the area that build covers
   building: Bounds | null
-  // The IDs of its strokes the scene holds in the store, so their points are not spilled, while it is near the view
-  // (decision 0023); null while it is not held
+  // The IDs of its strokes the scene holds in the store, so their points are not spilled, while it is near the view;
+  // null while it is not held
   held: Set<string> | null
   // Holds whose spilled points are being read back: the bucket is not built until they are back
   holding: number
@@ -658,7 +658,7 @@ export class StrokeScene {
         for (const id of [...this.active.keys()]) this.retireHot(id)
         this.buckets.clear()
         this.strokeBuckets.clear()
-        // Finished strokes, as the store takes them (decision 0026): one still being drawn elsewhere moves over to the
+        // Finished strokes, as the store takes them: one still being drawn elsewhere moves over to the
         // strokes being drawn on its next points, as in the constructor
         for (const stroke of op.strokes) this.addToBucket(stroke, false)
         this.selected.strokes.clear()

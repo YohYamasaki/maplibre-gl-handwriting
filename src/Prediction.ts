@@ -1,6 +1,6 @@
 import type { Point } from './core/stroke'
 
-/** How far ahead of a pointermove its predicted points are drawn by default, in ms (decision 0020) */
+/** How far ahead of a pointermove its predicted points are drawn by default, in ms */
 export const DEFAULT_PREDICTION_MS = 20
 
 /** The largest time ahead a handle takes (ExperimentalFeatures.predictionMs), in ms: Chrome predicts no further */
