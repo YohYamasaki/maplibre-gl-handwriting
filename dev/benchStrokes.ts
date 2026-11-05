@@ -11,8 +11,8 @@ const MAX_STEPS = 150
 /** Share of the strokes drawn with the translucent color */
 const TRANSLUCENT_SHARE = 0.3
 /** The library's default pen and highlighter */
-const OPAQUE = { color: '#000000', width: 4 }
-const TRANSLUCENT = { color: '#ffeb3b80', width: 16 }
+const OPAQUE = { color: '#48ff00', width: 4 }
+const TRANSLUCENT = { color: '#413bff80', width: 16 }
 /** Width of the band along each edge of a wide axis where a stroke turns back inward, in px */
 const WALL_PX = 30
 /** How far inside the bounds the point a stroke turns toward in the band lies, in px */
@@ -67,7 +67,15 @@ export function generateBenchStrokes(count: number, bounds: Bounds, zoom: number
       points.push([x, y])
     }
     const pen = rand() < TRANSLUCENT_SHARE ? TRANSLUCENT : OPAQUE
-    strokes.push({ id: `bench:${n}`, author: 'bench', color: pen.color, width: pen.width, zoom, points, order: n })
+    strokes.push({
+      id: `bench:${n}`,
+      author: 'bench',
+      color: pen.color,
+      width: pen.width,
+      zoom,
+      points,
+      order: n,
+    })
   }
   return strokes
 }
@@ -130,11 +138,21 @@ export function benchBounds(map: MapLibreMap): Bounds {
   const cy = (nw.y + se.y) / 2
   const w = se.x - nw.x
   const h = se.y - nw.y
-  return clampToWorld({ minX: cx - w, minY: cy - h, maxX: cx + w, maxY: cy + h })
+  return clampToWorld({
+    minX: cx - w,
+    minY: cy - h,
+    maxX: cx + w,
+    maxY: cy + h,
+  })
 }
 
 function clampToWorld(b: Bounds): Bounds {
-  return { minX: clamp(b.minX, 0, 1), minY: clamp(b.minY, 0, 1), maxX: clamp(b.maxX, 0, 1), maxY: clamp(b.maxY, 0, 1) }
+  return {
+    minX: clamp(b.minX, 0, 1),
+    minY: clamp(b.minY, 0, 1),
+    maxX: clamp(b.maxX, 0, 1),
+    maxY: clamp(b.maxY, 0, 1),
+  }
 }
 
 function clamp(value: number, min: number, max: number): number {
