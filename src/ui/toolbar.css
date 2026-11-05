@@ -83,6 +83,11 @@
   flex-direction: column;
 }
 
+/* A vertical bar keeps the 16px at the ends of its long side and the 4px on its short side */
+.handwriting-toolbar[data-orientation='vertical'] {
+  padding: 16px 4px;
+}
+
 .handwriting-toolbar[data-orientation='vertical'] .handwriting-toolbar-tools {
   min-height: 0;
   margin: 0 -3px;

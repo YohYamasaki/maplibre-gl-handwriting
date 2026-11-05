@@ -2,7 +2,8 @@
 // inside the layer before the library moved here (decision 0094). The scene's meshes after a zoom, the frozen pieces
 // of a stroke being drawn, the selection and what a drag of it tessellates, and the input latency with and without
 // the predicted points. Also a HandwritingLayer whose worker script is missing (an error on the map, ready rejected,
-// nothing drawn), a handle offering some tools only (?tools=), and the page without ?blank whose map style cannot be
+// nothing drawn), a handle offering some tools only (?tools=), the toolbar's padding on each edge, and the page
+// without ?blank whose map style cannot be
 // loaded (a plain background in its place). No server: the default store gives the order (decision 0091)
 import { dirname, resolve } from 'node:path'
 import { assert, freePort, hexToRgb, line, near, startRun, wait, waitFor } from './browser.mjs'
@@ -503,6 +504,42 @@ await check('?tools=pen,eraser: the toolbar has the hand, the pen and the eraser
   )
   assert(JSON.stringify(buttons) === JSON.stringify(['hand', 'pen', 'eraser']), `the toolbar's tools: ${buttons}`)
 })
+
+await check(
+  'a toolbar on the left or right edge has the 16px at the ends of its long side, 4px on its short side',
+  async () => {
+    const barOn = (edge) =>
+      g.eval(`(() => {
+    window.__handwriting.handle.setToolbar({ edge: ${JSON.stringify(edge)} })
+    const bar = document.querySelector('.handwriting-toolbar')
+    const tools = bar.querySelector('.handwriting-toolbar-tools')
+    return {
+      orientation: bar.dataset.orientation,
+      padding: getComputedStyle(bar).padding,
+      tools: getComputedStyle(tools).padding,
+      width: bar.offsetWidth,
+      height: bar.offsetHeight,
+    }
+  })()`)
+    const bottom = await barOn('bottom')
+    assert(
+      bottom.orientation === 'horizontal' && bottom.padding === '4px 16px',
+      `on the bottom: ${JSON.stringify(bottom)}`,
+    )
+    for (const edge of ['left', 'right']) {
+      const side = await barOn(edge)
+      assert(side.orientation === 'vertical' && side.padding === '16px 4px', `on the ${edge}: ${JSON.stringify(side)}`)
+      assert(side.tools === '3px', `the tools' padding on the ${edge}: ${side.tools}`)
+      assert(
+        side.width === bottom.height,
+        `the width on the ${edge} ${side.width}, the height on the bottom ${bottom.height}`,
+      )
+    }
+    const top = await barOn('top')
+    assert(top.orientation === 'horizontal' && top.padding === '4px 16px', `on the top: ${JSON.stringify(top)}`)
+    await barOn('bottom')
+  },
+)
 
 // Without ?blank the page loads OpenFreeMap's style (decision 0017); with that host blocked, the style fails to load
 // and the page falls back to the plain background
