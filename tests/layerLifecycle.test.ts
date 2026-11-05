@@ -92,10 +92,7 @@ describe('StrokeLayer', () => {
       {
         type: 'points',
         id: 'a',
-        pts: [
-          [0.5, 0.5],
-          [0.5001, 0.5],
-        ],
+        pts: Float64Array.of(0.5, 0.5, 0.5001, 0.5),
       },
       'remote',
     )

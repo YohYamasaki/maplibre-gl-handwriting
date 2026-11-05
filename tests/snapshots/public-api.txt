@@ -40,10 +40,10 @@ type PenTool = 'highlighter' | 'pen'
 type PieceRange = { from: number; to: number; }
 type Point = [x: number, y: number]
 type PressureCurve = { min: number; gamma: number; }
-type StrokeData = { id: string; author: string; color: string; width: number; zoom: number; points: Point[]; pressure?: number[] | undefined; order?: number | undefined; }
+type StrokeData = { id: string; author: string; color: string; width: number; zoom: number; points: Float64Array<ArrayBufferLike>; pressure?: Float32Array<ArrayBufferLike> | undefined; order?: number | undefined; }
 type StrokeIdentity = { id: string; author: string; }
 type StrokeListener = (op: StrokeOp, origin: Origin) => void
-type StrokeOp = { type: 'begin'; id: string; author: string; color: string; width: number; zoom: number; } | { type: 'end'; id: string; } | { type: 'load'; strokes: StrokeData[]; } | { type: 'order'; id: string; order: number; } | { type: 'points'; id: string; pts: Point[]; ps?: number[] | undefined; } | { type: 'remove'; id: string; } | { type: 'replace'; strokes: StrokeData[]; } | { type: 'reset'; strokes: StrokeData[]; } | { type: 'restore'; stroke: StrokeData; } | { type: 'split'; id: string; pieces: StrokePiece[]; } | { type: 'transform'; ids: string[]; matrix: Matrix; }
+type StrokeOp = { type: 'begin'; id: string; author: string; color: string; width: number; zoom: number; } | { type: 'end'; id: string; } | { type: 'load'; strokes: StrokeData[]; } | { type: 'order'; id: string; order: number; } | { type: 'points'; id: string; pts: Float64Array<ArrayBufferLike>; ps?: Float32Array<ArrayBufferLike> | undefined; } | { type: 'remove'; id: string; } | { type: 'replace'; strokes: StrokeData[]; } | { type: 'reset'; strokes: StrokeData[]; } | { type: 'restore'; stroke: StrokeData; } | { type: 'split'; id: string; pieces: StrokePiece[]; } | { type: 'transform'; ids: string[]; matrix: Matrix; }
 type StrokeOrderMode = 'custom' | 'default'
 type StrokePiece = PieceRange & { id: string; }
 strokesToGeoJSON: (strokes: Iterable<StrokeData>) => string
@@ -59,16 +59,16 @@ type ToolbarEdge = 'bottom' | 'left' | 'right' | 'top'
 type ToolbarSettings = { edge: ToolbarEdge; offset: number; collapsed: boolean; }
 
 // maplibre-gl-handwriting/core
-appendPoints: (stroke: StrokeData, pts: Point[], ps: number[] | undefined) => boolean
+appendPoints: (stroke: StrokeData, pts: Float64Array<ArrayBufferLike>, ps: Float32Array<ArrayBufferLike> | undefined) => boolean
 applyToPoint: (m: Matrix, [x, y]: Point) => Point
 compose: (second: Matrix, first: Matrix) => Matrix
-cutStroke: (points: readonly Point[], sweeps: readonly EraserSweep[], minLength: number) => PieceRange[] | null
-erasedIntervals: (points: readonly Point[], sweeps: readonly EraserSweep[]) => [number, number][] | null
+cutStroke: (points: Float64Array<ArrayBufferLike>, sweeps: readonly EraserSweep[], minLength: number) => PieceRange[] | null
+erasedIntervals: (points: Float64Array<ArrayBufferLike>, sweeps: readonly EraserSweep[]) => [number, number][] | null
 type EraserSweep = { from: Point; to: Point; radius: number; }
 IDENTITY: [a: number, b: number, c: number, d: number, e: number, f: number]
 inverse: (m: Matrix) => Matrix
 isSimilarity: (m: readonly number[]) => m is Matrix
-keptRanges: (points: readonly Point[], erased: readonly [number, number][], minLength: number) => PieceRange[]
+keptRanges: (points: Float64Array<ArrayBufferLike>, erased: readonly [number, number][], minLength: number) => PieceRange[]
 class LaserChannel
   constructor(): LaserChannel
   nextTrail: () => number
@@ -87,15 +87,15 @@ mergeIntervals: (a: readonly [number, number][], b: readonly [number, number][])
 MIN_STROKE_ZOOM: 0
 type Origin = 'local' | 'preview' | 'remote'
 piecePointCount: ({ from, to }: PieceRange) => number
-piecePoints: (stroke: StrokeData, { from, to }: PieceRange) => { points: Point[]; pressure?: number[] | undefined; }
+piecePoints: (stroke: StrokeData, { from, to }: PieceRange) => { points: Float64Array<ArrayBufferLike>; pressure?: Float32Array<ArrayBufferLike> | undefined; }
 type PieceRange = { from: number; to: number; }
 pieceStroke: (stroke: StrokeData, piece: StrokePiece) => StrokeData
 type Point = [x: number, y: number]
 scaleOf: (m: Matrix) => number
 similarityAbout: (center: Point, scale: number, angle: number, offset?: Point) => Matrix
-type StrokeData = { id: string; author: string; color: string; width: number; zoom: number; points: Point[]; pressure?: number[] | undefined; order?: number | undefined; }
+type StrokeData = { id: string; author: string; color: string; width: number; zoom: number; points: Float64Array<ArrayBufferLike>; pressure?: Float32Array<ArrayBufferLike> | undefined; order?: number | undefined; }
 type StrokeListener = (op: StrokeOp, origin: Origin) => void
-type StrokeOp = { type: 'begin'; id: string; author: string; color: string; width: number; zoom: number; } | { type: 'end'; id: string; } | { type: 'load'; strokes: StrokeData[]; } | { type: 'order'; id: string; order: number; } | { type: 'points'; id: string; pts: Point[]; ps?: number[] | undefined; } | { type: 'remove'; id: string; } | { type: 'replace'; strokes: StrokeData[]; } | { type: 'reset'; strokes: StrokeData[]; } | { type: 'restore'; stroke: StrokeData; } | { type: 'split'; id: string; pieces: StrokePiece[]; } | { type: 'transform'; ids: string[]; matrix: Matrix; }
+type StrokeOp = { type: 'begin'; id: string; author: string; color: string; width: number; zoom: number; } | { type: 'end'; id: string; } | { type: 'load'; strokes: StrokeData[]; } | { type: 'order'; id: string; order: number; } | { type: 'points'; id: string; pts: Float64Array<ArrayBufferLike>; ps?: Float32Array<ArrayBufferLike> | undefined; } | { type: 'remove'; id: string; } | { type: 'replace'; strokes: StrokeData[]; } | { type: 'reset'; strokes: StrokeData[]; } | { type: 'restore'; stroke: StrokeData; } | { type: 'split'; id: string; pieces: StrokePiece[]; } | { type: 'transform'; ids: string[]; matrix: Matrix; }
 type StrokeOrderMode = 'custom' | 'default'
 type StrokePiece = PieceRange & { id: string; }
 class StrokeStore
@@ -105,6 +105,6 @@ class StrokeStore
   values: () => IterableIterator<StrokeData>
   subscribe: (listener: StrokeListener) => () => void
 type StrokeStoreOptions = { order?: StrokeOrderMode | undefined; }
-transformStroke: (stroke: Pick<StrokeData, 'points' | 'zoom'>, m: Matrix) => { points: Point[]; zoom: number; } | null
+transformStroke: (stroke: Pick<StrokeData, 'points' | 'zoom'>, m: Matrix) => { points: Float64Array<ArrayBufferLike>; zoom: number; } | null
 validOrder: (order: number) => boolean
 validPieces: (pieces: readonly PieceRange[], pointCount: number) => boolean

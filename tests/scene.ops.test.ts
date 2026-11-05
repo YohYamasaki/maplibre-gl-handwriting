@@ -10,7 +10,7 @@ import { MeshBuffer } from '../src/MeshBuffer'
 import { StrokeScene } from '../src/StrokeScene'
 import { RETESSELLATE_ZOOMS } from '../src/StrokeTessellator'
 import { expectConsistentScene, expectValidDraws } from './invariants'
-import { DeferredBuilds, fakeWriter, random } from './support'
+import { DeferredBuilds, fakeWriter, pairs, random, xy } from './support'
 
 // More seeds for a longer search: SCENE_SEEDS=1000 npm test
 const SEEDS = Number(process.env.SCENE_SEEDS ?? 40)
@@ -71,7 +71,7 @@ function run(seed: number, mode: StrokeOrderMode): void {
       color: color(),
       width: 2 + rand() * 20,
       zoom: drawnAt,
-      points,
+      points: xy(points),
       order: nextOrder++,
     }
   }
@@ -86,7 +86,7 @@ function run(seed: number, mode: StrokeOrderMode): void {
           { type: 'begin', id, author: 'me', color: color(), width: 8, zoom },
           rand() < 0.5 ? 'local' : 'remote',
         )
-        store.apply({ type: 'points', id, pts: [pointNear(center, 1)] }, 'local')
+        store.apply({ type: 'points', id, pts: xy([pointNear(center, 1)]) }, 'local')
         drawing.add(id)
       },
     ],
@@ -96,9 +96,9 @@ function run(seed: number, mode: StrokeOrderMode): void {
       () => {
         const id = pick([...drawing])
         if (!id) return
-        const last = store.get(id)!.points.at(-1)!
+        const last = pairs(store.get(id)!.points).at(-1)!
         const pts = Array.from({ length: 1 + Math.floor(rand() * 40) }, () => pointNear(last, 0.1))
-        store.apply({ type: 'points', id, pts }, 'local')
+        store.apply({ type: 'points', id, pts: xy(pts) }, 'local')
       },
     ],
     [
@@ -139,9 +139,9 @@ function run(seed: number, mode: StrokeOrderMode): void {
       'split',
       () => {
         // The partial eraser: a saved stroke, possibly just drawn here, is cut into one or two pieces
-        const stroke = pick([...store.values()].filter((s) => s.order !== undefined && s.points.length >= 2))
+        const stroke = pick([...store.values()].filter((s) => s.order !== undefined && s.points.length / 2 >= 2))
         if (!stroke) return
-        const last = stroke.points.length - 1
+        const last = stroke.points.length / 2 - 1
         const cut = rand() * last
         const pieces = [
           { id: `piece:${nextId++}`, from: 0, to: cut },
@@ -261,10 +261,7 @@ describe('StrokeScene with widths that scale with the map', () => {
       color: '#000000',
       width: 8,
       zoom: 2,
-      points: [
-        [0.49, 0.5],
-        [0.51, 0.5],
-      ],
+      points: Float64Array.of(0.49, 0.5, 0.51, 0.5),
       order: 1,
     }
     store.apply({ type: 'load', strokes: [stroke] }, 'remote')
@@ -297,7 +294,7 @@ describe('StrokeScene after the widest line of a bucket is erased', () => {
       color: '#000000',
       width,
       zoom: 2,
-      points: [[0.5, 0.5]],
+      points: Float64Array.of(0.5, 0.5),
       order: id,
     })
     store.apply(
@@ -329,7 +326,7 @@ describe('StrokeScene after the stroke at the edge of a bucket is erased', () =>
       color: '#000000',
       width: 1,
       zoom: 2,
-      points,
+      points: xy(points),
       // Orders start at 1
       order: id + 1,
     })
@@ -371,7 +368,7 @@ describe('StrokeScene after the stroke at the edge of a bucket is erased', () =>
       color: '#000000',
       width: 4,
       zoom: 2,
-      points: [[0.51 + i * 1e-6, 0.51 + (i % 100) * 1e-6]],
+      points: Float64Array.of(0.51 + i * 1e-6, 0.51 + (i % 100) * 1e-6),
       order: i + 1,
     }))
     store.apply({ type: 'load', strokes }, 'remote')
@@ -398,10 +395,7 @@ describe('StrokeScene given the same stroke twice in one load', () => {
       color: '#000000',
       width,
       zoom: 2,
-      points: [
-        [0.51, 0.51],
-        [0.51, end],
-      ],
+      points: Float64Array.of(0.51, 0.51, 0.51, end),
       order: 1,
     })
     store.apply({ type: 'load', strokes: [line('keep', 1, 0.51)] }, 'remote')
@@ -433,7 +427,7 @@ describe('StrokeScene given new strokes twice in one load into a bucket with a m
       color: '#000000',
       width: 1,
       zoom: 2,
-      points: [[0.51, y]],
+      points: Float64Array.of(0.51, y),
       order: 1,
     })
     store.apply(

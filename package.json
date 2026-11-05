@@ -1,6 +1,6 @@
 {
   "name": "maplibre-gl-handwriting",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Freehand drawing on a MapLibre GL JS map, tessellated with lyon in WebAssembly",
   "keywords": [
     "maplibre",

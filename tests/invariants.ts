@@ -14,6 +14,7 @@ import {
   type FrameDraws,
   type StrokeScene,
 } from '../src/StrokeScene'
+import { pairs } from './support'
 
 /** Ranges tile the mesh in order with no gaps, and every index points into its own stroke's vertices */
 export function expectValidMesh(mesh: MeshBuffer): void {
@@ -45,7 +46,7 @@ export function expectConsistentScene(store: StrokeStore, scene: StrokeScene, dr
       expect(strokeBuckets.has(stroke.id)).toBe(false)
       continue
     }
-    const key = tileKey(bucketOf(stroke.points[0], stroke.zoom))
+    const key = tileKey(bucketOf([stroke.points[0], stroke.points[1]], stroke.zoom))
     expect(strokeBuckets.get(stroke.id)).toBe(key)
     expect(buckets.get(key)?.strokes.get(stroke.id)).toBe(stroke)
   }
@@ -168,7 +169,9 @@ export function expectValidDraws(
     const stroke = store.get(id)!
     if (stroke.order === undefined) continue
     const half = (stroke.width * mercatorPerPixelAt(stroke.zoom)) / 2
-    const bounds = buckets.get(tileKey(bucketOf(stroke.points[0], stroke.zoom)))!.strokeBounds.get(id)!
+    const bounds = buckets
+      .get(tileKey(bucketOf([stroke.points[0], stroke.points[1]], stroke.zoom)))!
+      .strokeBounds.get(id)!
     drawn.push({ stroke, area: grow(bounds, half), at })
   }
   for (let i = 0; i < drawn.length; i++) {
@@ -194,7 +197,7 @@ export function expectValidDraws(
     // so a mesh kept for an erased stroke's place or width is caught
     const strokes = [...bucket.strokes.values()]
     const widest = Math.max(...strokes.map((stroke) => stroke.width * mercatorPerPixelAt(stroke.zoom)))
-    const centerLines = boundsOf(strokes.flatMap((stroke) => stroke.points))
+    const centerLines = boundsOf(strokes.flatMap((stroke) => pairs(stroke.points)))
     expect(intersects(grow(centerLines, widest / 2), far)).toBe(true)
   }
 }

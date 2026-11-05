@@ -1,5 +1,5 @@
 // Cutting strokes with the partial eraser.
-// A cut is a position along a stroke's center line: s = i + t lies on the segment from points[i] to points[i + 1],
+// A cut is a position along a stroke's center line: s = i + t lies on the segment from point i to point i + 1,
 // a fraction t of the way. A piece is the part of a stroke between two such positions. The client that erases
 // finds the pieces; every store the split op reaches (other clients, a sync layer's own copy) then builds each piece's
 // points from the stroke with piecePoints, so all of them end up with the same numbers
@@ -10,7 +10,7 @@ export const MAX_PIECES_PER_SPLIT = 64
 
 /**
  * The part of a stroke from position `from` to position `to` along its center line, where a position s = i + t lies
- * on the segment from points[i] to points[i + 1], a fraction t of the way
+ * on the segment from point i to point i + 1, a fraction t of the way
  */
 export type PieceRange = { from: number; to: number }
 
@@ -34,18 +34,25 @@ export function validPieces(pieces: readonly PieceRange[], pointCount: number): 
   return true
 }
 
-/** The point at position `s` along `points` */
-function pointAt(points: readonly Point[], s: number): Point {
+/** The point at position `s` along `points` (x and y in turn), written to `out` at point `at` */
+function pointAt(points: Float64Array, s: number, out: Float64Array, at: number): void {
+  const count = points.length / 2
   const i = Math.floor(s)
   const t = s - i
-  if (t === 0 || i >= points.length - 1) return points[Math.min(i, points.length - 1)]
-  const a = points[i]
-  const b = points[i + 1]
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
+  if (t === 0 || i >= count - 1) {
+    const k = Math.min(i, count - 1)
+    out[2 * at] = points[2 * k]
+    out[2 * at + 1] = points[2 * k + 1]
+    return
+  }
+  const ax = points[2 * i]
+  const ay = points[2 * i + 1]
+  out[2 * at] = ax + (points[2 * i + 2] - ax) * t
+  out[2 * at + 1] = ay + (points[2 * i + 3] - ay) * t
 }
 
 /** The width coefficient at position `s` along a stroke, interpolated like the point */
-function pressureAt(pressure: readonly number[], s: number): number {
+function pressureAt(pressure: Float32Array, s: number): number {
   const i = Math.floor(s)
   const t = s - i
   if (t === 0 || i >= pressure.length - 1) return pressure[Math.min(i, pressure.length - 1)]
@@ -53,19 +60,22 @@ function pressureAt(pressure: readonly number[], s: number): number {
 }
 
 /**
- * The points of one piece of a stroke, and their width coefficients when the stroke has pressure: the cut at
- * `from`, the stroke's own points strictly between the cuts, and the cut at `to`
+ * The points of one piece of a stroke (x and y in turn), and their width coefficients when the stroke has pressure:
+ * the cut at `from`, the stroke's own points strictly between the cuts, and the cut at `to`
  */
-export function piecePoints(stroke: StrokeData, { from, to }: PieceRange): { points: Point[]; pressure?: number[] } {
-  const indices: number[] = []
-  for (let i = Math.floor(from) + 1; i < to; i++) indices.push(i)
-  const points = [pointAt(stroke.points, from), ...indices.map((i) => stroke.points[i]), pointAt(stroke.points, to)]
+export function piecePoints(
+  stroke: StrokeData,
+  { from, to }: PieceRange,
+): { points: Float64Array; pressure?: Float32Array } {
+  const points = rangePoints(stroke.points, from, to)
   if (!stroke.pressure) return { points }
-  const pressure = stroke.pressure
-  return {
-    points,
-    pressure: [pressureAt(pressure, from), ...indices.map((i) => pressure[i]), pressureAt(pressure, to)],
-  }
+  const first = Math.floor(from) + 1
+  const count = points.length / 2
+  const pressure = new Float32Array(count)
+  pressure[0] = pressureAt(stroke.pressure, from)
+  pressure.set(stroke.pressure.subarray(first, first + count - 2), 1)
+  pressure[count - 1] = pressureAt(stroke.pressure, to)
+  return { points, pressure }
 }
 
 /** A piece as a stroke of its own: it keeps the original's author, style, zoom and place in the drawing order */
@@ -91,7 +101,7 @@ export function pieceStroke(stroke: StrokeData, piece: StrokePiece): StrokeData 
  * All lengths are in normalized Web Mercator units
  */
 export function cutStroke(
-  points: readonly Point[],
+  points: Float64Array,
   sweeps: readonly EraserSweep[],
   minLength: number,
 ): PieceRange[] | null {
@@ -100,20 +110,25 @@ export function cutStroke(
 }
 
 /**
- * The parts of a stroke's center line within reach of the sweeps, as [start, end] positions in order and apart,
- * or null when the eraser does not reach the stroke. A dot is erased whole or not at all
+ * The parts of a stroke's center line (points, x and y in turn) within reach of the sweeps, as [start, end] positions
+ * in order and apart, or null when the eraser does not reach the stroke. A dot is erased whole or not at all
  */
-export function erasedIntervals(points: readonly Point[], sweeps: readonly EraserSweep[]): [number, number][] | null {
-  if (points.length === 0) return null
-  if (points.length === 1) {
-    return sweeps.some((sweep) => distanceToSegment(points[0], sweep.from, sweep.to) <= sweep.radius) ? [[0, 0]] : null
+export function erasedIntervals(points: Float64Array, sweeps: readonly EraserSweep[]): [number, number][] | null {
+  const count = points.length / 2
+  if (count === 0) return null
+  if (count === 1) {
+    const dot: Point = [points[0], points[1]]
+    return sweeps.some((sweep) => distanceToSegment(dot, sweep.from, sweep.to) <= sweep.radius) ? [[0, 0]] : null
   }
   const hits: [number, number][] = []
-  for (let i = 0; i < points.length - 1; i++) {
+  let a: Point = [points[0], points[1]]
+  for (let i = 0; i < count - 1; i++) {
+    const b: Point = [points[2 * i + 2], points[2 * i + 3]]
     for (const sweep of sweeps) {
-      const hit = segmentInCapsule(points[i], points[i + 1], sweep)
+      const hit = segmentInCapsule(a, b, sweep)
       if (hit) hits.push([i + hit[0], i + hit[1]])
     }
+    a = b
   }
   return hits.length === 0 ? null : mergeIntervals(hits, [])
 }
@@ -131,15 +146,12 @@ export function mergeIntervals(a: readonly [number, number][], b: readonly [numb
 }
 
 /**
- * The parts of a stroke that stay once the `erased` intervals (in order and apart) are gone, dropping the parts
- * shorter than `minLength`. Nothing stays of a dot
+ * The parts of a stroke (points, x and y in turn) that stay once the `erased` intervals (in order and apart) are gone,
+ * dropping the parts shorter than `minLength`. Nothing stays of a dot
  */
-export function keptRanges(
-  points: readonly Point[],
-  erased: readonly [number, number][],
-  minLength: number,
-): PieceRange[] {
-  if (points.length < 2) return []
+export function keptRanges(points: Float64Array, erased: readonly [number, number][], minLength: number): PieceRange[] {
+  const count = points.length / 2
+  if (count < 2) return []
   const pieces: PieceRange[] = []
   const keep = (from: number, to: number): void => {
     if (to > from && pathLength(points, from, to) >= minLength) pieces.push({ from, to })
@@ -149,7 +161,7 @@ export function keptRanges(
     keep(from, start)
     from = Math.max(from, end)
   }
-  keep(from, points.length - 1)
+  keep(from, count - 1)
   return pieces
 }
 
@@ -158,14 +170,28 @@ export function piecePointCount({ from, to }: PieceRange): number {
   return Math.max(0, Math.ceil(to) - Math.floor(from) - 1) + 2
 }
 
-/** Length of the center line between positions `from` and `to` */
-function pathLength(points: readonly Point[], from: number, to: number): number {
-  const along = [pointAt(points, from)]
-  for (let i = Math.floor(from) + 1; i < to; i++) along.push(points[i])
-  along.push(pointAt(points, to))
+/**
+ * The points (x and y in turn) of the part of a center line from position `from` to position `to`: the point at
+ * `from`, the line's own points strictly between, and the point at `to`
+ */
+function rangePoints(points: Float64Array, from: number, to: number): Float64Array {
+  const count = piecePointCount({ from, to })
+  const first = Math.floor(from) + 1
+  const along = new Float64Array(2 * count)
+  pointAt(points, from, along, 0)
+  along.set(points.subarray(2 * first, 2 * (first + count - 2)), 2)
+  pointAt(points, to, along, count - 1)
+  return along
+}
+
+/** Length of the center line (points, x and y in turn) between positions `from` and `to` */
+function pathLength(points: Float64Array, from: number, to: number): number {
+  const along = rangePoints(points, from, to)
+  const count = along.length / 2
   let length = 0
-  for (let i = 1; i < along.length; i++)
-    length += Math.hypot(along[i][0] - along[i - 1][0], along[i][1] - along[i - 1][1])
+  for (let i = 1; i < count; i++) {
+    length += Math.hypot(along[2 * i] - along[2 * i - 2], along[2 * i + 1] - along[2 * i - 1])
+  }
   return length
 }
 

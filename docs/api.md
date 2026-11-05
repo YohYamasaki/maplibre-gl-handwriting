@@ -104,7 +104,7 @@ class StrokeStore {
 }
 ```
 
-Holds the list of strokes, applies ops and notifies subscribers. Both our own ops and others' ops go through apply, so the render layer does not care where an op came from.
+Holds the list of strokes, applies ops and notifies subscribers. Both our own ops and others' ops go through apply, so the render layer does not care where an op came from. The store keeps its own copies of the points it is given. Points that are not a Float64Array of x and y in turn, and width coefficients that are not a Float32Array of one per point, are not taken: a points op or a restore with them is not applied, and a load, a reset or a replace leaves out the strokes with them
 
 - `apply()`: Ignores ops that cannot be applied (e.g. points for an unknown ID) and returns false
 - `get()`: The stroke with this ID, or undefined
@@ -410,7 +410,7 @@ type PieceRange = {
 };
 ```
 
-The part of a stroke from position `from` to position `to` along its center line, where a position s = i + t lies on the segment from points[i] to points[i + 1], a fraction t of the way
+The part of a stroke from position `from` to position `to` along its center line, where a position s = i + t lies on the segment from point i to point i + 1, a fraction t of the way
 
 #### Point
 
@@ -418,7 +418,7 @@ The part of a stroke from position `from` to position `to` along its center line
 type Point = [x: number, y: number];
 ```
 
-Normalized Web Mercator coordinates (0 to 1)
+Normalized Web Mercator coordinates (0 to 1), e.g. of a laser line or for a transform's matrix
 
 #### PressureCurve
 
@@ -443,15 +443,16 @@ type StrokeData = {
     color: string;
     width: number;
     zoom: number;
-    points: Point[];
-    pressure?: number[];
+    points: Float64Array;
+    pressure?: Float32Array;
     order?: number;
 };
 ```
 
-A stroke, finished or still being drawn
+A stroke, finished or still being drawn. JSON.stringify writes a typed array as an object, so an app that sends or saves strokes as JSON turns points and pressure into arrays of numbers (Array.from) and back (new Float64Array, new Float32Array)
 
-- `pressure`: Width coefficient at each point, 0 to 1 (same length as points): the stroke is `width * pressure[i]` wide there. Missing for a stroke drawn without pressure, which is `width` wide everywhere
+- `points`: The center line's points in normalized Web Mercator coordinates (0 to 1), x and y in turn: x0, y0, x1, y1, … Point i is points[2i], points[2i + 1]
+- `pressure`: Width coefficient at each point, 0 to 1 (one per point, half the length of points): the stroke is `width * pressure[i]` wide there. Missing for a stroke drawn without pressure, which is `width` wide everywhere
 - `order`: Position in the drawing order, an integer from 1 to MAX_ORDER: later strokes are drawn over earlier ones. Missing until the stroke gets one (an order op; see StrokeOrderMode for who applies it). Only strokes with an order can be selected, transformed, cut or exported
 
 #### StrokeIdentity
@@ -486,8 +487,8 @@ type StrokeOp = {
 } | {
     type: 'points';
     id: string;
-    pts: Point[];
-    ps?: number[];
+    pts: Float64Array;
+    ps?: Float32Array;
 } | {
     type: 'end';
     id: string;
@@ -523,7 +524,7 @@ type StrokeOp = {
 
 A change to the strokes of a StrokeStore, given to its apply and passed on to its subscribers:
 
-- begin, points and end: a stroke being drawn, its points (and, for a stroke drawn with pressure, their width coefficients ps), and its end
+- begin, points and end: a stroke being drawn, its points (x and y in turn, as in StrokeData.points, and, for a stroke drawn with pressure, their width coefficients ps), and its end
 - order: the stroke's place in the drawing order, an integer from 1 to MAX_ORDER
 - remove: erases a whole stroke; restore brings a removed one back (undo of an erase, redo of a stroke)
 - split: the partial eraser's cut of a stroke with an order into pieces, which keep its place in the drawing order
@@ -601,10 +602,10 @@ Also exported by `maplibre-gl-handwriting`: [`LaserChannel`](#laserchannel), [`L
 #### appendPoints
 
 ```ts
-function appendPoints(stroke: StrokeData, pts: Point[], ps: number[] | undefined): boolean;
+function appendPoints(stroke: StrokeData, pts: Float64Array, ps: Float32Array | undefined): boolean;
 ```
 
-Appends points, and their width coefficients, to a stroke. Returns false, changing nothing, when the lengths differ or the op disagrees with the stroke's earlier points about having pressure
+Appends points (x and y in turn), and their width coefficients, to a stroke, into new arrays of the exact length. Returns false, changing nothing, when pts is not a Float64Array of x and y in turn, when ps is not a Float32Array of one coefficient per point, or when the op disagrees with the stroke's earlier points about having pressure
 
 #### applyToPoint
 
@@ -625,7 +626,7 @@ The transform that applies `first` and then `second`
 #### cutStroke
 
 ```ts
-function cutStroke(points: readonly Point[], sweeps: readonly EraserSweep[], minLength: number): PieceRange[] | null;
+function cutStroke(points: Float64Array, sweeps: readonly EraserSweep[], minLength: number): PieceRange[] | null;
 ```
 
 Where the eraser cuts a stroke: the parts of its center line that stay, after removing every part within `sweep.radius` of the sweep's segment, and dropping the parts shorter than `minLength`. Returns null when the eraser does not reach the stroke, and an empty list when nothing of it stays. All lengths are in normalized Web Mercator units
@@ -633,10 +634,10 @@ Where the eraser cuts a stroke: the parts of its center line that stay, after re
 #### erasedIntervals
 
 ```ts
-function erasedIntervals(points: readonly Point[], sweeps: readonly EraserSweep[]): [number, number][] | null;
+function erasedIntervals(points: Float64Array, sweeps: readonly EraserSweep[]): [number, number][] | null;
 ```
 
-The parts of a stroke's center line within reach of the sweeps, as [start, end] positions in order and apart, or null when the eraser does not reach the stroke. A dot is erased whole or not at all
+The parts of a stroke's center line (points, x and y in turn) within reach of the sweeps, as [start, end] positions in order and apart, or null when the eraser does not reach the stroke. A dot is erased whole or not at all
 
 #### inverse
 
@@ -657,10 +658,10 @@ Whether `m` is a similarity with finite entries and a scale within MAX_TRANSFORM
 #### keptRanges
 
 ```ts
-function keptRanges(points: readonly Point[], erased: readonly [number, number][], minLength: number): PieceRange[];
+function keptRanges(points: Float64Array, erased: readonly [number, number][], minLength: number): PieceRange[];
 ```
 
-The parts of a stroke that stay once the `erased` intervals (in order and apart) are gone, dropping the parts shorter than `minLength`. Nothing stays of a dot
+The parts of a stroke (points, x and y in turn) that stay once the `erased` intervals (in order and apart) are gone, dropping the parts shorter than `minLength`. Nothing stays of a dot
 
 #### mergeIntervals
 
@@ -682,12 +683,12 @@ How many points the piece of a stroke from `from` to `to` has (see piecePoints)
 
 ```ts
 function piecePoints(stroke: StrokeData, { from, to }: PieceRange): {
-    points: Point[];
-    pressure?: number[];
+    points: Float64Array;
+    pressure?: Float32Array;
 };
 ```
 
-The points of one piece of a stroke, and their width coefficients when the stroke has pressure: the cut at `from`, the stroke's own points strictly between the cuts, and the cut at `to`
+The points of one piece of a stroke (x and y in turn), and their width coefficients when the stroke has pressure: the cut at `from`, the stroke's own points strictly between the cuts, and the cut at `to`
 
 #### pieceStroke
 
@@ -717,12 +718,12 @@ A scaling by `scale` and a rotation by `angle` (radians) about `center`, then a 
 
 ```ts
 function transformStroke(stroke: Pick<StrokeData, 'points' | 'zoom'>, m: Matrix): {
-    points: Point[];
+    points: Float64Array;
     zoom: number;
 } | null;
 ```
 
-The points and zoom a stroke has after `m`. Its width in pixels stays the same, so the zoom it was drawn at changes by the scale: a stroke twice as large is the size it was at one zoom level further out. Returns null when a point would leave the map (0 to 1) or the zoom would leave MIN/MAX_STROKE_ZOOM, by more than rounding (within it, the value is clamped); such a stroke is left as it is
+The points (x and y in turn, in a new array) and zoom a stroke has after `m`. Its width in pixels stays the same, so the zoom it was drawn at changes by the scale: a stroke twice as large is the size it was at one zoom level further out. Returns null when a point would leave the map (0 to 1) or the zoom would leave MIN/MAX_STROKE_ZOOM, by more than rounding (within it, the value is clamped); such a stroke is left as it is
 
 #### validOrder
 

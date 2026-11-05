@@ -15,6 +15,7 @@ import { DEFAULT_SETTINGS } from '../src/pens'
 import { DEFAULT_PREDICTION_MS, PREDICTION_TIMEOUT_MS, Prediction } from '../src/Prediction'
 import { PressureFilter } from '../src/pressure'
 import { StrokeTessellator } from '../src/StrokeTessellator'
+import { pairs, xy } from './support'
 
 const ZOOM = 12
 // One CSS px at the drawing zoom, from [0.5, 0.5] at client (0, 0)
@@ -95,7 +96,7 @@ function drawing(options: { width?: number; pen?: boolean } = {}): {
     down: (p) => pointer('pointerdown', p),
     move,
     pointer,
-    recorded: () => store.get('s:1')!.points.map(toClient),
+    recorded: () => pairs(store.get('s:1')!.points).map(toClient),
   }
 }
 
@@ -247,9 +248,9 @@ describe('DrawController thinning by distance', () => {
     )
     const points = d.ops.filter((op) => op.type === 'points')
     expect(points).toHaveLength(2)
-    expect(points[1].type === 'points' && points[1].pts.map((p) => Math.round(toClient(p)[0] * 1000) / 1000)).toEqual([
-      4, 8,
-    ])
+    expect(
+      points[1].type === 'points' && pairs(points[1].pts).map((p) => Math.round(toClient(p)[0] * 1000) / 1000),
+    ).toEqual([4, 8])
   })
 })
 
@@ -313,9 +314,13 @@ describe('DrawController thinning with pressure', () => {
     // About as hard: a change under 0.1 is skipped
     d.move([{ x: 1.5, y: 0, pressure: 0.62 }])
     const stroke = d.store.get('s:1')!
-    expect(stroke.points.map(toClient).map(([x]) => x)).toEqual([0, 1].map((x) => expect.closeTo(x, 6)))
+    expect(
+      pairs(stroke.points)
+        .map(toClient)
+        .map(([x]) => x),
+    ).toEqual([0, 1].map((x) => expect.closeTo(x, 6)))
     const filter = new PressureFilter(curve)
-    expect(stroke.pressure).toEqual([filter.next(0.2), filter.next(1)])
+    expect(stroke.pressure).toEqual(Float32Array.of(filter.next(0.2), filter.next(1)))
   })
 
   it('smooths the pressure over every reading, recorded or not', () => {
@@ -333,9 +338,9 @@ describe('DrawController thinning with pressure', () => {
     const expected = new Map([[0, filter.next(0.5)]])
     for (const p of inputs) expected.set(Math.round(p.x * 1000), filter.next(p.pressure))
     const stroke = d.store.get('s:1')!
-    expect(stroke.points.length).toBeLessThan(inputs.length / 4)
-    stroke.points.forEach((point, i) => {
-      expect(stroke.pressure![i]).toBe(expected.get(Math.round(toClient(point)[0] * 1000)))
+    expect(stroke.points.length / 2).toBeLessThan(inputs.length / 4)
+    pairs(stroke.points).forEach((point, i) => {
+      expect(stroke.pressure![i]).toBe(Math.fround(expected.get(Math.round(toClient(point)[0] * 1000))!))
     })
   })
 })
@@ -391,7 +396,7 @@ describe('DrawController pending point', () => {
         last.map((op) => op.type),
         name,
       ).toEqual(['points', 'end'])
-      expect(last[0].type === 'points' && last[0].pts, name).toEqual([project(1, 0)])
+      expect(last[0].type === 'points' && last[0].pts, name).toEqual(xy([project(1, 0)]))
       expect(d.prediction.size, name).toBe(0)
     }
   })
@@ -433,7 +438,7 @@ describe('DrawController thinning with lyon', () => {
   })
 
   const vertices = (stroke: StrokeData): number => {
-    const mesh = new MeshBuffer(bucketOf(stroke.points[0], stroke.zoom))
+    const mesh = new MeshBuffer(bucketOf([stroke.points[0], stroke.points[1]], stroke.zoom))
     tessellator.appendStroke(mesh, stroke, stroke.zoom)
     return mesh.vertexCount
   }
@@ -451,7 +456,7 @@ describe('DrawController thinning with lyon', () => {
     drawPath(d, { x: 0, y: 0 }, inputs)
     expect(vertices(d.store.get('s:1')!)).toBeLessThan(1000)
     // Every input recorded, as before decision 0019, is many times that
-    const raw = { ...d.store.get('s:1')!, points: [project(0, 0), ...inputs.map((p) => project(p.x, p.y))] }
+    const raw = { ...d.store.get('s:1')!, points: xy([project(0, 0), ...inputs.map((p) => project(p.x, p.y))]) }
     expect(vertices(raw)).toBeGreaterThan(4000)
   })
 })

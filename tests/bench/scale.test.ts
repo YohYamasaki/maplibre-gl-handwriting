@@ -14,7 +14,7 @@ import { mercatorPerPixelAt } from '../../src/mercator'
 import { StrokeScene, type SceneStats } from '../../src/StrokeScene'
 import { StrokeTessellator } from '../../src/StrokeTessellator'
 import { buildBucketMesh, type BuildJob } from '../../src/TessellationWorker'
-import { random } from '../support'
+import { random, xy } from '../support'
 
 const root = join(import.meta.dirname, '../..')
 const SCREEN = { width: 1000, height: 700 }
@@ -58,7 +58,7 @@ function makeStrokes(
     }
     // Some are marker strokes, which are drawn in order rather than by depth (ADR 0024)
     const color = rand() < MARKER_SHARE ? '#33669980' : '#336699'
-    return { id: `s${start + i}`, author: 'bench', color, width: 8, zoom, points, order: start + i + 1 }
+    return { id: `s${start + i}`, author: 'bench', color, width: 8, zoom, points: xy(points), order: start + i + 1 }
   })
 }
 
@@ -140,7 +140,7 @@ it('scale benchmark', async () => {
           p[1] + (rand() - 0.5) * 2 * mercatorPerPixelAt(zoom),
         ]),
     )
-    store.apply({ type: 'points', id, pts }, 'local')
+    store.apply({ type: 'points', id, pts: xy(pts) }, 'local')
     frame()
   }
   store.apply({ type: 'end', id }, 'local')
@@ -154,7 +154,7 @@ it('scale benchmark', async () => {
 
   const end = scene.stats()
   const result = {
-    room: { strokes: strokes.length, points: strokes.reduce((sum, s) => sum + s.points.length, 0) },
+    room: { strokes: strokes.length, points: strokes.reduce((sum, s) => sum + s.points.length / 2, 0) },
     frames,
     perFrameMax: perFrame,
     total: {

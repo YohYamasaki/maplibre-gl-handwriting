@@ -3,6 +3,7 @@ import { StrokeStore, type Origin, type StrokeData, type StrokeOp } from '../src
 import { EraseController } from '../src/EraseController'
 import { StrokeIndex } from '../src/StrokeIndex'
 import { UndoHistory, type Cut } from '../src/UndoHistory'
+import { pairs, xy } from './support'
 
 // One CSS px is 1e-6 in Web Mercator units, from [0.5, 0.5] at client (0, 0)
 const PX = 1e-6
@@ -14,7 +15,7 @@ const line = (id: string): StrokeData => ({
   color: '#000000',
   width: 1,
   zoom: 12,
-  points: Array.from({ length: 101 }, (_, i): [number, number] => [0.5 + i * PX, 0.5]),
+  points: xy(Array.from({ length: 101 }, (_, i): [number, number] => [0.5 + i * PX, 0.5])),
   order: 1,
 })
 
@@ -77,7 +78,7 @@ describe('EraseController partial', () => {
     expect([...store.values()].map((stroke) => stroke.id).sort()).toEqual(['s:1', 's:2', 's:3'])
     expect(cuts).toHaveLength(1)
     expect(cuts[0]).toHaveLength(1)
-    expect(cuts[0][0].removed.points).toHaveLength(101)
+    expect(cuts[0][0].removed.points).toHaveLength(2 * 101)
     expect(cuts[0][0].pieces.map((piece) => piece.id)).toEqual(['s:1', 's:2', 's:3'])
   })
 
@@ -106,7 +107,7 @@ describe('EraseController partial', () => {
     // Redo brings back the stroke whole
     erase.cancelCuts()
     history.redo()
-    expect([...store.values()].map((stroke) => stroke.points.length)).toEqual([101])
+    expect([...store.values()].map((stroke) => stroke.points.length / 2)).toEqual([101])
   })
 
   it('hides a stroke being cut again when it comes back during the press, and shows its pieces again after a reset', async () => {
@@ -135,13 +136,13 @@ describe('EraseController partial', () => {
     pointer('pointerdown', 30, -20)
     pointer('pointermove', 30, 20)
     // The server's copy after someone moved it arrives while it is hidden (the sync layer loads it)
-    const moved = { ...line('a:1'), points: line('a:1').points.map(([x, y]): [number, number] => [x + 0.01, y]) }
+    const moved = { ...line('a:1'), points: line('a:1').points.map((v, i) => (i % 2 === 0 ? v + 0.01 : v)) }
     store.apply({ type: 'load', strokes: [moved] }, 'remote')
     await Promise.resolve()
     pointer('pointerup', 30, 20)
     const pieces = [...store.values()].sort((a, b) => (a.id < b.id ? -1 : 1))
     expect(pieces.map((s) => s.id)).toEqual(['s:1', 's:2'])
     // The server cuts its own (moved) copy at the same positions along the stroke
-    for (const piece of pieces) expect(piece.points.every(([x]) => x >= 0.51 - 1e-12)).toBe(true)
+    for (const piece of pieces) expect(pairs(piece.points).every(([x]) => x >= 0.51 - 1e-12)).toBe(true)
   })
 })

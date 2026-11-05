@@ -14,6 +14,20 @@ export function boundsOf(points: Point[]): Bounds {
   return bounds
 }
 
+/** The bounds of a stroke's points (x and y in turn, as in StrokeData.points) from point `start` on */
+export function boundsOfFlat(points: Float64Array, start = 0): Bounds {
+  const bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+  for (let i = 2 * start; i + 1 < points.length; i += 2) {
+    const x = points[i]
+    const y = points[i + 1]
+    bounds.minX = Math.min(bounds.minX, x)
+    bounds.minY = Math.min(bounds.minY, y)
+    bounds.maxX = Math.max(bounds.maxX, x)
+    bounds.maxY = Math.max(bounds.maxY, y)
+  }
+  return bounds
+}
+
 export function union(a: Bounds, b: Bounds): Bounds {
   return {
     minX: Math.min(a.minX, b.minX),

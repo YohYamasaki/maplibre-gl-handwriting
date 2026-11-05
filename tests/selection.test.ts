@@ -27,7 +27,7 @@ import { StrokeIndex } from '../src/StrokeIndex'
 import { StrokeScene, tileLocal } from '../src/StrokeScene'
 import { UndoHistory } from '../src/UndoHistory'
 import { expectConsistentScene, expectValidDraws } from './invariants'
-import { DeferredBuilds, fakeWriter } from './support'
+import { DeferredBuilds, fakeWriter, pairs, xy } from './support'
 
 const PX = 1e-6
 
@@ -39,12 +39,14 @@ function line(id: string, from: Point, n: number, order: number, color = '#00000
     color,
     width: 2,
     zoom: 12,
-    points: Array.from({ length: n }, (_, i): Point => [from[0] + i * PX, from[1]]),
+    points: xy(Array.from({ length: n }, (_, i): Point => [from[0] + i * PX, from[1]])),
     order,
   }
 }
 
-function closeTo(a: Point[], b: Point[], tolerance: number): void {
+/** Whether two lists of points, as [x, y] pairs or x and y in turn, are the same within `tolerance` */
+function closeTo(first: Point[] | Float64Array, second: Point[] | Float64Array, tolerance: number): void {
+  const [a, b] = [first, second].map((points) => (points instanceof Float64Array ? pairs(points) : points))
   expect(a).toHaveLength(b.length)
   a.forEach((p, i) => {
     expect(Math.abs(p[0] - b[i][0])).toBeLessThan(tolerance)
@@ -85,7 +87,7 @@ describe('StrokeStore transform op', () => {
     const store = new StrokeStore({ order: 'custom' })
     store.apply({ type: 'load', strokes: [line('a', [0.5, 0.5], 4, 1), line('b', [0.99, 0.5], 4, 2)] }, 'remote')
     store.apply({ type: 'begin', id: 'draft', author: 'a', color: '#000000', width: 2, zoom: 12 }, 'local')
-    store.apply({ type: 'points', id: 'draft', pts: [[0.5, 0.5]] }, 'local')
+    store.apply({ type: 'points', id: 'draft', pts: Float64Array.of(0.5, 0.5) }, 'local')
     const before = structuredClone(store.get('a')!.points)
     const seen: string[][] = []
     store.subscribe((op) => {
@@ -95,7 +97,7 @@ describe('StrokeStore transform op', () => {
     expect(store.apply({ type: 'transform', ids: ['a', 'b', 'draft', 'missing'], matrix: m }, 'local')).toBe(true)
     // b would leave the map; the draft is not saved
     expect(seen).toEqual([['a']])
-    expect(store.get('draft')!.points).toEqual([[0.5, 0.5]])
+    expect(store.get('draft')!.points).toEqual(Float64Array.of(0.5, 0.5))
     store.apply({ type: 'transform', ids: ['a'], matrix: inverse(m) }, 'local')
     closeTo(store.get('a')!.points, before, 1e-12)
     expect(store.apply({ type: 'transform', ids: ['a'], matrix: [2, 0, 0, 1, 0, 0] }, 'local')).toBe(false)
@@ -120,7 +122,7 @@ describe('StrokeStore transform op', () => {
 describe('transforms at the edges of the range', () => {
   it('a transform then its inverse brings back a stroke at zoom 24 despite rounding, and undo can do it', () => {
     const m = similarityAbout([0.5, 0.5], 1 + 382 / 1000, 0)
-    const stroke = { points: [[0.5, 0.5]] as Point[], zoom: 24 }
+    const stroke = { points: Float64Array.of(0.5, 0.5), zoom: 24 }
     const there = transformStroke(stroke, m)!
     const back = transformStroke(there, inverse(m))
     expect(back).not.toBeNull()
@@ -138,9 +140,9 @@ describe('transforms at the edges of the range', () => {
 
   it('keeps the edge of the map and still refuses a stroke clearly past it', () => {
     const m: Matrix = [1, 0, 0, 1, 0.3, 0]
-    const back = transformStroke(transformStroke({ points: [[0.7, 0.5]], zoom: 12 }, m)!, inverse(m))
+    const back = transformStroke(transformStroke({ points: Float64Array.of(0.7, 0.5), zoom: 12 }, m)!, inverse(m))
     expect(back).not.toBeNull()
-    expect(transformStroke({ points: [[1, 0.5]], zoom: 12 }, [1, 0, 0, 1, 1e-9, 0])).toBeNull()
+    expect(transformStroke({ points: Float64Array.of(1, 0.5), zoom: 12 }, [1, 0, 0, 1, 1e-9, 0])).toBeNull()
   })
 
   it('an undo or redo of a transform that moves none of its strokes stays where it was', () => {
@@ -153,18 +155,18 @@ describe('transforms at the edges of the range', () => {
     // Someone else moves it to x = 0.05, where the inverse would leave the map
     store.apply({ type: 'replace', strokes: [line('a', [0.05, 0.5], 1, 1)] }, 'remote')
     history.undo()
-    expect(store.get('a')!.points[0][0]).toBe(0.05)
+    expect(store.get('a')!.points[0]).toBe(0.05)
     expect(history.canUndo).toBe(true)
     expect(history.canRedo).toBe(false)
     // Moved back within reach, the undo applies
     store.apply({ type: 'replace', strokes: [line('a', [0.6, 0.5], 1, 1)] }, 'remote')
     history.undo()
-    expect(store.get('a')!.points[0][0]).toBeCloseTo(0.5, 12)
+    expect(store.get('a')!.points[0]).toBeCloseTo(0.5, 12)
     expect(history.canRedo).toBe(true)
     // Same for redo
     store.apply({ type: 'replace', strokes: [line('a', [0.95, 0.5], 1, 1)] }, 'remote')
     history.redo()
-    expect(store.get('a')!.points[0][0]).toBe(0.95)
+    expect(store.get('a')!.points[0]).toBe(0.95)
     expect(history.canRedo).toBe(true)
     expect(history.canUndo).toBe(false)
     // A transform none of whose strokes is held any more is dropped
@@ -185,8 +187,8 @@ describe('transforms at the edges of the range', () => {
     history.undo()
     store.apply({ type: 'load', strokes: [line('b', [0.7, 0.5], 2, 2)] }, 'remote')
     history.redo()
-    expect(store.get('b')!.points[0][0]).toBe(0.7)
-    expect(store.get('a')!.points[0][0]).toBeCloseTo(0.51, 12)
+    expect(store.get('b')!.points[0]).toBe(0.7)
+    expect(store.get('a')!.points[0]).toBeCloseTo(0.51, 12)
   })
 })
 
@@ -230,7 +232,7 @@ describe('Selection frame', () => {
     selection.set(['a', 'b'])
     // b would leave the map, so it stays
     store.apply({ type: 'transform', ids: ['a', 'b'], matrix: [1, 0, 0, 1, 0.45, 0] }, 'local')
-    expect(store.get('b')!.points[0][0]).toBe(0.9)
+    expect(store.get('b')!.points[0]).toBe(0.9)
     const xs = selection.frame()!.map(([x]) => x)
     expect(Math.min(...xs)).toBeLessThan(0.951)
     expect(Math.max(...xs)).toBeLessThan(0.96)
@@ -294,7 +296,7 @@ describe('lasso and tap', () => {
     // 10 points from x = 0.5: the lasso up to x = 0.5 + 4.5px holds 5 of them, up to 3.5px holds 4
     store.apply({ type: 'load', strokes: [line('half', [0.5, 0.5], 10, 1), line('far', [0.6, 0.6], 3, 2)] }, 'remote')
     store.apply({ type: 'begin', id: 'draft', author: 'a', color: '#000000', width: 2, zoom: 12 }, 'local')
-    store.apply({ type: 'points', id: 'draft', pts: [[0.5 + PX, 0.5]] }, 'local')
+    store.apply({ type: 'points', id: 'draft', pts: Float64Array.of(0.5 + PX, 0.5) }, 'local')
     store.apply({ type: 'end', id: 'draft' }, 'local')
     const index = new StrokeIndex(store)
     const box = (right: number): Point[] => [
@@ -439,7 +441,7 @@ describe('SelectController', () => {
     expect(store.get('a')!.points).toEqual(before)
     expect(selection.drag[4]).toBeCloseTo(10 * PX, 15)
     pointer('pointerup', 40, 15)
-    expect(store.get('a')!.points[0][0]).toBeCloseTo(before[0][0] + 10 * PX, 15)
+    expect(store.get('a')!.points[0]).toBeCloseTo(before[0] + 10 * PX, 15)
     expect(selection.drag).toEqual([1, 0, 0, 1, 0, 0])
     expect(history.canUndo).toBe(true)
     history.undo()
@@ -491,9 +493,9 @@ describe('selection bar actions', () => {
     let next = 0
     const copies = duplicateSelected(store, selection, () => ({ id: `new:${++next}`, author: 'me' }), 16 * PX)
     expect(copies.map((s) => s.id)).toEqual(['new:1', 'new:2'])
-    expect(copies[0].points[0][0]).toBeCloseTo(0.5 + 16 * PX, 15)
+    expect(copies[0].points[0]).toBeCloseTo(0.5 + 16 * PX, 15)
     expect(copies[0].author).toBe('me')
-    expect(store.get('new:2')!.points[0][1]).toBeCloseTo(0.5 + 16 * PX, 15)
+    expect(store.get('new:2')!.points[1]).toBeCloseTo(0.5 + 16 * PX, 15)
     const removed = deleteSelected(store, selection)
     expect(removed.map((s) => s.id)).toEqual(['a', 'b'])
     expect(store.get('a')).toBeUndefined()
@@ -522,10 +524,7 @@ describe('Export of the selection (decision 0077)', () => {
       {
         type: 'points',
         id: 'draft',
-        pts: [
-          [0.5, 0.5],
-          [0.6, 0.5],
-        ],
+        pts: Float64Array.of(0.5, 0.5, 0.6, 0.5),
       },
       'local',
     )
@@ -605,7 +604,7 @@ describe('StrokeScene with a selection', () => {
     selection.clear()
     expectConsistentScene(store, scene, new Set())
     const a = store.get('a')!
-    expect(scene.inspect().strokeBuckets.get('a')).toBe(tileKey(bucketOf(a.points[0], a.zoom)))
+    expect(scene.inspect().strokeBuckets.get('a')).toBe(tileKey(bucketOf([a.points[0], a.points[1]], a.zoom)))
     const moved = { minX: view.minX + 0.3, maxX: view.maxX + 0.3, minY: view.minY + 0.1, maxY: view.maxY + 0.1 }
     scene.frame(moved, zoom)
     while (builds.pending.length > 0) scene.onBuilt(builds.deliver())

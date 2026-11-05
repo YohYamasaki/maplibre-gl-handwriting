@@ -197,8 +197,9 @@ export class DrawController {
 
   /** Applies `inputs` to the store as one points op of stroke `drawing`, with their coefficients if it has pressure */
   private record(drawing: Drawing, inputs: Input[]): void {
-    const pts = inputs.map((p) => this.project(p.x, p.y))
-    const ps = drawing.pressure ? { ps: inputs.map((p) => p.c) } : {}
+    const pts = new Float64Array(2 * inputs.length)
+    inputs.forEach((p, i) => pts.set(this.project(p.x, p.y), 2 * i))
+    const ps = drawing.pressure ? { ps: Float32Array.from(inputs, (p) => p.c) } : {}
     this.store.apply({ type: 'points', id: drawing.id, pts, ...ps }, 'local')
   }
 

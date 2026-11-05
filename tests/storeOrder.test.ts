@@ -8,6 +8,7 @@ import { Selection } from '../src/Selection'
 import { deleteSelected, duplicateSelected, exportGeoJSON } from '../src/selectionActions'
 import { StrokeIndex } from '../src/StrokeIndex'
 import { UndoHistory } from '../src/UndoHistory'
+import { xy } from './support'
 
 // One CSS px is 1e-6 in Web Mercator units
 const PX = 1e-6
@@ -17,7 +18,7 @@ function draw(store: StrokeStore, id: string, from: Point, n = 3, origin: Origin
   store.apply({ type: 'begin', id, author: 'a', color: '#000000', width: 2, zoom: 12 }, origin)
   if (n > 0)
     store.apply(
-      { type: 'points', id, pts: Array.from({ length: n }, (_, i): Point => [from[0] + i * PX, from[1]]) },
+      { type: 'points', id, pts: xy(Array.from({ length: n }, (_, i): Point => [from[0] + i * PX, from[1]])) },
       origin,
     )
   store.apply({ type: 'end', id }, origin)
@@ -31,10 +32,7 @@ function stroke(id: string, order?: number): StrokeData {
     color: '#000000',
     width: 2,
     zoom: 12,
-    points: [
-      [0.5, 0.5],
-      [0.5 + PX, 0.5],
-    ],
+    points: Float64Array.of(0.5, 0.5, 0.5 + PX, 0.5),
     ...(order === undefined ? {} : { order }),
   }
 }
@@ -77,7 +75,7 @@ describe('a default store', () => {
     draw(store, 'a', [0.5, 0.5])
     // A second end, and an end after more points were drawn onto the stroke
     store.apply({ type: 'end', id: 'a' }, 'local')
-    store.apply({ type: 'points', id: 'a', pts: [[0.6, 0.6]] }, 'local')
+    store.apply({ type: 'points', id: 'a', pts: Float64Array.of(0.6, 0.6) }, 'local')
     store.apply({ type: 'end', id: 'a' }, 'local')
     expect(store.get('a')!.order).toBe(1)
     // An end for strokes that came back by restore and by load
@@ -132,7 +130,7 @@ describe('a default store', () => {
     selection.set(['a'])
     expect(selection.size).toBe(1)
     expect(store.apply({ type: 'transform', ids: ['a'], matrix: [1, 0, 0, 1, 10 * PX, 0] }, 'local')).toBe(true)
-    expect(store.get('a')!.points[0][0]).toBeCloseTo(0.5 + 10 * PX, 15)
+    expect(store.get('a')!.points[0]).toBeCloseTo(0.5 + 10 * PX, 15)
     const copies = duplicateSelected(store, selection, () => ({ id: 'copy', author: 'me' }), 16 * PX)
     expect(copies.map((s) => [s.id, s.order])).toEqual([['copy', 3]])
     const geojson = JSON.parse(exportGeoJSON(store, ['a', 'b', 'copy'])) as {

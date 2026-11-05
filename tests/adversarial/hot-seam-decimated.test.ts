@@ -30,7 +30,7 @@ it('drawing a stroke whose frozen piece lost its last curve to lyon never throws
     [29.87, -0.104],
   ]
   for (const [x, y] of points) {
-    store.apply({ type: 'points', id, pts: [[0.5 + x / 2097152, 0.5 + y / 2097152]] }, 'local')
+    store.apply({ type: 'points', id, pts: Float64Array.of(0.5 + x / 2097152, 0.5 + y / 2097152) }, 'local')
     expect(() => scene.frame(view, zoom)).not.toThrow()
   }
   expect(scene.inspect().active.get(id)).toBeDefined()

@@ -15,15 +15,11 @@ const map = new Map({
 
 // The store holds the strokes; without a server, it gives each finished stroke its drawing order
 const store = new StrokeStore()
-// A saved stroke comes back with a load op, and is tessellated on the layer's worker
+// A saved stroke comes back with a load op, and is tessellated on the layer's worker. Its points are x and y in turn
 const line = Array.from({ length: 11 }, (_, i) => MercatorCoordinate.fromLngLat([141.32 + 0.007 * i, 43.07]))
+const points = new Float64Array(line.flatMap(({ x, y }) => [x, y]))
 store.apply(
-  {
-    type: 'load',
-    strokes: [
-      { id: 'loaded', author: 'example', color: '#0000ff', width: 6, zoom: 12, points: line.map(({ x, y }) => [x, y]) },
-    ],
-  },
+  { type: 'load', strokes: [{ id: 'loaded', author: 'example', color: '#0000ff', width: 6, zoom: 12, points }] },
   'remote',
 )
 

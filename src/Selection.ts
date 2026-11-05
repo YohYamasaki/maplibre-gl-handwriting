@@ -1,6 +1,6 @@
 import type { Point, StrokeOp, StrokeStore } from './core/stroke'
 import { applyToPoint, compose, IDENTITY, type Matrix } from './core/transform'
-import { boundsOf, grow, union, type Bounds } from './bounds'
+import { boundsOfFlat, grow, union, type Bounds } from './bounds'
 import { mercatorPerPixelAt } from './mercator'
 
 /** What changed: the selected strokes, or the transform of the drag in progress */
@@ -156,7 +156,7 @@ export class Selection {
     for (const id of measure) {
       const stroke = this.store.get(id)
       if (stroke)
-        this.bounds.set(id, grow(boundsOf(stroke.points), (stroke.width * mercatorPerPixelAt(stroke.zoom)) / 2))
+        this.bounds.set(id, grow(boundsOfFlat(stroke.points), (stroke.width * mercatorPerPixelAt(stroke.zoom)) / 2))
       else this.bounds.delete(id)
     }
     this.placed = IDENTITY

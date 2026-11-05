@@ -13,7 +13,7 @@ describe('strokeTransform', () => {
   const unit = mercatorPerPixelAt(zoom)
   const center: [number, number] = [0.5, 0.5]
   // First point 100 px east of the center at the map's zoom; the stroke was drawn one zoom level further out
-  const stroke = { zoom: zoom - 1, points: [[0.5 + 100 * unit, 0.5] as [number, number]] }
+  const stroke = { zoom: zoom - 1, points: Float64Array.of(0.5 + 100 * unit, 0.5) }
   const view = (bearing: number): StrokeView => ({ center, zoom, bearing, width: 800, height: 600, pixelRatio: 2 })
 
   it('puts the first point east of the center to the right at bearing 0, scaled by the zoom and the pixel ratio', () => {

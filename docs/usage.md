@@ -58,17 +58,44 @@ layer, and its worker, are added once the style has loaded and, with `beforeId`,
 
 The strokes are those of your [`StrokeStore`](api.md#strokestore). Every change is an op given to
 `store.apply(op, origin)`, and `store.subscribe` gets each op applied with its origin: `'local'` for strokes drawn
-here, `'remote'` for ops received from elsewhere. Points are in normalized Web Mercator coordinates. To show saved
-strokes, apply a `load` op; to share drawing, send the local ops and apply the ones received as remote:
+here, `'remote'` for ops received from elsewhere. Points are in normalized Web Mercator coordinates, kept as a
+`Float64Array` of x and y in turn (`x0, y0, x1, y1, …`), and the width coefficients of a stroke drawn with pressure as
+a `Float32Array`; the store does not take other arrays. `JSON.stringify` writes a typed array as an object, so an app
+that sends or saves strokes as JSON turns the points and coefficients of the ops that carry them into arrays of numbers
+and back, op by op. To show saved strokes, apply a `load` op; to share drawing, send the local ops and apply the ones
+received as remote:
 
 ```js
-store.apply({ type: 'load', strokes: savedStrokes }, 'remote')
+// The points and width coefficients of a stroke op, given to `points` and `coefficients`; other messages as they are
+function convertOp(op, points, coefficients) {
+  const stroke = (s) => ({ ...s, points: points(s.points), ...(s.pressure && { pressure: coefficients(s.pressure) }) })
+  switch (op.type) {
+    case 'points':
+      return { ...op, pts: points(op.pts), ...(op.ps && { ps: coefficients(op.ps) }) }
+    case 'load':
+    case 'reset':
+    case 'replace':
+      return { ...op, strokes: op.strokes.map(stroke) }
+    case 'restore':
+      return { ...op, stroke: stroke(op.stroke) }
+    default:
+      return op
+  }
+}
+const plain = (a) => Array.from(a)
+const float64 = (a) => new Float64Array(a)
+const float32 = (a) => new Float32Array(a)
+const toJSON = (op) => JSON.stringify(convertOp(op, plain, plain))
+const fromJSON = (text) => convertOp(JSON.parse(text), float64, float32)
+
+// Strokes saved as toJSON({ type: 'load', strokes: [...store.values()] })
+store.apply(fromJSON(saved), 'remote')
 
 const socket = new WebSocket('wss://example.com/strokes')
 store.subscribe((op, origin) => {
-  if (origin === 'local') socket.send(JSON.stringify(op))
+  if (origin === 'local') socket.send(toJSON(op))
 })
-socket.addEventListener('message', ({ data }) => store.apply(JSON.parse(data), 'remote'))
+socket.addEventListener('message', ({ data }) => store.apply(fromJSON(data), 'remote'))
 ```
 
 `new StrokeStore()` gives each finished stroke its place in the drawing order. When several clients draw together, use

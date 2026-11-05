@@ -1,5 +1,5 @@
 import { strokesToGeoJSON } from './core/geojson'
-import type { Point, StrokeData, StrokeStore } from './core/stroke'
+import type { StrokeData, StrokeStore } from './core/stroke'
 import type { Selection } from './Selection'
 
 // The actions of the selection's bar. Like the controllers, they only apply ops to the store
@@ -33,9 +33,13 @@ export function duplicateSelected(
     const { id, author } = identity
     const dx = shiftOf(stroke.points, 0, offset)
     const dy = shiftOf(stroke.points, 1, offset)
-    const pts = stroke.points.map(([x, y]): Point => [x + dx, y + dy])
+    const pts = new Float64Array(stroke.points.length)
+    for (let i = 0; i + 1 < pts.length; i += 2) {
+      pts[i] = stroke.points[i] + dx
+      pts[i + 1] = stroke.points[i + 1] + dy
+    }
     store.apply({ type: 'begin', id, author, color: stroke.color, width: stroke.width, zoom: stroke.zoom }, 'local')
-    store.apply({ type: 'points', id, pts, ...(stroke.pressure ? { ps: [...stroke.pressure] } : {}) }, 'local')
+    store.apply({ type: 'points', id, pts, ...(stroke.pressure ? { ps: stroke.pressure.slice() } : {}) }, 'local')
     if (!store.apply({ type: 'end', id }, 'local')) continue
     const copy = store.get(id)
     if (copy) copies.push(copy)
@@ -63,13 +67,16 @@ function selectedInOrder(store: StrokeStore, selection: Selection): StrokeData[]
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 }
 
-/** offset, or -offset when offset would take one of the points past 1 on this axis (and -offset keeps them on the map) */
-function shiftOf(points: Point[], axis: 0 | 1, offset: number): number {
+/**
+ * offset, or -offset when offset would take one of the points (x and y in turn) past 1 on this axis (and -offset keeps
+ * them on the map)
+ */
+function shiftOf(points: Float64Array, axis: 0 | 1, offset: number): number {
   let min = Infinity
   let max = -Infinity
-  for (const p of points) {
-    min = Math.min(min, p[axis])
-    max = Math.max(max, p[axis])
+  for (let i = axis; i < points.length; i += 2) {
+    min = Math.min(min, points[i])
+    max = Math.max(max, points[i])
   }
   if (max + offset <= 1) return offset
   return min - offset >= 0 ? -offset : 0

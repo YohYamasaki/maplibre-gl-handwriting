@@ -21,20 +21,23 @@ export function findStrokesNear(
   })
 }
 
-function distanceToPolyline(p: Point, points: Point[]): number {
+/** The distance from p to the line through `points` (x and y in turn) */
+function distanceToPolyline(p: Point, points: Float64Array): number {
   let min = Infinity
   // Starting at i = 0 makes the first segment zero-length, which also covers single-point strokes (dots)
-  for (let i = 0; i < points.length; i++) {
-    min = Math.min(min, distanceToSegment(p, points[Math.max(0, i - 1)], points[i]))
+  for (let i = 0; 2 * i + 1 < points.length; i++) {
+    const a = 2 * Math.max(0, i - 1)
+    min = Math.min(min, distanceToSegment(p, points[a], points[a + 1], points[2 * i], points[2 * i + 1]))
   }
   return min
 }
 
-function distanceToSegment(p: Point, a: Point, b: Point): number {
-  const dx = b[0] - a[0]
-  const dy = b[1] - a[1]
+/** The distance from p to the segment from (ax, ay) to (bx, by) */
+function distanceToSegment(p: Point, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax
+  const dy = by - ay
   const lengthSq = dx * dx + dy * dy
   // Position of the closest point on the segment: 0 at a, 1 at b
-  const t = lengthSq === 0 ? 0 : Math.min(1, Math.max(0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lengthSq))
-  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy))
+  const t = lengthSq === 0 ? 0 : Math.min(1, Math.max(0, ((p[0] - ax) * dx + (p[1] - ay) * dy) / lengthSq))
+  return Math.hypot(p[0] - (ax + t * dx), p[1] - (ay + t * dy))
 }

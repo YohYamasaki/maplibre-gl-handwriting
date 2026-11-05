@@ -1,5 +1,5 @@
 import type { StrokeData, StrokeOp, StrokeStore } from './core/stroke'
-import { boundsOf, intersects, union, type Bounds } from './bounds'
+import { boundsOfFlat, intersects, union, type Bounds } from './bounds'
 import { mercatorPerPixelAt } from './mercator'
 import { RunningMax } from './RunningMax'
 
@@ -77,7 +77,7 @@ export class StrokeIndex {
       case 'points': {
         // A stroke being drawn grows, so it may need a larger cell
         const stroke = this.store.get(op.id)
-        if (stroke) this.add(stroke, boundsOf(op.pts))
+        if (stroke) this.add(stroke, boundsOfFlat(op.pts))
         break
       }
       case 'remove':
@@ -120,7 +120,7 @@ export class StrokeIndex {
   private add(stroke: StrokeData, grownBy?: Bounds): void {
     if (stroke.points.length === 0) return
     const previous = this.entries.get(stroke.id)
-    const bounds = previous && grownBy ? union(previous.bounds, grownBy) : boundsOf(stroke.points)
+    const bounds = previous && grownBy ? union(previous.bounds, grownBy) : boundsOfFlat(stroke.points)
     if (previous) this.remove(stroke.id)
     const { level, cell } = cellOf(bounds)
     let ids = this.levels[level].get(cell)

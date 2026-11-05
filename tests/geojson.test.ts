@@ -3,13 +3,14 @@ import { describe, expect, it } from 'vitest'
 import { strokesToGeoJSON } from '../src/core/geojson'
 import { mercatorPerPixelAt } from '../src/core/mercator'
 import type { Point, StrokeData } from '../src/core/stroke'
+import { xy } from './support'
 
 type Geometry = { type: string; coordinates: unknown }
 type Feature = { type: string; geometry: Geometry; properties: Record<string, unknown> }
 type Collection = { type: string; features: Feature[]; crs?: unknown }
 
 function stroke(id: string, points: Point[], extra: Partial<StrokeData> = {}): StrokeData {
-  return { id, author: 'me', color: '#112233', width: 4, zoom: 10, points, order: 1, ...extra }
+  return { id, author: 'me', color: '#112233', width: 4, zoom: 10, points: xy(points), order: 1, ...extra }
 }
 
 function parse(strokes: StrokeData[]): Collection {
@@ -90,7 +91,7 @@ describe('strokesToGeoJSON', () => {
           [0.6, 0.5],
           [0.6, 0.5],
         ],
-        { pressure: [0.1, 0.2, 0.3, 0.4] },
+        { pressure: Float32Array.of(0.1, 0.2, 0.3, 0.4) },
       ),
     ])
     const geometry = out.features[0].geometry
@@ -189,7 +190,7 @@ describe('strokesToGeoJSON', () => {
           [0.4, 0.5],
           [0.5, 0.5],
         ],
-        { pressure: [0.25, 1], order: 1 },
+        { pressure: Float32Array.of(0.25, 1), order: 1 },
       ),
       stroke(
         'b',

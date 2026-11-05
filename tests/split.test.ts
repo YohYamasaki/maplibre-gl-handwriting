@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { cutStroke, piecePoints, validPieces, type EraserSweep } from '../src/core/split'
 import { StrokeStore, type Point, type StrokeData } from '../src/core/stroke'
 import { UndoHistory } from '../src/UndoHistory'
+import { pairs, xy } from './support'
 
 // A straight stroke along x from 0 to 10, one point per unit
-const line: Point[] = Array.from({ length: 11 }, (_, i): Point => [i, 0])
+const pairsOfLine: Point[] = Array.from({ length: 11 }, (_, i): Point => [i, 0])
+const line = xy(pairsOfLine)
 const at = (x: number, y = 0, radius = 1): EraserSweep => ({ from: [x, y], to: [x, y], radius })
 
-function saved(id: string, points: Point[] = line, pressure?: number[]): StrokeData {
+function saved(id: string, points: Float64Array = line, pressure?: Float32Array): StrokeData {
   const stroke: StrokeData = { id, author: 'a', color: '#000000', width: 1, zoom: 12, points, order: 5 }
   if (pressure) stroke.pressure = pressure
   return stroke
@@ -53,8 +55,8 @@ describe('cutStroke', () => {
   })
 
   it('erases a dot whole or not at all', () => {
-    expect(cutStroke([[0, 0]], [at(0.5)], 0)).toEqual([])
-    expect(cutStroke([[0, 0]], [at(5)], 0)).toBeNull()
+    expect(cutStroke(Float64Array.of(0, 0), [at(0.5)], 0)).toEqual([])
+    expect(cutStroke(Float64Array.of(0, 0), [at(5)], 0)).toBeNull()
   })
 
   it('erases the whole capsule the eraser swept between two positions, not only the positions', () => {
@@ -75,16 +77,16 @@ describe('cutStroke', () => {
 
 describe('piecePoints', () => {
   it('interpolates the cut points and their pressure, and keeps the points between them', () => {
-    const pressure = line.map((_, i) => i / 10)
+    const pressure = Float32Array.from(pairsOfLine, (_, i) => i / 10)
     const { points, pressure: ps } = piecePoints(saved('s', line, pressure), { from: 1.5, to: 3.25 })
-    expect(points).toEqual([
+    expect(pairs(points)).toEqual([
       [1.5, 0],
       [2, 0],
       [3, 0],
       [3.25, 0],
     ])
     expect(ps![0]).toBeCloseTo(0.15)
-    expect(ps!.slice(1, 3)).toEqual([0.2, 0.3])
+    expect(ps!.slice(1, 3)).toEqual(Float32Array.of(0.2, 0.3))
     expect(ps![3]).toBeCloseTo(0.325)
   })
 
@@ -141,8 +143,8 @@ describe('StrokeStore split', () => {
     )
     expect(ok).toBe(true)
     expect(store.get('s')).toBeUndefined()
-    expect(store.get('p1')).toMatchObject({ author: 'a', width: 1, zoom: 12, order: 5, points: line.slice(0, 5) })
-    expect(store.get('p2')!.points).toEqual(line.slice(6))
+    expect(store.get('p1')).toMatchObject({ author: 'a', width: 1, zoom: 12, order: 5, points: line.slice(0, 2 * 5) })
+    expect(store.get('p2')!.points).toEqual(line.slice(2 * 6))
   })
 
   it('rejects a split of a missing stroke, with bad pieces, or with piece IDs taken', () => {

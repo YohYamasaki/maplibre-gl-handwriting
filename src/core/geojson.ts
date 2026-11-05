@@ -1,6 +1,6 @@
 // Strokes as GeoJSON (RFC 7946) for GIS tools such as QGIS. The caller chooses which strokes to pass
 import { mercatorPerPixelAt } from './mercator'
-import type { Point, StrokeData } from './stroke'
+import type { StrokeData } from './stroke'
 
 /** Decimal places kept in coordinates: 1e-9 degrees is about 0.1 mm, well below 1 px at zoom 24 (about 4.7 mm) */
 const COORDINATE_DIGITS = 9
@@ -54,13 +54,14 @@ function byDrawingOrder(a: StrokeData, b: StrokeData): number {
 function strokeFeature(stroke: StrokeData): unknown {
   const coordinates: Position[] = []
   const pressure: number[] = []
-  stroke.points.forEach((point, i) => {
-    const position = toPosition(point)
+  const { points } = stroke
+  for (let i = 0; 2 * i + 1 < points.length; i++) {
+    const position = toPosition(points[2 * i], points[2 * i + 1])
     const last = coordinates[coordinates.length - 1]
-    if (last && last[0] === position[0] && last[1] === position[1]) return
+    if (last && last[0] === position[0] && last[1] === position[1]) continue
     coordinates.push(position)
-    if (stroke.pressure) pressure.push(stroke.pressure[i])
-  })
+    if (stroke.pressure) pressure.push(shortestFloat32(stroke.pressure[i]))
+  }
   if (coordinates.length === 0) return null
   const geometry =
     coordinates.length === 1 ? { type: 'Point', coordinates: coordinates[0] } : { type: 'LineString', coordinates }
@@ -79,7 +80,7 @@ function strokeFeature(stroke: StrokeData): unknown {
 }
 
 /** Normalized Web Mercator (0 to 1, y down) to WGS84 degrees, rounded */
-function toPosition([x, y]: Point): Position {
+function toPosition(x: number, y: number): Position {
   const lng = 360 * x - 180
   const lat = (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI
   return [round(lng), round(lat)]
@@ -90,13 +91,25 @@ function round(value: number): number {
   return Math.round(value * COORDINATE_SCALE) / COORDINATE_SCALE + 0
 }
 
+/**
+ * The number with the fewest significant digits that rounds to the same float32 as `value`, a width coefficient kept
+ * in a Float32Array: 0.502 rather than 0.5019999742507935
+ */
+function shortestFloat32(value: number): number {
+  for (let digits = 1; digits <= 9; digits++) {
+    const shorter = Number(value.toPrecision(digits))
+    if (Math.fround(shorter) === value) return shorter
+  }
+  return value
+}
+
 /** The alpha of #rrggbbaa as 0 to 1, or 1 for #rrggbb */
 function opacityOf(color: string): number {
   return color.length === 9 ? parseInt(color.slice(7, 9), 16) / 255 : 1
 }
 
 function widthInMetres(stroke: StrokeData): number {
-  const y = stroke.points[0][1]
+  const y = stroke.points[1]
   const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * y)))
   return stroke.width * mercatorPerPixelAt(stroke.zoom) * EQUATOR_METRES * Math.cos(lat)
 }

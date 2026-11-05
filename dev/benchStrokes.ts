@@ -1,6 +1,6 @@
 // Strokes generated for load tests (decision 0089): never saved, never sent, drawn by a second handle of their own
 import { MercatorCoordinate, type Map as MapLibreMap } from 'maplibre-gl'
-import type { Point, StrokeData } from '../src/core/stroke'
+import type { StrokeData } from '../src/core/stroke'
 import type { Bounds } from '../src/bounds'
 import { mercatorPerPixelAt } from '../src/mercator'
 
@@ -49,7 +49,7 @@ export function generateBenchStrokes(count: number, bounds: Bounds, zoom: number
     let y = yAxis.startMin + rand() * (yAxis.startMax - yAxis.startMin)
     let angle = rand() * 2 * Math.PI
     let rate = 0
-    const points: Point[] = [[x, y]]
+    const points = [x, y]
     for (let i = 0; i < steps; i++) {
       if (inBand(xAxis, x) || inBand(yAxis, y)) {
         rate = 0
@@ -64,7 +64,7 @@ export function generateBenchStrokes(count: number, bounds: Bounds, zoom: number
       }
       x = clamp(x + Math.cos(angle) * step, box.minX, box.maxX)
       y = clamp(y + Math.sin(angle) * step, box.minY, box.maxY)
-      points.push([x, y])
+      points.push(x, y)
     }
     const pen = rand() < TRANSLUCENT_SHARE ? TRANSLUCENT : OPAQUE
     strokes.push({
@@ -73,7 +73,7 @@ export function generateBenchStrokes(count: number, bounds: Bounds, zoom: number
       color: pen.color,
       width: pen.width,
       zoom,
-      points,
+      points: new Float64Array(points),
       order: n,
     })
   }

@@ -51,8 +51,11 @@ async function drawUntilSeam(
   for (let i = 0; afterFreeze < 4; i++) {
     const p = path(i)
     if (!p) break
-    const ps = pressure ? { ps: [quantizePressure(pressure(i))] } : {}
-    store.apply({ type: 'points', id, pts: [[origin[0] + p[0] * px, origin[1] + p[1] * px]], ...ps }, 'local')
+    const ps = pressure ? { ps: Float32Array.of(quantizePressure(pressure(i))) } : {}
+    store.apply(
+      { type: 'points', id, pts: Float64Array.of(origin[0] + p[0] * px, origin[1] + p[1] * px), ...ps },
+      'local',
+    )
     scene.frame(view, zoom)
     if (afterFreeze >= 0 || scene.inspect().active.get(id)!.frozenTo > 0) afterFreeze++
     if (i > 1000) throw new Error('the stroke never froze a piece')

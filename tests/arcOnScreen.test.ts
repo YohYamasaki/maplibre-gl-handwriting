@@ -8,6 +8,7 @@ import type { Point, StrokeData } from '../src/core/stroke'
 import { MeshBuffer } from '../src/MeshBuffer'
 import { mercatorPerPixelAt } from '../src/mercator'
 import { StrokeTessellator } from '../src/StrokeTessellator'
+import { xy } from './support'
 
 const root = join(import.meta.dirname, '..')
 let tessellator: StrokeTessellator
@@ -21,7 +22,7 @@ beforeAll(async () => {
 const center: Point = [0.5003, 0.5003]
 
 function stroke(points: Point[], width: number, zoom: number): StrokeData {
-  return { id: 'me:1', author: 'me', color: '#336699', width, zoom, points }
+  return { id: 'me:1', author: 'me', color: '#336699', width, zoom, points: xy(points) }
 }
 
 function tessellate(s: StrokeData, zoom: number): MeshBuffer {

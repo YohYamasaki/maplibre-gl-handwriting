@@ -32,7 +32,7 @@ const jumpTo = (at, zoom) =>
   a.eval(`window.__handwriting.map.jumpTo({ center: ${JSON.stringify(at)}, zoom: ${zoom} }), true`)
 const strokes = () =>
   a.eval(
-    `[...window.__handwriting.store.values()].map((s) => ({ id: s.id, order: s.order ?? null, first: s.points[0], points: s.points.length }))`,
+    `[...window.__handwriting.store.values()].map((s) => ({ id: s.id, order: s.order ?? null, first: [s.points[0], s.points[1]], points: s.points.length / 2 }))`,
   )
 await jumpTo(center, 12)
 
@@ -46,7 +46,7 @@ await check('a stroke drawn without a server gets an order from the default stor
 
 await check('zooming in rebuilds the bucket for the new zoom on the worker', async () => {
   const at = await a.eval(
-    `(() => { const p = window.__handwriting.store.get(${JSON.stringify(drawn.id)}).points[5]; return [p[0] * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - 2 * p[1]))) * 180 / Math.PI] })()`,
+    `(() => { const q = window.__handwriting.store.get(${JSON.stringify(drawn.id)}).points; const p = [q[10], q[11]]; return [p[0] * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - 2 * p[1]))) * 180 / Math.PI] })()`,
   )
   await jumpTo(at, 17)
   await waitFor('a mesh made for zoom 17', () =>
@@ -385,7 +385,7 @@ await check(
       const s = Math.sin((lat * Math.PI) / 180)
       return [(lng + 180) / 360, 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)]
     }
-    const points = ${JSON.stringify(screen)}.map(mercator)
+    const points = new Float64Array(${JSON.stringify(screen)}.flatMap(mercator))
     h.view.store.apply({ type: 'load', strokes: [{ id: 'view-1', author: 'e2e', color: '#0000ff', width: 6, zoom: h.map.getZoom(), points }] }, 'remote')
     return true
   })()`)
@@ -482,7 +482,7 @@ await check(
       const s = Math.sin((lat * Math.PI) / 180)
       return [(lng + 180) / 360, 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)]
     }
-    const points = ${JSON.stringify(line([300, 450], [700, 450]))}.map(mercator)
+    const points = new Float64Array(${JSON.stringify(line([300, 450], [700, 450]))}.flatMap(mercator))
     h.broken.store.apply({ type: 'load', strokes: [{ id: 'broken-1', author: 'e2e', color: '#ff0000', width: 8, zoom: h.map.getZoom(), points }] }, 'remote')
     h.map.triggerRepaint()
     return true

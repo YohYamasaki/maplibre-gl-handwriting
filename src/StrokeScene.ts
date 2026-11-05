@@ -1,6 +1,6 @@
 import { bucketOf, tileKey, type TileID } from './core/bucket'
 import type { Point, StrokeData, StrokeOp, StrokeStore } from './core/stroke'
-import { boundsOf, contains, grow, intersects, union, type Bounds } from './bounds'
+import { boundsOf, boundsOfFlat, contains, grow, intersects, union, type Bounds } from './bounds'
 import { mercatorPerPixelAt } from './mercator'
 import { MeshBuffer, isTranslucent } from './MeshBuffer'
 import { RunningMax } from './RunningMax'
@@ -315,7 +315,7 @@ export class StrokeScene {
     const byTile = new Map<string, BucketMesh & { tile: TileID }>()
     const strokes = [...selected.strokes.values()].sort((a, b) => a.order! - b.order!)
     for (const stroke of strokes) {
-      const tile = bucketOf(stroke.points[0], stroke.zoom)
+      const tile = bucketOf(firstPoint(stroke), stroke.zoom)
       const key = tileKey(tile)
       let pair = byTile.get(key)
       if (!pair) {
@@ -655,7 +655,7 @@ export class StrokeScene {
    */
   private addToBucket(stroke: StrokeData, appendNow: boolean): void {
     if (stroke.points.length === 0) return
-    const tile = bucketOf(stroke.points[0], stroke.zoom)
+    const tile = bucketOf(firstPoint(stroke), stroke.zoom)
     const key = tileKey(tile)
     // A stroke filed again (the same ID twice in one load) replaces the earlier copy, so its extent is counted once.
     // In the same bucket only the extent is taken back: the mesh is left alone, as a load leaves it
@@ -688,7 +688,7 @@ export class StrokeScene {
     const meshUpToDate = bucket.meshVersion === bucket.version
     const earlier = filedIn === key ? bucket.strokes.get(stroke.id) : undefined
     if (earlier) track(bucket, bucket.strokeBounds.get(stroke.id)!, bucket.strokeWidths.get(stroke.id)!, -1)
-    const bounds = boundsOf(stroke.points)
+    const bounds = boundsOfFlat(stroke.points)
     const width = widthMercator(stroke)
     this.noteOrder(stroke.order)
     bucket.strokes.set(stroke.id, stroke)
@@ -775,7 +775,7 @@ export class StrokeScene {
         .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || 0)
       this.counters.builds++
       for (const stroke of strokes) {
-        this.counters.buildPoints += stroke.points.length
+        this.counters.buildPoints += stroke.points.length / 2
       }
       this.builds.build({
         key,
@@ -815,7 +815,7 @@ export class StrokeScene {
     let hot = previous
     if (hot?.zoom !== zoom) {
       if (hot) this.retired.push(hot.frozen, hot.tail)
-      const tile = bucketOf(stroke.points[0], stroke.zoom)
+      const tile = bucketOf(firstPoint(stroke), stroke.zoom)
       hot = {
         ...emptyExtent(),
         zoom,
@@ -829,10 +829,11 @@ export class StrokeScene {
         tailPredicted: undefined,
       }
     }
-    if (hot.sampled < stroke.points.length) {
-      extend(hot, stroke, stroke.points.slice(hot.sampled))
+    const count = stroke.points.length / 2
+    if (hot.sampled < count) {
+      extend(hot, stroke, boundsOfFlat(stroke.points, hot.sampled))
       appendSamples(hot.samples, stroke, hot.sampled, zoom)
-      hot.sampled = stroke.points.length
+      hot.sampled = count
     }
 
     const { samples, frozen, tail } = hot
@@ -851,7 +852,7 @@ export class StrokeScene {
       tail.clear()
       // Predicted points only lengthen the tail: the frozen part ends at samples[n - 2], which no predicted point
       // reaches, so it is made from real input alone
-      if (predicted) extend(hot, stroke, predicted)
+      if (predicted) extend(hot, stroke, boundsOf(predicted))
       const piece = predicted ? withPrediction(samples, hot.frozenTo, predicted, zoom) : { samples, from: hot.frozenTo }
       this.onMainThread(tail, () => {
         this.writer.appendPiece(tail, stroke, piece.samples, piece.from, piece.samples.points.length - 1, zoom)
@@ -942,24 +943,29 @@ function withPrediction(
   const tip: Samples = { points: samples.points.slice(start) }
   if (samples.pressure) tip.pressure = samples.pressure.slice(start)
   const coefficient = samples.pressure?.at(-1)
+  const points = new Float64Array(2 * predicted.length)
+  predicted.forEach((p, i) => points.set(p, 2 * i))
   appendSamples(
     tip,
-    coefficient === undefined
-      ? { points: predicted }
-      : { points: predicted, pressure: predicted.map(() => coefficient) },
+    coefficient === undefined ? { points } : { points, pressure: new Float32Array(predicted.length).fill(coefficient) },
     0,
     zoom,
   )
   return { samples: tip, from: from - start }
 }
 
+/** The first point of a stroke with points */
+function firstPoint(stroke: StrokeData): Point {
+  return [stroke.points[0], stroke.points[1]]
+}
+
 function emptyExtent(): Extent {
   return { bounds: boundsOf([]), maxWidthMercator: 0 }
 }
 
-/** Grows an extent to cover `points` of `stroke` */
-function extend(extent: Extent, stroke: StrokeData, points: Point[]): void {
-  extent.bounds = union(extent.bounds, boundsOf(points))
+/** Grows an extent to cover `bounds`, of points of `stroke` */
+function extend(extent: Extent, stroke: StrokeData, bounds: Bounds): void {
+  extent.bounds = union(extent.bounds, bounds)
   extent.maxWidthMercator = Math.max(extent.maxWidthMercator, widthMercator(stroke))
 }
 

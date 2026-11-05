@@ -4,6 +4,7 @@ import { generateBenchStrokes } from '../dev/benchStrokes'
 import { mercatorPerPixelAt } from '../src/core/mercator'
 import type { Point } from '../src/core/stroke'
 import { isTranslucent } from '../src/MeshBuffer'
+import { pairs } from './support'
 
 /** A deterministic stand-in for Math.random (mulberry32) */
 function seeded(seed: number): () => number {
@@ -14,6 +15,11 @@ function seeded(seed: number): () => number {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
+}
+
+/** generateBenchStrokes, with each stroke's points as [x, y] pairs */
+function generated(...args: Parameters<typeof generateBenchStrokes>): { points: Point[] }[] {
+  return generateBenchStrokes(...args).map((stroke) => ({ ...stroke, points: pairs(stroke.points) }))
 }
 
 describe('generateBenchStrokes', () => {
@@ -28,7 +34,7 @@ describe('generateBenchStrokes', () => {
   })
 
   it('gives each stroke 31 to 151 points, all inside the bounds', () => {
-    for (const stroke of generateBenchStrokes(1000, bounds, 12, seeded(2))) {
+    for (const stroke of generated(1000, bounds, 12, seeded(2))) {
       expect(stroke.points.length).toBeGreaterThanOrEqual(31)
       expect(stroke.points.length).toBeLessThanOrEqual(151)
       for (const [x, y] of stroke.points) {
@@ -42,7 +48,7 @@ describe('generateBenchStrokes', () => {
 
   it('keeps the points in [0, 1] at zoom 0 when the bounds are twice the world', () => {
     const world = { minX: -0.5, minY: -0.5, maxX: 1.5, maxY: 1.5 }
-    for (const stroke of generateBenchStrokes(500, world, 0, seeded(3))) {
+    for (const stroke of generated(500, world, 0, seeded(3))) {
       for (const [x, y] of stroke.points) {
         expect(x >= 0 && x <= 1 && y >= 0 && y <= 1).toBe(true)
       }
@@ -122,7 +128,7 @@ describe('generateBenchStrokes', () => {
   ] as const) {
     for (const seed of [1, 7, 9]) {
       it(`turns smoothly and bends away from the edges in ${label} (seed ${seed})`, () => {
-        const strokes = generateBenchStrokes(1000, b, 12, seeded(seed))
+        const strokes = generated(1000, b, 12, seeded(seed))
         let stuck = 0
         let longRuns = 0
         let turn = 0
@@ -143,7 +149,7 @@ describe('generateBenchStrokes', () => {
 
   it('keeps the strokes spread out', () => {
     // 65.8 px is half of 131.6 px, the median the earlier generator (turns of up to ±0.6 rad per step) gave here
-    expect(medianLongSide(generateBenchStrokes(1000, bounds, 12, seeded(1)))).toBeGreaterThanOrEqual(65.8)
+    expect(medianLongSide(generated(1000, bounds, 12, seeded(1)))).toBeGreaterThanOrEqual(65.8)
   })
 
   it('keeps the points inside the bounds and [0, 1] when an axis is too narrow to steer on', () => {
@@ -154,7 +160,7 @@ describe('generateBenchStrokes', () => {
       { minX: 1 - 1.5 * STEP, minY: 0, maxX: 1, maxY: 1.5 * STEP },
     ]
     for (const b of narrow) {
-      for (const { points } of generateBenchStrokes(500, b, 12, seeded(5))) {
+      for (const { points } of generated(500, b, 12, seeded(5))) {
         for (const p of points) {
           expect(inside(b, p)).toBe(true)
           expect(p[0] >= 0 && p[0] <= 1 && p[1] >= 0 && p[1] <= 1).toBe(true)
@@ -164,8 +170,6 @@ describe('generateBenchStrokes', () => {
   })
 
   it('does not gather the strokes in the middle of a narrow, tall bounds', () => {
-    expect(medianLongSide(generateBenchStrokes(1000, box(10 * PX, 300 * STEP), 12, seeded(1)))).toBeGreaterThanOrEqual(
-      50,
-    )
+    expect(medianLongSide(generated(1000, box(10 * PX, 300 * STEP), 12, seeded(1)))).toBeGreaterThanOrEqual(50)
   })
 })

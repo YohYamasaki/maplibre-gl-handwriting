@@ -116,7 +116,7 @@ export class StrokeTessellator {
 }
 
 /**
- * Appends to `samples` the stroke's points from `points[start]` on that are far enough from the last sample to matter
+ * Appends to `samples` the stroke's points from point `start` on that are far enough from the last sample to matter
  * at `zoom` (TOLERANCE_PX), or, at PRESSURE_MIN_DISTANCE of that, whose width coefficient differs enough from the last
  * sample's (PRESSURE_STEP), with their coefficients. The spline also needs neighbors at distinct positions.
  * Points are only ever appended to a stroke, so its earlier samples never change as it grows
@@ -130,15 +130,16 @@ export function appendSamples(
   const minDistance = TOLERANCE_PX * mercatorPerPixelAt(zoom)
   const { points, pressure } = stroke
   if (pressure) samples.pressure ??= []
-  for (let i = start; i < points.length; i++) {
+  for (let i = start; 2 * i + 1 < points.length; i++) {
     const last = samples.points.at(-1)
-    const p = points[i]
-    const distance = last ? Math.hypot(p[0] - last[0], p[1] - last[1]) : Infinity
+    const x = points[2 * i]
+    const y = points[2 * i + 1]
+    const distance = last ? Math.hypot(x - last[0], y - last[1]) : Infinity
     const lastPressure = samples.pressure?.at(-1)
     const pressureChanged =
       pressure !== undefined && lastPressure !== undefined && Math.abs(pressure[i] - lastPressure) >= PRESSURE_STEP
     if (distance >= minDistance || (pressureChanged && distance >= PRESSURE_MIN_DISTANCE * minDistance)) {
-      samples.points.push(p)
+      samples.points.push([x, y])
       if (pressure) samples.pressure!.push(pressure[i])
     }
   }

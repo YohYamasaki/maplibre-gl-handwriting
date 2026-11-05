@@ -17,7 +17,7 @@ import {
 } from '../src/Prediction'
 import { StrokeScene } from '../src/StrokeScene'
 import type { MeshWriter, Samples } from '../src/StrokeTessellator'
-import { DeferredBuilds, fakeWriter } from './support'
+import { DeferredBuilds, fakeWriter, pairs, xy } from './support'
 
 // One CSS px is 1e-6 in Web Mercator units, from [0.5, 0.5] at client (0, 0)
 const PX = 1e-6
@@ -63,7 +63,7 @@ function drawing(ms = DEFAULT_PREDICTION_MS): {
   return { store, ops, prediction, pointer }
 }
 
-const pointsOf = (ops: StrokeOp[]): Point[] => ops.flatMap((op) => (op.type === 'points' ? op.pts : []))
+const pointsOf = (ops: StrokeOp[]): Point[] => ops.flatMap((op) => (op.type === 'points' ? pairs(op.pts) : []))
 const at = ([x, y, t]: Predicted): { clientX: number; clientY: number; timeStamp: number } => ({
   clientX: x,
   clientY: y,
@@ -158,7 +158,7 @@ describe('DrawController with predicted events', () => {
 
     const real = [project(0, 0), project(10, 0), project(20, 0), project(30, 0), project(40, 0)]
     expect(pointsOf(ops)).toEqual(real)
-    expect(store.get('s:1')!.points).toEqual(real)
+    expect(pairs(store.get('s:1')!.points)).toEqual(real)
   })
 
   it('draws the points up to the time ahead after the pointermove, more than two when they are', () => {
@@ -304,7 +304,7 @@ describe('DrawController prediction timeout', () => {
     expect(prediction.get('s:1')).toEqual([project(25, 0)])
     vi.advanceTimersByTime(1)
     expect(prediction.get('s:1')).toBeUndefined()
-    expect(store.get('s:1')!.points).toEqual([project(0, 0), project(10, 0), project(20, 0)])
+    expect(pairs(store.get('s:1')!.points)).toEqual([project(0, 0), project(10, 0), project(20, 0)])
   })
 
   it('leaves no timer after the stroke ends', () => {
@@ -352,12 +352,12 @@ describe('StrokeScene with predicted points', () => {
   it('draws them after the tail only, and the frozen part from real points alone', () => {
     const { store, prediction, pieces, s, hot } = scene()
     for (let i = 0; i < 80; i++) {
-      store.apply({ type: 'points', id: 's:1', pts: [at(i)] }, 'local')
+      store.apply({ type: 'points', id: 's:1', pts: xy([at(i)]) }, 'local')
       prediction.set('s:1', [at(i + 1), at(i + 2)])
       s.frame(WORLD, 12)
     }
     expect(hot().frozenTo, 'some of the stroke was frozen').toBeGreaterThan(0)
-    const real = new Set(store.get('s:1')!.points.map((p) => p.join()))
+    const real = new Set(pairs(store.get('s:1')!.points).map((p) => p.join()))
     const frozen = pieces.filter((piece) => piece.mesh === hot().frozen)
     expect(frozen.length).toBeGreaterThan(0)
     for (const piece of frozen)
@@ -365,12 +365,12 @@ describe('StrokeScene with predicted points', () => {
     // The latest tail ends with the two predicted points
     const tail = pieces.filter((piece) => piece.mesh === hot().tail).at(-1)!
     expect(tail.points.slice(-3)).toEqual([at(79), at(80), at(81)])
-    expect(tail.points[0]).toEqual(store.get('s:1')!.points[hot().frozenTo])
+    expect(tail.points[0]).toEqual(pairs(store.get('s:1')!.points)[hot().frozenTo])
   })
 
   it('tessellates the tail again when the prediction alone changes, and drops the predicted part with it', () => {
     const { store, prediction, pieces, s, hot } = scene()
-    for (let i = 0; i < 5; i++) store.apply({ type: 'points', id: 's:1', pts: [at(i)] }, 'local')
+    for (let i = 0; i < 5; i++) store.apply({ type: 'points', id: 's:1', pts: xy([at(i)]) }, 'local')
     s.frame(WORLD, 12)
     const tails = (): Point[][] => pieces.filter((piece) => piece.mesh === hot().tail).map((piece) => piece.points)
     expect(tails().at(-1)!.at(-1)).toEqual(at(4))
@@ -400,11 +400,14 @@ describe('StrokeScene with predicted points', () => {
     }
     const s = new StrokeScene(store, writer, new DeferredBuilds(), 12, () => {}, null, prediction)
     store.apply({ type: 'begin', id: 's:1', author: 'a', color: '#000000', width: 4, zoom: 12 }, 'local')
-    store.apply({ type: 'points', id: 's:1', pts: [at(0), at(1), at(2)], ps: [1, 0.8, 0.6] }, 'local')
+    store.apply(
+      { type: 'points', id: 's:1', pts: xy([at(0), at(1), at(2)]), ps: Float32Array.of(1, 0.8, 0.6) },
+      'local',
+    )
     prediction.set('s:1', [at(3)])
     s.frame(WORLD, 12)
     const last = seen.at(-1)!
     expect(last.points.at(-1)).toEqual(at(3))
-    expect(last.pressure).toEqual([1, 0.8, 0.6, 0.6])
+    expect(last.pressure).toEqual(Array.from(Float32Array.of(1, 0.8, 0.6, 0.6)))
   })
 })

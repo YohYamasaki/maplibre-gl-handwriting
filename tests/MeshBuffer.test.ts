@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { StrokeData } from '../src/core/stroke'
 import { MeshBuffer, isTranslucent } from '../src/MeshBuffer'
-import { fakeWriter } from './support'
+import { fakeWriter, xy } from './support'
 import { expectValidMesh } from './invariants'
 
 function stroke(id: string, points: number, extra: Partial<StrokeData> = {}): StrokeData {
   const pts = Array.from({ length: points }, (_, i): [number, number] => [0.5 + i * 1e-5, 0.5])
-  return { id, author: 'a', color: '#102030', width: 8, zoom: 12, points: pts, ...extra }
+  return { id, author: 'a', color: '#102030', width: 8, zoom: 12, points: xy(pts), ...extra }
 }
 
 /** The order every vertex of a stroke holds, or the distinct values when they differ */

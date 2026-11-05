@@ -58,7 +58,7 @@ await check('a stroke from a load op is drawn in its color, by the worker', asyn
       const s = Math.sin((lat * Math.PI) / 180)
       return [(lng + 180) / 360, 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)]
     }
-    const points = ${JSON.stringify(line([300, 330], [700, 330]))}.map(mercator)
+    const points = new Float64Array(${JSON.stringify(line([300, 330], [700, 330]))}.flatMap(mercator))
     h.store.apply({ type: 'load', strokes: [{ id: 'loaded', author: 'e2e', color: '#0000ff', width: 6, zoom: h.map.getZoom(), points }] }, 'remote')
     return true
   })()`)
@@ -72,7 +72,7 @@ await check('a stroke drawn with the pen goes into the store and is drawn', asyn
   await page.drag(line([300, 450], [700, 450]))
   const stroke = await waitFor('the stroke with an order', () =>
     page.eval(
-      `[...window.__handwriting.store.values()].map((s) => ({ id: s.id, order: s.order ?? null, points: s.points.length })).find((s) => s.id !== 'loaded' && s.order !== null) ?? null`,
+      `[...window.__handwriting.store.values()].map((s) => ({ id: s.id, order: s.order ?? null, points: s.points.length / 2 })).find((s) => s.id !== 'loaded' && s.order !== null) ?? null`,
     ),
   )
   assert(stroke.points > 2, `the stroke holds ${stroke.points} points`)

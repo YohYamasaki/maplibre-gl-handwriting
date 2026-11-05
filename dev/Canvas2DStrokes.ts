@@ -31,7 +31,7 @@ export function strokeTransform(stroke: Pick<StrokeData, 'points' | 'zoom'>, vie
   const cos = Math.cos(angle)
   const sin = Math.sin(angle)
   const devicePxPerMercator = pixelRatio / mercatorPerPixelAt(view.zoom)
-  const [x0, y0] = stroke.points[0]
+  const [x0, y0] = stroke.points
   const dx = (x0 - view.center[0]) * devicePxPerMercator
   const dy = (y0 - view.center[1]) * devicePxPerMercator
   return [
@@ -190,15 +190,18 @@ export class Canvas2DStrokes {
 
   private pathOf(cache: Map<string, CachedPath>, stroke: StrokeData): CachedPath {
     const cached = cache.get(stroke.id)
-    if (cached && cached.stroke === stroke && cached.count === stroke.points.length) return cached
+    if (cached && cached.stroke === stroke && cached.count === stroke.points.length / 2) return cached
     const unit = mercatorPerPixelAt(stroke.zoom)
-    const [x0, y0] = stroke.points[0]
+    const { points } = stroke
+    const [x0, y0] = points
     const path = new Path2D()
     let minX = Infinity
     let minY = Infinity
     let maxX = -Infinity
     let maxY = -Infinity
-    stroke.points.forEach(([x, y], i) => {
+    for (let i = 0; i + 1 < points.length; i += 2) {
+      const x = points[i]
+      const y = points[i + 1]
       const px = (x - x0) / unit
       const py = (y - y0) / unit
       if (i === 0) path.moveTo(px, py)
@@ -207,11 +210,11 @@ export class Canvas2DStrokes {
       minY = Math.min(minY, y)
       maxX = Math.max(maxX, x)
       maxY = Math.max(maxY, y)
-    })
+    }
     const half = (stroke.width * unit) / 2
     const entry = {
       stroke,
-      count: stroke.points.length,
+      count: stroke.points.length / 2,
       path,
       minX: minX - half,
       minY: minY - half,

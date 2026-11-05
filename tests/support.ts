@@ -1,6 +1,7 @@
 // Stand-ins for the tests: a mesh writer that needs no WebAssembly, a build queue the test drives by hand,
-// a seeded random source so a failing op sequence can be replayed, and the shape of a UUID v4
-import type { StrokeData } from '../src/core/stroke'
+// a seeded random source so a failing op sequence can be replayed, the shape of a UUID v4, and points as [x, y] pairs
+// turned into the arrays strokes keep (x and y in turn) and back
+import type { Point, StrokeData } from '../src/core/stroke'
 import type { MeshBuffer } from '../src/MeshBuffer'
 import type { BuildQueue } from '../src/StrokeScene'
 import { appendSamples, type MeshWriter, type Samples } from '../src/StrokeTessellator'
@@ -62,3 +63,17 @@ export function random(seed: number): () => number {
 
 /** A UUID v4 as crypto.randomUUID gives it: lowercase 8-4-4-4-12, version 4, variant 10xx */
 export const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
+/** Points as strokes and points ops hold them: x and y in turn */
+export function xy(points: readonly Point[]): Float64Array<ArrayBuffer> {
+  const flat = new Float64Array(2 * points.length)
+  points.forEach((p, i) => flat.set(p, 2 * i))
+  return flat
+}
+
+/** A stroke's points (x and y in turn) as [x, y] pairs */
+export function pairs(points: Float64Array): Point[] {
+  const out: Point[] = []
+  for (let i = 0; i + 1 < points.length; i += 2) out.push([points[i], points[i + 1]])
+  return out
+}

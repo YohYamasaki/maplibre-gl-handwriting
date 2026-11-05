@@ -23,10 +23,7 @@ const job: BuildJob = {
       color: '#000000',
       width: 4,
       zoom: 12,
-      points: [
-        [0.0001, 0.0001],
-        [0.0002, 0.0001],
-      ],
+      points: Float64Array.of(0.0001, 0.0001, 0.0002, 0.0001),
       order: 1,
     },
   ],

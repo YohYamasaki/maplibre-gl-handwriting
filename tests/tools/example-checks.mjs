@@ -75,7 +75,7 @@ export async function checkExample(run, { name, origin, path, insecure = false }
     await page.drag(line([300, 450], [700, 450]))
     const stroke = await waitFor('the stroke with an order', () =>
       page.eval(
-        `[...window.example.store.values()].map((s) => ({ id: s.id, order: s.order ?? null, points: s.points.length })).find((s) => s.id !== 'loaded' && s.order !== null) ?? null`,
+        `[...window.example.store.values()].map((s) => ({ id: s.id, order: s.order ?? null, points: s.points.length / 2 })).find((s) => s.id !== 'loaded' && s.order !== null) ?? null`,
       ),
     )
     assert(stroke.points > 2, `the stroke holds ${stroke.points} points`)

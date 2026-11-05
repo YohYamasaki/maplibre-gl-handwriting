@@ -85,7 +85,7 @@ export function similarityAbout(center: Point, scale: number, angle: number, off
 }
 
 /**
- * The points and zoom a stroke has after `m`. Its width in pixels stays the same, so the zoom it was drawn at
+ * The points (x and y in turn, in a new array) and zoom a stroke has after `m`. Its width in pixels stays the same, so the zoom it was drawn at
  * changes by the scale: a stroke twice as large is the size it was at one zoom level further out.
  * Returns null when a point would leave the map (0 to 1) or the zoom would leave MIN/MAX_STROKE_ZOOM, by more than
  * rounding (within it, the value is clamped); such a stroke is left as it is
@@ -93,16 +93,20 @@ export function similarityAbout(center: Point, scale: number, angle: number, off
 export function transformStroke(
   stroke: Pick<StrokeData, 'points' | 'zoom'>,
   m: Matrix,
-): { points: Point[]; zoom: number } | null {
+): { points: Float64Array; zoom: number } | null {
   const zoom = clampWithin(stroke.zoom - Math.log2(scaleOf(m)), MIN_STROKE_ZOOM, MAX_STROKE_ZOOM, ZOOM_TOLERANCE)
   if (zoom === null) return null
-  const points: Point[] = []
-  for (const p of stroke.points) {
-    const [x, y] = applyToPoint(m, p)
-    const qx = clampWithin(x, 0, 1, EDGE_TOLERANCE)
-    const qy = clampWithin(y, 0, 1, EDGE_TOLERANCE)
+  const from = stroke.points
+  const points = new Float64Array(from.length)
+  for (let i = 0; i + 1 < from.length; i += 2) {
+    // As applyToPoint
+    const x = from[i]
+    const y = from[i + 1]
+    const qx = clampWithin(m[0] * x + m[2] * y + m[4], 0, 1, EDGE_TOLERANCE)
+    const qy = clampWithin(m[1] * x + m[3] * y + m[5], 0, 1, EDGE_TOLERANCE)
     if (qx === null || qy === null) return null
-    points.push([qx, qy])
+    points[i] = qx
+    points[i + 1] = qy
   }
   return { points, zoom }
 }

@@ -8,7 +8,7 @@ import { StrokeStore } from '../../src/core/stroke'
 import { mercatorPerPixelAt } from '../../src/mercator'
 import { StrokeScene } from '../../src/StrokeScene'
 import { StrokeTessellator } from '../../src/StrokeTessellator'
-import { DeferredBuilds } from '../support'
+import { DeferredBuilds, xy } from '../support'
 
 const root = join(import.meta.dirname, '../..')
 
@@ -22,7 +22,7 @@ it('a dot drawn at z15 shows at z12.9 after the view passed z10', async () => {
   store.apply(
     {
       type: 'load',
-      strokes: [{ id: 'me:1', author: 'me', color: '#336699', width: 6, zoom: 15, points: [[0.5, 0.5]], order: 1 }],
+      strokes: [{ id: 'me:1', author: 'me', color: '#336699', width: 6, zoom: 15, points: xy([[0.5, 0.5]]), order: 1 }],
     },
     'remote',
   )

@@ -8,11 +8,16 @@ import type { StrokeIndex } from './StrokeIndex'
 
 /** Whether p is inside the polygon (closed from its last point back to its first), by the even-odd rule */
 export function insidePolygon(p: Point, polygon: Point[]): boolean {
+  return insideAt(p[0], p[1], polygon)
+}
+
+/** Whether (x, y) is inside the polygon, as insidePolygon */
+function insideAt(x: number, y: number, polygon: Point[]): boolean {
   let inside = false
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const [xi, yi] = polygon[i]
     const [xj, yj] = polygon[j]
-    if (yi > p[1] !== yj > p[1] && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) inside = !inside
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
   }
   return inside
 }
@@ -23,9 +28,10 @@ export function strokesInLasso(index: StrokeIndex, store: StrokeStore, polygon: 
   return index.search(boundsOf(polygon)).filter((id) => {
     const stroke = store.get(id)
     if (!stroke || stroke.order === undefined) return false
+    const { points } = stroke
     let inside = 0
-    for (const p of stroke.points) if (insidePolygon(p, polygon)) inside++
-    return 2 * inside >= stroke.points.length
+    for (let i = 0; i + 1 < points.length; i += 2) if (insideAt(points[i], points[i + 1], polygon)) inside++
+    return 2 * inside >= points.length / 2
   })
 }
 
