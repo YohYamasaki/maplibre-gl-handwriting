@@ -1,8 +1,15 @@
-// The dev page's panel (decision 0096), in plain DOM: what the app's debug panel had (decision 0089) and the
-// predicted points and the scene's stats
+// The dev page's panel (decision 0096), in plain DOM: what the app's debug panel had (decision 0089), the time ahead
+// the predicted points are drawn (decision 0021) and their counts, and the scene's stats
 import type { Map as MapLibreMap } from 'maplibre-gl'
-import { debugPredictionCounts, debugSceneOf, setDebugPrediction, setDebugWireframe } from '../src/debug'
+import {
+  debugPredictionCounts,
+  debugPredictionMs,
+  debugSceneOf,
+  setDebugPredictionMs,
+  setDebugWireframe,
+} from '../src/debug'
 import type { Handwriting, StrokeStore } from '../src/index'
+import { MAX_PREDICTION_MS } from '../src/Prediction'
 import { BENCH_LAYER_ID, BenchLayer, MAIN_LAYER_ID } from './BenchLayer'
 import { Canvas2DStrokes } from './Canvas2DStrokes'
 import { FrameMeter } from './FrameMeter'
@@ -19,6 +26,33 @@ function checkbox(text: string, onChange: (checked: boolean) => void, checked = 
   input.addEventListener('change', () => onChange(input.checked))
   label.append(input, ` ${text}`)
   return label
+}
+
+/**
+ * A slider of the time ahead the handle's predicted points are drawn, from 0 to MAX_PREDICTION_MS ms by 1 ms, with
+ * its value; `sync` shows the handle's value again
+ */
+function predictionSlider(handle: Handwriting): { label: HTMLLabelElement; sync: () => void } {
+  const label = document.createElement('label')
+  const input = document.createElement('input')
+  input.type = 'range'
+  input.min = '0'
+  input.max = String(MAX_PREDICTION_MS)
+  input.step = '1'
+  input.setAttribute('aria-label', 'time ahead of the predicted points, in ms')
+  const text = document.createElement('span')
+  const sync = (): void => {
+    const value = debugPredictionMs(handle)
+    if (value !== null && input.valueAsNumber !== value) input.value = String(value)
+    text.textContent = ` prediction ${value ?? '-'} ms`
+  }
+  input.addEventListener('input', () => {
+    setDebugPredictionMs(handle, input.valueAsNumber)
+    sync()
+  })
+  label.append(input, text)
+  sync()
+  return { label, sync }
 }
 
 function ms(value: number | null): string {
@@ -52,6 +86,8 @@ export function mountPanel(parent: HTMLElement, handle: Handwriting, map: MapLib
     (value) => meter.addCpu(value),
     (value) => meter.addGpu(value),
   )
+
+  const slider = predictionSlider(handle)
 
   // A bench layer made while Canvas2D is on is hidden before its first frame
   const benchLayer = (): BenchLayer => (bench ??= new BenchLayer(map, () => canvas?.hideLayers()))
@@ -97,19 +133,23 @@ export function mountPanel(parent: HTMLElement, handle: Handwriting, map: MapLib
         canvas = null
       }
     }),
-    checkbox('predicted points', (checked) => setDebugPrediction(handle, checked), true),
+    slider.label,
   )
 
-  // The scene's stats and the predicted points' counts, read twice a second
+  // The scene's stats, the time ahead (window.__handwriting may change it) and the predicted points' counts, read twice
+  // a second
   const update = (): void => {
     const stats = debugSceneOf(handle)?.stats()
     scene.textContent = stats
       ? `strokes ${stats.strokes} / buckets ${stats.buckets} / meshes ${stats.meshes} / draw calls ${stats.drawCalls} / builds ${stats.builds} / main-thread vertices ${stats.mainThreadVertices} / mesh ${(stats.meshBytesUsed / 1e6).toFixed(1)} MB`
       : 'scene: -'
-    const counts = debugPredictionCounts(handle)
-    prediction.textContent = counts
-      ? `predicted points kept ${counts.kept.join(', ')} / dropped ${counts.dropped.join(', ')}`
-      : 'predicted points: -'
+    slider.sync()
+    const debug = debugPredictionCounts(handle)
+    if (debug) {
+      const { offered, kept, droppedByTime, droppedByDistance } = debug.counts
+      const ahead = debug.aheadMs.map((value) => `${value >= 0 ? '+' : ''}${value.toFixed(1)}`).join(' ')
+      prediction.textContent = `predicted points offered ${offered} / kept ${kept} / dropped by time ${droppedByTime} / by distance ${droppedByDistance} / ahead ${ahead || '-'} ms`
+    } else prediction.textContent = 'predicted points: -'
   }
   update()
   setInterval(update, 500)

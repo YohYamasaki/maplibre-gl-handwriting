@@ -1,7 +1,7 @@
 import type { Point, StrokeData, StrokeStore } from './core/stroke'
 import type { PressureCurve } from './pens'
 import { countPrediction } from './debug'
-import { PREDICTION_TIMEOUT_MS, predictedPositions, type Prediction } from './Prediction'
+import { PREDICTION_TIMEOUT_MS, predictedPositions, predictionLimit, type Prediction } from './Prediction'
 import { PRESSURE_STEP, PressureFilter } from './pressure'
 
 /**
@@ -38,8 +38,8 @@ type Input = { x: number; y: number; c: number }
 
 /**
  * The stroke being drawn: the spacing of its recorded points, the last recorded point and the points skipped since
- * (the latest CORNER_WINDOW), the client position of the previous pointermove (the pointerdown for the first), and the
- * timer that drops the predicted points when no pointermove comes
+ * (the latest CORNER_WINDOW), the client position and timeStamp of the previous pointermove (the pointerdown for the
+ * first), and the timer that drops the predicted points when no pointermove comes
  */
 type Drawing = {
   id: string
@@ -49,6 +49,7 @@ type Drawing = {
   recorded: Input
   skipped: Input[]
   last: [number, number]
+  lastTime: number
   timer: ReturnType<typeof setTimeout> | null
 }
 
@@ -130,6 +131,7 @@ export class DrawController {
       recorded: first,
       skipped: [],
       last: [e.clientX, e.clientY],
+      lastTime: e.timeStamp,
       timer: null,
     }
     this.drawing = drawing
@@ -154,16 +156,26 @@ export class DrawController {
     if (this.drawing !== drawing) return
     const from: [number, number] = [e.clientX, e.clientY]
     const moved = Math.hypot(from[0] - drawing.last[0], from[1] - drawing.last[1])
+    const elapsed = e.timeStamp - drawing.lastTime
     drawing.last = from
+    drawing.lastTime = e.timeStamp
     const prediction = this.options.prediction
     if (!prediction) return
     // The latest input not recorded is drawn after the tip until it is recorded, ahead of the predicted points
     const pending = drawing.skipped.at(-1)
     prediction.setPending(drawing.id, pending ? this.project(pending.x, pending.y) : null)
-    // Browsers without getPredictedEvents predict nothing
+    // Browsers without getPredictedEvents predict nothing. The predicted points are kept up to prediction.ms after
+    // this pointermove, and within how far the pointer goes in that time at its speed since the previous one
     const offered = e.getPredictedEvents?.() ?? []
-    const predicted = predictedPositions(from, offered, moved)
-    if (__HANDWRITING_DEBUG__) countPrediction(prediction, offered.length, predicted.length)
+    const { ms } = prediction
+    const { positions: predicted, dropped } = predictedPositions(
+      from,
+      e.timeStamp,
+      offered,
+      predictionLimit(moved, elapsed, ms),
+      ms,
+    )
+    if (__HANDWRITING_DEBUG__) countPrediction(prediction, e.timeStamp, offered, predicted.length, dropped)
     prediction.set(
       drawing.id,
       predicted.map(([x, y]) => this.project(x, y)),

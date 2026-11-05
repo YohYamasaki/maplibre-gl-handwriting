@@ -139,12 +139,14 @@ The eraser tool's reach and mode (setEraser)
 ```ts
 type ExperimentalFeatures = {
     partialEraser?: boolean;
+    predictionMs?: number;
 };
 ```
 
-Features that are off unless HandwritingOptions.experimental turns them on
+Features still being worked on, off unless HandwritingOptions.experimental turns them on, and values still being tuned
 
 - `partialEraser`: The partial eraser (EraserMode 'partial'), whose behavior is to be reworked. Default false
+- `predictionMs`: How far ahead of each pointer input the browser's predicted points are drawn after the tip of the stroke being drawn, in ms; 0 draws none. Fixed when the handle is created. Default 20; createHandwriting throws a RangeError for a value that is not a number from 0 to 25
 
 #### Handwriting
 
@@ -291,7 +293,7 @@ The options of createHandwriting: store is required
 - `defaults`: Initial pens, palette, eraser, toolbar placement, laser color and pen-only input, e.g. the settings the app saved from getSettings(). Fields left out keep the defaults: pen black 4px with pressure, highlighter yellow 50% 16px, eraser 6px in mode 'stroke', toolbar at the bottom center, laser #ff3b30, pen-only input off
 - `keyboard`: Keyboard shortcuts on the page: H or 1 move map, P or 2 pen, M or 3 highlighter, E or 4 eraser, L or 5 lasso, K laser pointer, Space held to move the map, Cmd/Ctrl+Z undo, Shift+Cmd/Ctrl+Z or Ctrl+Y redo, Delete or Backspace and Cmd/Ctrl+D delete and duplicate the selection, Esc clears it, [ and ] change the pen's width or the eraser's radius, ? lists them. Ignored while typing in a form field. The keys of a tool left out of `tools` do nothing and are left to the page. Default false; see setKeyboard
 - `tools`: The tools the handle offers: setTool, the keyboard shortcuts, their list and the toolbar take only these, and the hand (null) always. Their order changes nothing: the toolbar's buttons and the keys 1 to 5 stay as with every tool. Fixed when the handle is created. Default every tool; createHandwriting throws a RangeError for an unknown one
-- `experimental`: Features still being worked on, off by default. `partialEraser` enables the eraser mode 'partial': while it is off, setEraser({ mode: 'partial' }) throws a RangeError, a default mode 'partial' becomes 'stroke', and the toolbar offers no mode switch
+- `experimental`: Features still being worked on, off by default, and values still being tuned. `partialEraser` enables the eraser mode 'partial': while it is off, setEraser({ mode: 'partial' }) throws a RangeError, a default mode 'partial' becomes 'stroke', and the toolbar offers no mode switch. `predictionMs` is how far ahead the browser's predicted points are drawn; createHandwriting throws a RangeError for a value that is not a number from 0 to 25
 - `laser`: Where the laser pointer's lines go and come from: the lines drawn with the laser tool are emitted on it as local, and every line on it is shown for a moment. Connect the sync layer to the same channel to share them. When omitted, the handle makes a channel of its own
 - `wasmUrl`: Where to fetch the WebAssembly module from, instead of next to this script. The tessellation worker is sent the URL the main thread loads it from, so the worker script needs no module next to it
 - `workerUrl`: Where to load the tessellation worker script from, instead of next to this script. It must be of the page's origin: a browser starts no worker script from another one

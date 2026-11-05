@@ -138,6 +138,9 @@ import { StrokeStore } from 'maplibre-gl-handwriting/core'
 
 ## Experimental
 
-The `experimental` option turns on features still being worked on, which are outside semantic versioning and may
-change or go in any release: `partialEraser` gives the eraser the mode `'partial'`, which cuts strokes instead of
-removing them whole ([`ExperimentalFeatures`](api.md#experimentalfeatures)).
+The `experimental` option turns on features still being worked on and sets values still being tuned, which are
+outside semantic versioning and may change or go in any release ([`ExperimentalFeatures`](api.md#experimentalfeatures)):
+
+- `partialEraser` gives the eraser the mode `'partial'`, which cuts strokes instead of removing them whole.
+- `predictionMs` is how far ahead of each pointer input, in ms, the points the browser predicts are drawn after the tip
+  of the stroke being drawn: 20 by default, 0 for none, at most 25. They are drawn only, never kept or sent.

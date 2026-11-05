@@ -5,7 +5,7 @@ import { DrawController } from './DrawController'
 import { EraseController } from './EraseController'
 import { LaserController } from './LaserController'
 import { registerDebugLayer, registerDebugPrediction } from './debug'
-import { registerExperimental, type ExperimentalFeatures } from './experimental'
+import { predictionMsOf, registerExperimental, type ExperimentalFeatures } from './experimental'
 import { ALL_TOOLS, changeToolSize, KeyboardShortcuts } from './keyboard'
 import { CLAIM_CURSOR, claimMapGestures, type GestureClaim } from './mapGestures'
 import { createMapProjector, createScreenProjector, mercatorPerPixel } from './mapProjector'
@@ -86,9 +86,10 @@ export type HandwritingOptions = {
    */
   tools?: readonly NonNullable<Tool>[]
   /**
-   * Features still being worked on, off by default. `partialEraser` enables the eraser mode
-   * 'partial': while it is off, setEraser({ mode: 'partial' }) throws a RangeError, a default mode 'partial'
-   * becomes 'stroke', and the toolbar offers no mode switch
+   * Features still being worked on, off by default, and values still being tuned. `partialEraser` enables the eraser
+   * mode 'partial': while it is off, setEraser({ mode: 'partial' }) throws a RangeError, a default mode 'partial'
+   * becomes 'stroke', and the toolbar offers no mode switch. `predictionMs` is how far ahead the browser's predicted
+   * points are drawn; createHandwriting throws a RangeError for a value that is not a number from 0 to 25
    */
   experimental?: ExperimentalFeatures
   /**
@@ -221,6 +222,8 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
   const { store } = options
   const layerId = options.layerId ?? 'handwriting'
   const tools = toolsOf(options.tools)
+  // Checked before anything subscribes to the store or the page, so a RangeError leaves nothing behind
+  const predictionMs = predictionMsOf(options.experimental)
   let tool: Tool = null
   const listeners = new Map<keyof HandwritingEventMap, Set<(event: never) => void>>()
   let destroyed = false
@@ -256,7 +259,7 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
   const newIdentity = (): StrokeIdentity | null =>
     options.startStroke ? options.startStroke() : { id: randomStrokeId(), author: options.author ?? '' }
   // The browser's predicted points after the tip of the stroke being drawn, drawn but never applied to the store
-  const prediction = new Prediction()
+  const prediction = new Prediction(predictionMs)
   const draw = new DrawController(element, store, project, {
     startStroke: (e) => {
       if ((tool !== 'pen' && tool !== 'highlighter') || !penOnly.accepts(e)) return null
@@ -585,7 +588,7 @@ export function createHandwriting(map: MapLibreMap, options: HandwritingOptions)
     },
   }
   if (__HANDWRITING_DEBUG__) registerDebugPrediction(handle, prediction)
-  registerExperimental(handle, options.experimental)
+  registerExperimental(handle, options.experimental ?? {}, predictionMs)
   setKeyboard(options.keyboard ?? false)
   return handle
 }

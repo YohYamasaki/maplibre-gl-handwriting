@@ -183,11 +183,12 @@ await check('input latency with and without predicted points; predicted points n
   await jumpTo([141.8, 43.3], 12)
   await a.tool('pen')
   const results = {}
-  for (const [name, enabled] of [
-    ['without prediction', false],
-    ['with prediction', true],
+  for (const [name, ms] of [
+    ['without prediction', 0],
+    ['with prediction', 20],
   ]) {
-    await a.eval(`window.__handwriting.setPrediction(${enabled}), true`)
+    const enabled = ms > 0
+    await a.eval(`window.__handwriting.setPredictionMs(${ms}), true`)
     await a.eval(`(() => {
       const h = window.__handwriting
       const record = h.latency = { delays: [], predicted: 0, moves: 0 }
@@ -227,7 +228,7 @@ await check('input latency with and without predicted points; predicted points n
       p90Ms: pick(0.9)?.toFixed(1),
     }
   }
-  await a.eval(`window.__handwriting.setPrediction(true), true`)
+  await a.eval(`window.__handwriting.setPredictionMs(20), true`)
   console.log(`  input latency (pointermove timeStamp to the next animation frame): ${JSON.stringify(results)}`)
 })
 

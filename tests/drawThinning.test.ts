@@ -7,12 +7,12 @@ import { join } from 'node:path'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { StrokeStore, type Point, type StrokeData, type StrokeOp } from '../src/core/stroke'
 import { bucketOf } from '../src/core/bucket'
-import { setDebugPrediction, registerDebugPrediction } from '../src/debug'
+import { setDebugPredictionMs, registerDebugPrediction } from '../src/debug'
 import { CORNER_TOLERANCE_PX, CORNER_WINDOW, DrawController, MAX_SAMPLE_SPACING_PX } from '../src/DrawController'
 import { MeshBuffer } from '../src/MeshBuffer'
 import { mercatorPerPixelAt } from '../src/mercator'
 import { DEFAULT_SETTINGS } from '../src/pens'
-import { PREDICTION_TIMEOUT_MS, Prediction } from '../src/Prediction'
+import { DEFAULT_PREDICTION_MS, PREDICTION_TIMEOUT_MS, Prediction } from '../src/Prediction'
 import { PressureFilter } from '../src/pressure'
 import { StrokeTessellator } from '../src/StrokeTessellator'
 
@@ -27,6 +27,12 @@ const EPSILON = 1e-6
 /** One pointer position, with the pen's raw pressure when it is a pen */
 type Input = { x: number; y: number; pressure?: number }
 
+/**
+ * The time between two pointer events of drawing(), in ms: each event is this much after the one before, and the
+ * browser's predicted points of a pointermove are this much apart after it
+ */
+const EVENT_MS = 8
+
 function drawing(options: { width?: number; pen?: boolean } = {}): {
   store: StrokeStore
   ops: StrokeOp[]
@@ -40,7 +46,7 @@ function drawing(options: { width?: number; pen?: boolean } = {}): {
   recorded: () => [number, number][]
 } {
   const store = new StrokeStore({ order: 'custom' })
-  const prediction = new Prediction()
+  const prediction = new Prediction(DEFAULT_PREDICTION_MS)
   const element = Object.assign(new EventTarget(), { setPointerCapture: (): void => {} }) as unknown as HTMLElement
   const draw = new DrawController(element, store, project, {
     startStroke: () => ({
@@ -65,12 +71,20 @@ function drawing(options: { width?: number; pen?: boolean } = {}): {
     clientY: p.y,
     pressure: p.pressure ?? 0.5,
   })
+  let time = 0
   const pointer = (type: string, p: Input, extra: Record<string, unknown> = {}): void => {
-    element.dispatchEvent(Object.assign(new Event(type), fieldsOf(p), extra))
+    const event = Object.assign(new Event(type), fieldsOf(p), extra)
+    // Event.timeStamp is a getter on the prototype, which Object.assign cannot set
+    Object.defineProperty(event, 'timeStamp', { value: time })
+    element.dispatchEvent(event)
+    time += EVENT_MS
   }
   const move = (inputs: Input[], predicted?: [number, number][]): void => {
     const extra: Record<string, unknown> = { getCoalescedEvents: () => inputs.map(fieldsOf) }
-    if (predicted) extra.getPredictedEvents = () => predicted.map(([x, y]) => ({ clientX: x, clientY: y }))
+    const at = time
+    if (predicted)
+      extra.getPredictedEvents = () =>
+        predicted.map(([x, y], i) => ({ clientX: x, clientY: y, timeStamp: at + (i + 1) * EVENT_MS }))
     pointer('pointermove', inputs.at(-1)!, extra)
   }
   return {
@@ -331,7 +345,7 @@ describe('DrawController pending point', () => {
     vi.useRealTimers()
   })
 
-  it('is drawn first after the tip, outlives the prediction timeout and switch, and reaches the store at the end', () => {
+  it('is drawn first after the tip, outlives the prediction timeout and a time ahead of 0, and reaches the store at the end', () => {
     vi.useFakeTimers()
     const d = drawing({ width: 4 })
     const handle = {}
@@ -344,7 +358,7 @@ describe('DrawController pending point', () => {
     vi.advanceTimersByTime(PREDICTION_TIMEOUT_MS)
     expect(d.prediction.get('s:1')).toEqual([project(2, 0)])
     d.move([{ x: 2.5, y: 0 }], [[3, 0]])
-    setDebugPrediction(handle, false)
+    setDebugPredictionMs(handle, 0)
     expect(d.prediction.get('s:1')).toEqual([project(2.5, 0)])
     d.move([{ x: 3, y: 0 }], [[3.5, 0]])
     expect(d.prediction.get('s:1')).toEqual([project(3, 0)])
@@ -385,7 +399,7 @@ describe('DrawController pending point', () => {
 
 describe('Prediction pending point', () => {
   it('comes before the predicted points, in a new array only when either changes', () => {
-    const prediction = new Prediction()
+    const prediction = new Prediction(DEFAULT_PREDICTION_MS)
     let calls = 0
     prediction.subscribe(() => calls++)
     prediction.setPending('s:1', [1, 1])

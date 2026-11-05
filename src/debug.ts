@@ -1,7 +1,7 @@
 // The development tools (the dev page, dev/) reach the layer behind a handle through here. Every call to this file is
 // inside `if (__HANDWRITING_DEBUG__)`, which the package's build sets to false, so none of it is in the package.
 // Not exported from the package: the dev page imports this file from the source
-import { MAX_PREDICTED_POINTS, type Prediction, type PredictionCounts } from './Prediction'
+import type { DropReason, PredictedEvent, Prediction, PredictionDebug } from './Prediction'
 import type { StrokeLayer } from './StrokeLayer'
 import type { StrokeScene } from './StrokeScene'
 
@@ -40,26 +40,48 @@ export function registerDebugPrediction(handle: object, prediction: Prediction):
   predictions.set(handle, prediction)
 }
 
-/** Turns the drawing of the browser's predicted points of a handle off or back on, to compare the latency */
-export function setDebugPrediction(handle: object, enabled: boolean): void {
+/**
+ * Sets how far ahead of a pointermove a handle's predicted points are drawn, in ms, to compare the latency and tune
+ * it on a real pen; 0 drops the predicted points drawn now and draws none
+ */
+export function setDebugPredictionMs(handle: object, ms: number): void {
   const prediction = predictions.get(handle)
-  if (!prediction?.debug) return
-  prediction.debug.on = enabled
-  if (!enabled) prediction.clear()
+  if (!prediction) return
+  prediction.ms = ms
+  if (ms === 0) prediction.clear()
 }
 
-/** How many of a handle's 1st and 2nd predicted points were kept and dropped so far, to tune the limit on a real pen */
-export function debugPredictionCounts(handle: object): PredictionCounts | null {
-  const counts = predictions.get(handle)?.debug?.counts
-  return counts ? { kept: [...counts.kept], dropped: [...counts.dropped] } : null
+/** How far ahead of a pointermove a handle's predicted points are drawn now, in ms */
+export function debugPredictionMs(handle: object): number | null {
+  return predictions.get(handle)?.ms ?? null
 }
 
-/** Counts the predicted points of one pointermove: `offered` the browser gave (first MAX_PREDICTED_POINTS), `kept` of them */
-export function countPrediction(prediction: Prediction, offered: number, kept: number): void {
-  const counts = prediction.debug?.counts
-  if (!counts) return
-  for (let i = 0; i < Math.min(offered, MAX_PREDICTED_POINTS); i++) {
-    if (i < kept) counts.kept[i]++
-    else counts.dropped[i]++
-  }
+/**
+ * How many of a handle's predicted points were offered, kept and dropped by time and by distance so far, and the time
+ * from the latest pointermove to each of its predicted points, to tune the time ahead on a real pen
+ */
+export function debugPredictionCounts(handle: object): PredictionDebug | null {
+  const debug = predictions.get(handle)?.debug
+  return debug ? { counts: { ...debug.counts }, aheadMs: [...debug.aheadMs] } : null
+}
+
+/**
+ * Counts the predicted events `offered` of one pointermove at `timeStamp`: the first `kept` of them were drawn, and the
+ * rest were dropped with the first one's reason `dropped`. Keeps the time from the pointermove to each of them
+ */
+export function countPrediction(
+  prediction: Prediction,
+  timeStamp: number,
+  offered: readonly PredictedEvent[],
+  kept: number,
+  dropped: DropReason | null,
+): void {
+  const debug = prediction.debug
+  if (!debug) return
+  const { counts } = debug
+  counts.offered += offered.length
+  counts.kept += kept
+  if (dropped === 'time') counts.droppedByTime += offered.length - kept
+  else if (dropped === 'distance') counts.droppedByDistance += offered.length - kept
+  debug.aheadMs = offered.map((e) => e.timeStamp - timeStamp)
 }

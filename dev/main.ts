@@ -7,7 +7,7 @@ import '../src/ui/toolbar.css'
 import { Map as MapLibreMap, NavigationControl, setWorkerUrl, type StyleSpecification } from 'maplibre-gl'
 // MapLibre finds its worker next to its own module, which Vite's pre-bundling moves: give it the worker's URL
 import mapLibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
-import { debugPredictionCounts, debugSceneOf, setDebugPrediction } from '../src/debug'
+import { debugPredictionCounts, debugSceneOf, setDebugPredictionMs } from '../src/debug'
 import {
   createHandwriting,
   HandwritingLayer,
@@ -84,8 +84,10 @@ const debug = {
   HandwritingLayer,
   addOverlay: overlay,
   scene: () => debugSceneOf(handle),
-  setPrediction: (enabled: boolean): void => setDebugPrediction(handle, enabled),
-  // Kept and dropped counts of the 1st and 2nd predicted points, to check the limit on a real pen (decision 0080)
+  // How far ahead the predicted points are drawn, in ms; 0 draws none (decision 0021)
+  setPredictionMs: (ms: number): void => setDebugPredictionMs(handle, ms),
+  // The predicted points offered, kept and dropped by time and by distance, and the time ahead of the latest ones, to
+  // tune the time ahead on a real pen (decisions 0020, 0021)
   predictionCounts: () => debugPredictionCounts(handle),
 }
 ;(window as unknown as { __handwriting?: unknown }).__handwriting = debug

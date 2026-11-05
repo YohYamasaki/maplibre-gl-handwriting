@@ -9,6 +9,9 @@ raises the minor version while the package is at 0.x, any other release the patc
 - A slowly drawn stroke keeps fewer points: the input is recorded once the pointer has moved min(pen width, 4 px) on
   screen, at corners and turns (no skipped input farther than 0.5 px from the recorded line), and when the pen's
   pressure changes, so its mesh and the ops sent and kept are a fraction of what they were.
+- The browser's predicted points are drawn up to 20 ms ahead of each pointer input, however many there are, and within
+  how far the pointer goes in that time at its speed (at most 24 px), instead of the first two within how far it moved.
+- Experimental: `experimental.predictionMs`, how far ahead the predicted points are drawn (0 to 25 ms, 0 for none).
 
 ## 0.1.0
 

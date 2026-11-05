@@ -1,10 +1,13 @@
 // The tools a handle offers (HandwritingOptions.tools), without a browser: setTool, getTools, the keyboard shortcuts
-// on the window and the tools given to the shortcut list; and the IDs the tools give the strokes they make when
-// startStroke is omitted, where crypto.randomUUID is missing. createHandwriting's DOM parts are stand-ins here
+// on the window and the tools given to the shortcut list; the IDs the tools give the strokes they make when
+// startStroke is omitted, where crypto.randomUUID is missing; and the time ahead of the predicted points
+// (experimental.predictionMs, decision 0021). createHandwriting's DOM parts are stand-ins here
 import { MercatorCoordinate, type LngLat } from 'maplibre-gl'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { StrokeStore } from '../src/core/stroke'
 import { createHandwriting, type Tool } from '../src/createHandwriting'
+import { debugPredictionMs } from '../src/debug'
+import { experimentalOf } from '../src/experimental'
 import { POINTER_HANDLERS } from '../src/mapGestures'
 import { mercatorPerPixelAt } from '../src/mercator'
 import { StrokeTessellator } from '../src/StrokeTessellator'
@@ -117,6 +120,39 @@ describe('HandwritingOptions.tools', () => {
     expect(handle.getTools()).toEqual(['pen'])
     expect(() => handle.setTool('laser')).toThrow(RangeError)
     handle.destroy()
+  })
+})
+
+describe('HandwritingOptions.experimental.predictionMs', () => {
+  it('is 20 by default', () => {
+    const handle = createHandwriting(handwritingMap(), { store: new StrokeStore() })
+    expect(experimentalOf(handle).predictionMs).toBe(20)
+    expect(debugPredictionMs(handle)).toBe(20)
+    handle.destroy()
+  })
+
+  it('takes a number from 0 to 25 and draws the predicted points that far ahead', () => {
+    for (const ms of [0, 12.5, 25]) {
+      const handle = createHandwriting(handwritingMap(), {
+        store: new StrokeStore(),
+        experimental: { predictionMs: ms },
+      })
+      expect(experimentalOf(handle).predictionMs).toBe(ms)
+      expect(debugPredictionMs(handle)).toBe(ms)
+      handle.destroy()
+    }
+  })
+
+  it('throws a RangeError from createHandwriting for anything else, before the handle subscribes to the store', () => {
+    for (const ms of [-1, 25.5, NaN, Infinity, -Infinity, '10' as unknown as number, null as unknown as number]) {
+      const store = new StrokeStore()
+      const subscribe = vi.spyOn(store, 'subscribe')
+      expect(
+        () => createHandwriting(handwritingMap(), { store, experimental: { predictionMs: ms } }),
+        String(ms),
+      ).toThrow(RangeError)
+      expect(subscribe, String(ms)).not.toHaveBeenCalled()
+    }
   })
 })
 
