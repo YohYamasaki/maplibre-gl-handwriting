@@ -4,8 +4,8 @@
 import { assert, hexToRgb, line, near, waitFor } from './browser.mjs'
 
 // Run before the page's own scripts: records each worker the page makes, and the WebAssembly URL the tessellation
-// worker is sent (TessellationInit), which tells it from MapLibre's workers
-const RECORD_WORKERS = `(() => {
+// worker is sent (TessellationInit), which tells it from MapLibre's workers. Also used by e2e-demo.mjs
+export const RECORD_WORKERS = `(() => {
   const Native = window.Worker
   const workers = (window.__workers = [])
   window.Worker = class extends Native {

@@ -96,12 +96,50 @@ function emitToolbarStyles(): Plugin {
   }
 }
 
+/**
+ * The license texts of what the demo (vite build --mode demo) ships, copied as they are next to its index.html: this
+ * package's, the Rust crates' compiled into the WebAssembly module (THIRD_PARTY_LICENSES) and maplibre-gl's, which
+ * the demo bundles
+ */
+function emitLicenses(): Plugin {
+  const sources: Record<string, string> = {
+    LICENSE: fileURLToPath(new URL('./LICENSE', import.meta.url)),
+    THIRD_PARTY_LICENSES: fileURLToPath(new URL('./THIRD_PARTY_LICENSES', import.meta.url)),
+    'maplibre-gl-LICENSE.txt': fileURLToPath(new URL('./node_modules/maplibre-gl/LICENSE.txt', import.meta.url)),
+  }
+  return {
+    name: 'emit-licenses',
+    apply: 'build',
+    buildStart() {
+      for (const source of Object.values(sources)) this.addWatchFile(source)
+    },
+    generateBundle() {
+      for (const [fileName, source] of Object.entries(sources))
+        this.emitFile({ type: 'asset', fileName, source: readFileSync(source, 'utf8') })
+    },
+  }
+}
+
 // `vite` serves the dev page (dev/) from the source with the debug code in; `vite build` is the package: ESM with
 // src/core bundled in and also its own entry (./core), maplibre-gl left to the user as a peer dependency, the
 // tessellation worker (assets/tessellation.worker.js) and the WebAssembly module as files next to it, found through
 // new URL("./<path>", import.meta.url) (genericAssetUrls). HANDWRITING_DEBUG=1 builds it with the debug
-// code in, for the pack check only (decision 0096). The .d.ts files come from tsconfig.build.json (npm run build)
-export default defineConfig(({ command }) => {
+// code in, for the pack check only (decision 0096). The .d.ts files come from tsconfig.build.json (npm run build).
+// With --mode demo (vite build and vite preview alike), the dev page as a static site in dist/demo, debug code and
+// panel in, maplibre-gl bundled, files named with Vite's default hashes (decision 0016)
+export default defineConfig(({ command, mode }) => {
+  if (mode === 'demo') {
+    return {
+      plugins: [keepWasmAFile(), emitLicenses()],
+      define: { __HANDWRITING_DEBUG__: JSON.stringify(true) },
+      root: fileURLToPath(new URL('./dev', import.meta.url)),
+      publicDir: false,
+      base: './',
+      server: { fs: { allow: [fileURLToPath(new URL('.', import.meta.url))] } },
+      build: { outDir: fileURLToPath(new URL('./dist/demo', import.meta.url)), emptyOutDir: true },
+      worker: { format: 'es', plugins: () => [keepWasmAFile()] },
+    }
+  }
   const debug = command === 'serve' || process.env.HANDWRITING_DEBUG === '1'
   // HANDWRITING_OUT_DIR puts that build elsewhere (an absolute path, or relative to this directory)
   const outDir = resolve(fileURLToPath(new URL('.', import.meta.url)), process.env.HANDWRITING_OUT_DIR ?? 'dist')

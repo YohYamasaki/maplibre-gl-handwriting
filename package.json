@@ -38,6 +38,8 @@
     "dev": "npm run build:wasm && vite",
     "build": "npm run build:wasm && vite build && tsc -p tsconfig.build.json && node tests/tools/copy-wasm-types.mjs",
     "build:wasm": "CARGO_TARGET_DIR=\"$PWD/tessellator/target\" wasm-pack build tessellator --target web --release",
+    "build:demo": "npm run build:wasm && vite build --mode demo",
+    "deploy:demo": "npm run build:demo && npx wrangler@4.151.3 pages deploy dist/demo --project-name maplibre-gl-handwriting --branch main",
     "prepack": "npm run build",
     "check": "npm run build:wasm && tsc -p tsconfig.json && tsc -p tsconfig.node.json",
     "test": "vitest run",
@@ -45,7 +47,7 @@
     "lint:boundaries": "node tests/tools/check-boundaries.mjs",
     "snapshots": "node tests/tools/snapshots.mjs",
     "pack:check": "node tests/tools/pack.mjs",
-    "e2e": "node tests/tools/e2e-example.mjs && node tests/tools/e2e-dev.mjs",
+    "e2e": "node tests/tools/e2e-example.mjs && node tests/tools/e2e-dev.mjs && node tests/tools/e2e-demo.mjs",
     "docs:api": "node tests/tools/api-docs.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
